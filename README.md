@@ -15,7 +15,7 @@ PromptPlay is a web-first, modular, ECS-based game engine that lets users create
 
 ## Project Structure
 
-```
+```text
 PromptPlay/
 ├── packages/
 │   ├── shared-types/     # Shared TypeScript types
