@@ -62,16 +62,16 @@ pnpm --filter editor dev
 - [x] Serializer/Deserializer for JSON specs
 - [x] Unit tests
 
-### Week 2: Runtime & AI Integration (In Progress)
+### Week 2: Runtime & AI Integration ✅
 
-- [ ] PixiJS 2D rendering integration
-- [ ] Matter.js physics integration
-- [ ] Game loop and input manager
-- [ ] ChatGPT API client
-- [ ] Prompt templates for genres
-- [ ] Spec validation
+- [x] PixiJS 2D rendering integration
+- [x] Matter.js physics integration
+- [x] Game loop and input manager
+- [x] ChatGPT API client (OpenAI SDK)
+- [x] Prompt templates for genres (platformer, shooter, puzzle)
+- [x] Spec validation (Zod)
 
-### Week 3: Editor & Demos (Planned)
+### Week 3: Editor & Demos (In Progress)
 
 - [ ] Next.js editor application
 - [ ] Prompt input UI
