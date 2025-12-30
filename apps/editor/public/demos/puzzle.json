@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Sokoban Puzzle",
+    "genre": "puzzle",
+    "description": "Push boxes onto target locations"
+  },
+  "config": {
+    "gravity": { "x": 0, "y": 0 },
+    "worldBounds": { "width": 800, "height": 600 }
+  },
+  "entities": [
+    {
+      "name": "player",
+      "components": {
+        "transform": { "x": 192, "y": 192, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "player", "width": 50, "height": 50, "tint": "#3498dbff" },
+        "collider": { "type": "box", "width": 50, "height": 50 },
+        "input": { "moveSpeed": 12, "jumpForce": 0 }
+      },
+      "tags": ["player"]
+    },
+    {
+      "name": "box1",
+      "components": {
+        "transform": { "x": 320, "y": 192, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "box", "width": 50, "height": 50, "tint": "#8b4513ff" },
+        "collider": { "type": "box", "width": 50, "height": 50 }
+      },
+      "tags": ["pushable"]
+    },
+    {
+      "name": "box2",
+      "components": {
+        "transform": { "x": 448, "y": 320, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "box", "width": 50, "height": 50, "tint": "#8b4513ff" },
+        "collider": { "type": "box", "width": 50, "height": 50 }
+      },
+      "tags": ["pushable"]
+    },
+    {
+      "name": "box3",
+      "components": {
+        "transform": { "x": 320, "y": 448, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "box", "width": 50, "height": 50, "tint": "#8b4513ff" },
+        "collider": { "type": "box", "width": 50, "height": 50 }
+      },
+      "tags": ["pushable"]
+    },
+    {
+      "name": "target1",
+      "components": {
+        "transform": { "x": 576, "y": 192, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "target", "width": 50, "height": 50, "tint": "#27ae60ff" },
+        "collider": { "type": "box", "width": 50, "height": 50, "isSensor": true }
+      },
+      "tags": ["target"]
+    },
+    {
+      "name": "target2",
+      "components": {
+        "transform": { "x": 576, "y": 320, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "target", "width": 50, "height": 50, "tint": "#27ae60ff" },
+        "collider": { "type": "box", "width": 50, "height": 50, "isSensor": true }
+      },
+      "tags": ["target"]
+    },
+    {
+      "name": "target3",
+      "components": {
+        "transform": { "x": 576, "y": 448, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "target", "width": 50, "height": 50, "tint": "#27ae60ff" },
+        "collider": { "type": "box", "width": 50, "height": 50, "isSensor": true }
+      },
+      "tags": ["target"]
+    },
+    {
+      "name": "wall_boundary",
+      "components": {
+        "transform": { "x": 384, "y": 320, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "wall", "width": 640, "height": 480, "tint": "#2c3e50ff" },
+        "collider": { "type": "box", "width": 20, "height": 480 }
+      },
+      "tags": ["static"]
+    }
+  ],
+  "systems": ["physics", "input", "collision", "render"]
+}

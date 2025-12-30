@@ -71,13 +71,16 @@ pnpm --filter editor dev
 - [x] Prompt templates for genres (platformer, shooter, puzzle)
 - [x] Spec validation (Zod)
 
-### Week 3: Editor & Demos (In Progress)
+### Week 3: Editor & Demos ✅
 
-- [ ] Next.js editor application
-- [ ] Prompt input UI
-- [ ] Game canvas component
-- [ ] Spec editor
-- [ ] Demo games (platformer, shooter, puzzle)
+- [x] Next.js editor application with unique cyberpunk/synthwave UI
+- [x] Prompt input UI with genre selector
+- [x] Game canvas component with Runtime2D integration
+- [x] Spec editor for JSON editing
+- [x] Control panel (play/pause/reset)
+- [x] Save/load functionality with localStorage
+- [x] API route for ChatGPT generation
+- [x] Demo games (platformer, shooter, puzzle)
 
 ## Technology Stack
 

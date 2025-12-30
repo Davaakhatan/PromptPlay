@@ -1,0 +1,90 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Fox Platformer",
+    "genre": "platformer",
+    "description": "A blue fox jumps across platforms to collect golden coins"
+  },
+  "config": {
+    "gravity": { "x": 0, "y": 1 },
+    "worldBounds": { "width": 800, "height": 600 }
+  },
+  "entities": [
+    {
+      "name": "player",
+      "components": {
+        "transform": { "x": 100, "y": 400, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "player", "width": 40, "height": 40, "tint": "#4a90e2ff" },
+        "collider": { "type": "box", "width": 40, "height": 40 },
+        "input": { "moveSpeed": 8, "jumpForce": -18 },
+        "health": { "current": 100, "max": 100 }
+      },
+      "tags": ["player"]
+    },
+    {
+      "name": "ground",
+      "components": {
+        "transform": { "x": 400, "y": 580, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "ground", "width": 800, "height": 40, "tint": "#7f8c8dff" },
+        "collider": { "type": "box", "width": 800, "height": 40 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "platform1",
+      "components": {
+        "transform": { "x": 200, "y": 450, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "platform", "width": 150, "height": 20, "tint": "#7f8c8dff" },
+        "collider": { "type": "box", "width": 150, "height": 20 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "platform2",
+      "components": {
+        "transform": { "x": 450, "y": 350, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "platform", "width": 150, "height": 20, "tint": "#7f8c8dff" },
+        "collider": { "type": "box", "width": 150, "height": 20 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "platform3",
+      "components": {
+        "transform": { "x": 650, "y": 250, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "platform", "width": 150, "height": 20, "tint": "#7f8c8dff" },
+        "collider": { "type": "box", "width": 150, "height": 20 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "coin1",
+      "components": {
+        "transform": { "x": 200, "y": 400, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "coin", "width": 25, "height": 25, "tint": "#f1c40fff" },
+        "collider": { "type": "circle", "radius": 12, "isSensor": true }
+      },
+      "tags": ["collectible"]
+    },
+    {
+      "name": "coin2",
+      "components": {
+        "transform": { "x": 450, "y": 300, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "coin", "width": 25, "height": 25, "tint": "#f1c40fff" },
+        "collider": { "type": "circle", "radius": 12, "isSensor": true }
+      },
+      "tags": ["collectible"]
+    },
+    {
+      "name": "coin3",
+      "components": {
+        "transform": { "x": 650, "y": 200, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "coin", "width": 25, "height": 25, "tint": "#f1c40fff" },
+        "collider": { "type": "circle", "radius": 12, "isSensor": true }
+      },
+      "tags": ["collectible"]
+    }
+  ],
+  "systems": ["physics", "input", "collision", "render"]
+}

@@ -1,0 +1,75 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.examples {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.examplesTitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.exampleButton {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  text-align: left;
+}
+
+.exampleButton:hover:not(:disabled) {
+  border-color: var(--color-accent-primary);
+  transform: translateX(4px);
+}
+
+.exampleButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exampleText {
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  flex: 1;
+  line-height: 1.4;
+}

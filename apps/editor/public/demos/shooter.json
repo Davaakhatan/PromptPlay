@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Space Shooter",
+    "genre": "shooter",
+    "description": "Fight alien enemies in a top-down space arena"
+  },
+  "config": {
+    "gravity": { "x": 0, "y": 0 },
+    "worldBounds": { "width": 800, "height": 600 }
+  },
+  "entities": [
+    {
+      "name": "player",
+      "components": {
+        "transform": { "x": 400, "y": 500, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "player", "width": 40, "height": 40, "tint": "#2ecc71ff" },
+        "collider": { "type": "circle", "radius": 20 },
+        "input": { "moveSpeed": 10, "jumpForce": 0 },
+        "health": { "current": 100, "max": 100 }
+      },
+      "tags": ["player"]
+    },
+    {
+      "name": "enemy1",
+      "components": {
+        "transform": { "x": 200, "y": 150, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "enemy", "width": 35, "height": 35, "tint": "#e74c3cff" },
+        "collider": { "type": "circle", "radius": 17 },
+        "health": { "current": 50, "max": 50 },
+        "aiBehavior": { "type": "chase", "speed": 6, "detectionRadius": 300 }
+      },
+      "tags": ["enemy"]
+    },
+    {
+      "name": "enemy2",
+      "components": {
+        "transform": { "x": 600, "y": 150, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "enemy", "width": 35, "height": 35, "tint": "#e74c3cff" },
+        "collider": { "type": "circle", "radius": 17 },
+        "health": { "current": 50, "max": 50 },
+        "aiBehavior": { "type": "chase", "speed": 6, "detectionRadius": 300 }
+      },
+      "tags": ["enemy"]
+    },
+    {
+      "name": "enemy3",
+      "components": {
+        "transform": { "x": 400, "y": 100, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "sprite": { "texture": "enemy", "width": 35, "height": 35, "tint": "#e74c3cff" },
+        "collider": { "type": "circle", "radius": 17 },
+        "health": { "current": 50, "max": 50 },
+        "aiBehavior": { "type": "chase", "speed": 6, "detectionRadius": 300 }
+      },
+      "tags": ["enemy"]
+    },
+    {
+      "name": "wall_top",
+      "components": {
+        "transform": { "x": 400, "y": 10, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "wall", "width": 800, "height": 20, "tint": "#34495eff" },
+        "collider": { "type": "box", "width": 800, "height": 20 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "wall_bottom",
+      "components": {
+        "transform": { "x": 400, "y": 590, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "wall", "width": 800, "height": 20, "tint": "#34495eff" },
+        "collider": { "type": "box", "width": 800, "height": 20 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "wall_left",
+      "components": {
+        "transform": { "x": 10, "y": 300, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "wall", "width": 20, "height": 600, "tint": "#34495eff" },
+        "collider": { "type": "box", "width": 20, "height": 600 }
+      },
+      "tags": ["static"]
+    },
+    {
+      "name": "wall_right",
+      "components": {
+        "transform": { "x": 790, "y": 300, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "wall", "width": 20, "height": 600, "tint": "#34495eff" },
+        "collider": { "type": "box", "width": 20, "height": 600 }
+      },
+      "tags": ["static"]
+    }
+  ],
+  "systems": ["physics", "input", "collision", "render"]
+}

@@ -1,0 +1,110 @@
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+}
+
+.canvasWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  background: radial-gradient(circle at center, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%);
+}
+
+.canvas {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), var(--shadow-glow-primary);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+}
+
+.info {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-top: 1px solid rgba(0, 217, 255, 0.1);
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.infoLabel {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.infoValue {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.controls {
+  flex: 1;
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.controlsTitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.controlsText {
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.empty,
+.error {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-2xl);
+  text-align: center;
+}
+
+.emptyIcon,
+.errorIcon {
+  font-size: 4rem;
+  opacity: 0.3;
+}
+
+.emptyTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.emptyText,
+.errorText {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.errorIcon {
+  color: var(--color-error);
+  opacity: 1;
+}
+
+.errorText {
+  color: var(--color-error);
+}
