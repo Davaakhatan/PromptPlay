@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Wand2, Sparkles } from 'lucide-react';
 import styles from './PromptInput.module.css';
 
 interface PromptInputProps {
@@ -27,9 +28,7 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>
-        <span className="text-gradient">Create Your Game</span>
-      </h2>
+      <h2 className={styles.title}>Create Your Game</h2>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.field}>
@@ -66,11 +65,15 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
         <button type="submit" disabled={isLoading || !prompt.trim()} className="btn btn-primary">
           {isLoading ? (
             <>
-              <span className="loading">Generating...</span>
+              <div className="loading icon-md">
+                <Sparkles className="icon-md" />
+              </div>
+              <span>Generating...</span>
             </>
           ) : (
             <>
-              <span>✨</span> Generate Game
+              <Wand2 className="icon-md" />
+              <span>Generate Game</span>
             </>
           )}
         </button>

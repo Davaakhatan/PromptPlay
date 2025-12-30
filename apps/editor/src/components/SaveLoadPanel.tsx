@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { GameSpec } from '@promptplay/shared-types';
+import { Save, FolderOpen, Trash2, X } from 'lucide-react';
 import styles from './SaveLoadPanel.module.css';
 
 interface SaveLoadPanelProps {
@@ -62,17 +63,34 @@ export default function SaveLoadPanel({ gameSpec, onLoad }: SaveLoadPanelProps) 
         onClick={() => setShowSaveDialog(true)}
         disabled={!gameSpec}
         className="btn btn-secondary"
+        title="Save Game"
       >
-        💾 Save
+        <Save className="icon-sm" />
+        <span>Save</span>
       </button>
-      <button onClick={() => setShowLoadDialog(true)} className="btn btn-secondary">
-        📂 Load
+      <button
+        onClick={() => setShowLoadDialog(true)}
+        className="btn btn-secondary"
+        title="Load Game"
+      >
+        <FolderOpen className="icon-sm" />
+        <span>Load</span>
       </button>
 
       {showSaveDialog && (
         <div className={styles.modal} onClick={() => setShowSaveDialog(false)}>
           <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.dialogTitle}>Save Game</h3>
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h3 className={styles.dialogTitle}>Save Game</h3>
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="btn btn-ghost"
+                style={{ padding: '4px' }}
+              >
+                <X className="icon-md" />
+              </button>
+            </div>
+
             <input
               type="text"
               value={saveName}
@@ -80,13 +98,15 @@ export default function SaveLoadPanel({ gameSpec, onLoad }: SaveLoadPanelProps) 
               placeholder="Enter save name..."
               className="input"
               autoFocus
+              style={{ marginBottom: '1.5rem' }}
             />
             <div className={styles.dialogButtons}>
-              <button onClick={handleSave} className="btn btn-success">
-                Save
-              </button>
               <button onClick={() => setShowSaveDialog(false)} className="btn btn-secondary">
                 Cancel
+              </button>
+              <button onClick={handleSave} className="btn btn-success">
+                <Save className="icon-sm" />
+                <span>Save Game</span>
               </button>
             </div>
           </div>
@@ -96,7 +116,17 @@ export default function SaveLoadPanel({ gameSpec, onLoad }: SaveLoadPanelProps) 
       {showLoadDialog && (
         <div className={styles.modal} onClick={() => setShowLoadDialog(false)}>
           <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.dialogTitle}>Load Game</h3>
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h3 className={styles.dialogTitle}>Load Game</h3>
+              <button
+                onClick={() => setShowLoadDialog(false)}
+                className="btn btn-ghost"
+                style={{ padding: '4px' }}
+              >
+                <X className="icon-md" />
+              </button>
+            </div>
+
             {savedGames.length === 0 ? (
               <p className={styles.emptyText}>No saved games found</p>
             ) : (
@@ -105,18 +135,28 @@ export default function SaveLoadPanel({ gameSpec, onLoad }: SaveLoadPanelProps) 
                   <div key={name} className={styles.gameItem}>
                     <span className={styles.gameName}>{name}</span>
                     <div className={styles.gameActions}>
-                      <button onClick={() => handleLoad(name)} className="btn btn-success">
-                        Load
+                      <button
+                        onClick={() => handleLoad(name)}
+                        className="btn btn-success"
+                        title="Load this game"
+                      >
+                        <FolderOpen className="icon-sm" />
+                        <span>Load</span>
                       </button>
-                      <button onClick={() => handleDelete(name)} className="btn btn-danger">
-                        Delete
+                      <button
+                        onClick={() => handleDelete(name)}
+                        className="btn btn-danger"
+                        title="Delete this game"
+                      >
+                        <Trash2 className="icon-sm" />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            <div className={styles.dialogButtons}>
+
+            <div className={styles.dialogButtons} style={{ marginTop: '1.5rem' }}>
               <button onClick={() => setShowLoadDialog(false)} className="btn btn-secondary">
                 Close
               </button>

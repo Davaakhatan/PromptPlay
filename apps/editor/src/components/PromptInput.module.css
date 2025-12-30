@@ -1,65 +1,65 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-6);
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   margin: 0;
+  color: var(--color-gray-900);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-4);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-2);
 }
 
 .label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-gray-700);
 }
 
 .examples {
-  padding-top: var(--spacing-md);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-gray-200);
 }
 
 .examplesTitle {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-sm);
-  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-3);
+  font-weight: 500;
 }
 
 .exampleButton {
   width: 100%;
-  padding: var(--spacing-sm);
-  background: var(--color-bg-tertiary);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--spacing-3);
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--transition);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
   text-align: left;
 }
 
 .exampleButton:hover:not(:disabled) {
-  border-color: var(--color-accent-primary);
-  transform: translateX(4px);
+  border-color: var(--color-primary);
+  background: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .exampleButton:disabled {
@@ -68,8 +68,8 @@
 }
 
 .exampleText {
-  font-size: 0.85rem;
-  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  color: var(--color-gray-700);
   flex: 1;
-  line-height: 1.4;
+  line-height: 1.5;
 }

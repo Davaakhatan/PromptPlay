@@ -1,5 +1,6 @@
 'use client';
 
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import styles from './ControlPanel.module.css';
 
 interface ControlPanelProps {
@@ -23,17 +24,35 @@ export default function ControlPanel({
 
       <div className={styles.buttons}>
         {isPlaying ? (
-          <button onClick={onPause} disabled={disabled} className="btn btn-secondary">
-            <span>⏸️</span> Pause
+          <button 
+            onClick={onPause} 
+            disabled={disabled} 
+            className="btn btn-secondary"
+            title="Pause Game"
+          >
+            <Pause className="icon-md" />
+            <span>Pause</span>
           </button>
         ) : (
-          <button onClick={onPlay} disabled={disabled} className="btn btn-success">
-            <span>▶️</span> Play
+          <button 
+            onClick={onPlay} 
+            disabled={disabled} 
+            className="btn btn-success"
+            title="Play Game"
+          >
+            <Play className="icon-md" />
+            <span>Play</span>
           </button>
         )}
 
-        <button onClick={onReset} disabled={disabled} className="btn btn-secondary">
-          <span>🔄</span> Reset
+        <button 
+          onClick={onReset} 
+          disabled={disabled} 
+          className="btn btn-secondary"
+          title="Reset Game"
+        >
+          <RotateCcw className="icon-md" />
+          <span>Reset</span>
         </button>
       </div>
 

@@ -23,7 +23,7 @@ export default function GameCanvas({ spec, isPlaying }: GameCanvasProps) {
       runtimeRef.current = new Runtime2D(canvasRef.current, {
         width: 800,
         height: 600,
-        backgroundColor: 0x0a0e27,
+        backgroundColor: 0xf9fafb,
       });
     } catch (err) {
       console.error('Failed to initialize runtime:', err);
@@ -70,7 +70,6 @@ export default function GameCanvas({ spec, isPlaying }: GameCanvasProps) {
   if (error) {
     return (
       <div className={styles.error}>
-        <div className={styles.errorIcon}>⚠️</div>
         <p className={styles.errorText}>{error}</p>
       </div>
     );
@@ -79,7 +78,6 @@ export default function GameCanvas({ spec, isPlaying }: GameCanvasProps) {
   if (!spec) {
     return (
       <div className={styles.empty}>
-        <div className={styles.emptyIcon}>🎮</div>
         <h3 className={styles.emptyTitle}>No Game Loaded</h3>
         <p className={styles.emptyText}>
           Create a game using the prompt input or load a saved game to get started

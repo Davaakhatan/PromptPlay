@@ -1,6 +1,6 @@
 .container {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2);
 }
 
 .modal {
@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -18,32 +18,32 @@
 }
 
 .dialog {
-  background: var(--color-bg-secondary);
+  background: white;
   border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
+  padding: var(--spacing-8);
   max-width: 500px;
   width: 90%;
-  box-shadow: var(--shadow-card), var(--shadow-glow-primary);
-  border: 1px solid rgba(0, 217, 255, 0.2);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-gray-200);
 }
 
 .dialogTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 var(--spacing-lg) 0;
-  color: var(--color-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 var(--spacing-6) 0;
+  color: var(--color-gray-900);
 }
 
 .dialogButtons {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-lg);
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-6);
 }
 
 .gamesList {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2);
   max-height: 400px;
   overflow-y: auto;
 }
@@ -52,26 +52,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
-  background: var(--color-bg-tertiary);
+  padding: var(--spacing-4);
+  background: var(--color-gray-50);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-gray-200);
 }
 
 .gameName {
-  font-size: 0.95rem;
-  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  color: var(--color-gray-900);
   font-weight: 500;
 }
 
 .gameActions {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-2);
 }
 
 .emptyText {
   text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-  padding: var(--spacing-xl);
+  color: var(--color-gray-600);
+  font-size: 0.875rem;
+  padding: var(--spacing-8);
 }

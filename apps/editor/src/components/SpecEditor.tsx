@@ -34,7 +34,6 @@ export default function SpecEditor({ spec, onEdit }: SpecEditorProps) {
   if (!spec) {
     return (
       <div className={styles.empty}>
-        <div className={styles.emptyIcon}>📝</div>
         <h3 className={styles.emptyTitle}>No Spec to Edit</h3>
         <p className={styles.emptyText}>
           Generate a game first to view and edit its JSON specification

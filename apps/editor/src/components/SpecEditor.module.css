@@ -2,13 +2,13 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-primary);
+  background: var(--color-gray-50);
 }
 
 .header {
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+  padding: var(--spacing-4) var(--spacing-6);
+  background: white;
+  border-bottom: 1px solid var(--color-gray-200);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -16,25 +16,25 @@
 
 .title {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--color-gray-900);
 }
 
 .error {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--color-error);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .editor {
   flex: 1;
-  padding: var(--spacing-lg);
-  background: var(--color-bg-secondary);
+  padding: var(--spacing-6);
+  background: white;
   border: none;
-  color: var(--color-accent-primary);
-  font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 0.85rem;
+  color: var(--color-gray-900);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
   line-height: 1.6;
   resize: none;
   overflow: auto;
@@ -45,29 +45,29 @@
 }
 
 .stats {
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-bg-tertiary);
-  border-top: 1px solid rgba(0, 217, 255, 0.1);
+  padding: var(--spacing-4) var(--spacing-6);
+  background: white;
+  border-top: 1px solid var(--color-gray-200);
   display: flex;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-8);
 }
 
 .stat {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-2);
 }
 
 .statLabel {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  font-weight: 500;
 }
 
 .statValue {
-  font-size: 0.9rem;
-  color: var(--color-accent-primary);
-  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-gray-900);
+  font-weight: 600;
 }
 
 .empty {
@@ -76,26 +76,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-2xl);
+  gap: var(--spacing-4);
+  padding: var(--spacing-12);
   text-align: center;
-}
-
-.emptyIcon {
-  font-size: 4rem;
-  opacity: 0.3;
+  background: white;
 }
 
 .emptyTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
   margin: 0;
 }
 
 .emptyText {
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
   max-width: 400px;
   line-height: 1.6;
 }
