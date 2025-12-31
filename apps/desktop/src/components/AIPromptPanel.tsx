@@ -69,13 +69,13 @@ export default function AIPromptPanel({
   // Example prompts for quick access
   const examplePrompts = [
     'Add a coin at (200, 400)',
-    'Make the player faster',
     'Add 5 coins',
+    'Create physics system',
+    'Analyze game',
+    'Add health to enemy1',
     'Moon gravity',
-    'Add moving platform',
-    'List entities',
-    'Clone player',
-    'Rename game to My Epic Game',
+    'Fix player',
+    'help',
   ];
 
   // Parse JSON from AI response
@@ -973,6 +973,249 @@ async function simulateAIResponse(
     };
   }
 
+  // Parse "add component to entity" pattern
+  const addComponentMatch = lowerPrompt.match(/add\s+(?:a\s+)?(health|velocity|collider|input|aiBehavior|physics)\s+(?:component\s+)?(?:to\s+)?["']?(\w+)["']?/i);
+  if (addComponentMatch) {
+    const componentType = addComponentMatch[1].toLowerCase();
+    const entityName = addComponentMatch[2].toLowerCase();
+    const entity = gameSpec.entities.find(e => e.name.toLowerCase() === entityName);
+
+    if (entity) {
+      const componentDefaults: Record<string, object> = {
+        health: { current: 100, max: 100 },
+        velocity: { vx: 0, vy: 0 },
+        collider: { type: 'box', width: 32, height: 32 },
+        input: { moveSpeed: 200, jumpForce: -400, keys: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'Space' } },
+        aibehavior: { type: 'patrol', speed: 50, detectionRadius: 100 },
+        physics: { mass: 1, friction: 0.1, restitution: 0.2 },
+      };
+
+      const newComponent = componentDefaults[componentType] || {};
+      const updatedEntities = gameSpec.entities.map(e => {
+        if (e.name.toLowerCase() === entityName) {
+          return {
+            ...e,
+            components: {
+              ...e.components,
+              [componentType]: newComponent,
+            },
+          };
+        }
+        return e;
+      });
+
+      return {
+        message: `I'll add a **${componentType}** component to **${entity.name}**.`,
+        updatedSpec: { ...gameSpec, entities: updatedEntities },
+      };
+    }
+    return { message: `I couldn't find an entity named "${entityName}".` };
+  }
+
+  // Parse "add tag to entity" pattern
+  const addTagMatch = lowerPrompt.match(/add\s+(?:the\s+)?(?:tag\s+)?["']?(\w+)["']?\s+(?:tag\s+)?(?:to\s+)?["']?(\w+)["']?/i);
+  if (addTagMatch && !lowerPrompt.includes('platform') && !lowerPrompt.includes('coin') && !lowerPrompt.includes('enemy')) {
+    const tagName = addTagMatch[1].toLowerCase();
+    const entityName = addTagMatch[2].toLowerCase();
+    const entity = gameSpec.entities.find(e => e.name.toLowerCase() === entityName);
+
+    if (entity) {
+      const currentTags = entity.tags || [];
+      if (currentTags.includes(tagName)) {
+        return { message: `Entity **${entity.name}** already has the tag "${tagName}".` };
+      }
+
+      const updatedEntities = gameSpec.entities.map(e => {
+        if (e.name.toLowerCase() === entityName) {
+          return {
+            ...e,
+            tags: [...(e.tags || []), tagName],
+          };
+        }
+        return e;
+      });
+
+      return {
+        message: `I'll add the tag **"${tagName}"** to **${entity.name}**.`,
+        updatedSpec: { ...gameSpec, entities: updatedEntities },
+      };
+    }
+  }
+
+  // Parse "create system" pattern
+  const createSystemMatch = lowerPrompt.match(/(?:create|add)\s+(?:a\s+)?(?:new\s+)?(\w+)\s+system/i);
+  if (createSystemMatch) {
+    const systemName = createSystemMatch[1].toLowerCase();
+    const existingSystems = gameSpec.systems || [];
+
+    // Check if system already exists
+    if (existingSystems.some(s => s.name.toLowerCase() === systemName)) {
+      return { message: `A system named "${systemName}" already exists.` };
+    }
+
+    const systemTemplates: Record<string, { name: string; enabled: boolean; priority: number; description: string }> = {
+      movement: { name: 'MovementSystem', enabled: true, priority: 1, description: 'Handles entity movement based on velocity' },
+      collision: { name: 'CollisionSystem', enabled: true, priority: 2, description: 'Detects and resolves collisions' },
+      render: { name: 'RenderSystem', enabled: true, priority: 10, description: 'Renders sprites to canvas' },
+      input: { name: 'InputSystem', enabled: true, priority: 0, description: 'Handles player input' },
+      physics: { name: 'PhysicsSystem', enabled: true, priority: 1, description: 'Applies physics simulation' },
+      ai: { name: 'AISystem', enabled: true, priority: 3, description: 'Runs AI behaviors for entities' },
+      animation: { name: 'AnimationSystem', enabled: true, priority: 5, description: 'Updates sprite animations' },
+      score: { name: 'ScoreSystem', enabled: true, priority: 4, description: 'Tracks and updates score' },
+      health: { name: 'HealthSystem', enabled: true, priority: 4, description: 'Manages entity health' },
+    };
+
+    const template = systemTemplates[systemName] || {
+      name: `${systemName.charAt(0).toUpperCase() + systemName.slice(1)}System`,
+      enabled: true,
+      priority: 5,
+      description: `Custom ${systemName} system`,
+    };
+
+    return {
+      message: `I'll create a new **${template.name}** system.\n\n*${template.description}*`,
+      updatedSpec: {
+        ...gameSpec,
+        systems: [...existingSystems, template],
+      },
+    };
+  }
+
+  // Parse "debug" or "analyze" or "what's wrong" pattern
+  if (lowerPrompt.includes('debug') || lowerPrompt.includes('analyze') || lowerPrompt.includes("what's wrong") || lowerPrompt.includes('problem') || lowerPrompt.includes('issue')) {
+    const issues: string[] = [];
+
+    // Check for common issues
+    const playerEntity = gameSpec.entities.find(e => e.tags?.includes('player'));
+    if (!playerEntity) {
+      issues.push('⚠️ No entity tagged as "player" found');
+    } else {
+      if (!playerEntity.components.input) {
+        issues.push('⚠️ Player has no input component (cannot control)');
+      }
+      if (!playerEntity.components.transform) {
+        issues.push('⚠️ Player has no transform component (no position)');
+      }
+      if (!playerEntity.components.collider) {
+        issues.push('⚠️ Player has no collider (cannot interact with world)');
+      }
+    }
+
+    // Check for ground/platforms
+    const platforms = gameSpec.entities.filter(e => e.tags?.includes('platform'));
+    if (platforms.length === 0) {
+      issues.push('⚠️ No platforms found - player may fall forever');
+    }
+
+    // Check for gravity setting
+    if (!gameSpec.settings?.physics?.gravity) {
+      issues.push('ℹ️ No gravity setting defined (using default)');
+    }
+
+    // Check for entities without transforms
+    const noTransform = gameSpec.entities.filter(e => !e.components.transform);
+    if (noTransform.length > 0) {
+      issues.push(`⚠️ ${noTransform.length} entities have no transform: ${noTransform.map(e => e.name).join(', ')}`);
+    }
+
+    // Check for overlapping entities
+    const positions = gameSpec.entities
+      .filter(e => e.components.transform)
+      .map(e => ({ name: e.name, x: e.components.transform!.x, y: e.components.transform!.y }));
+
+    const overlapping: string[] = [];
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const dist = Math.sqrt(
+          Math.pow(positions[i].x - positions[j].x, 2) +
+          Math.pow(positions[i].y - positions[j].y, 2)
+        );
+        if (dist < 5) {
+          overlapping.push(`${positions[i].name} & ${positions[j].name}`);
+        }
+      }
+    }
+    if (overlapping.length > 0) {
+      issues.push(`⚠️ Overlapping entities: ${overlapping.join(', ')}`);
+    }
+
+    if (issues.length === 0) {
+      return {
+        message: `✅ **Game Analysis Complete**\n\nNo obvious issues found! Your game has:\n- ${gameSpec.entities.length} entities\n- Player with controls: ${playerEntity ? 'Yes' : 'No'}\n- Platforms: ${platforms.length}\n- Systems: ${gameSpec.systems?.length || 0}`,
+      };
+    }
+
+    return {
+      message: `🔍 **Game Analysis**\n\nFound ${issues.length} potential issue${issues.length > 1 ? 's' : ''}:\n\n${issues.join('\n')}\n\n*Ask me to fix any of these issues!*`,
+    };
+  }
+
+  // Parse "fix" pattern - common fixes
+  if (lowerPrompt.includes('fix') && lowerPrompt.includes('player')) {
+    const playerEntity = gameSpec.entities.find(e => e.tags?.includes('player'));
+
+    if (!playerEntity) {
+      // Create a player entity
+      let counter = 1;
+      const existingNames = new Set(gameSpec.entities.map(e => e.name));
+      while (existingNames.has(`player${counter}`)) counter++;
+
+      const newPlayer = {
+        name: counter === 1 ? 'player' : `player${counter}`,
+        components: {
+          transform: { x: 100, y: 400, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'player', width: 32, height: 48, tint: 0x4488ff },
+          velocity: { vx: 0, vy: 0 },
+          collider: { type: 'box' as const, width: 32, height: 48 },
+          input: { moveSpeed: 200, jumpForce: -400, keys: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'Space' } },
+        },
+        tags: ['player'],
+      };
+
+      return {
+        message: `I'll create a new **player** entity with all required components (transform, sprite, velocity, collider, input).`,
+        updatedSpec: {
+          ...gameSpec,
+          entities: [...gameSpec.entities, newPlayer],
+        },
+      };
+    }
+
+    // Fix missing components on existing player
+    const fixes: string[] = [];
+    let updatedPlayer = { ...playerEntity, components: { ...playerEntity.components } };
+
+    if (!updatedPlayer.components.transform) {
+      updatedPlayer.components.transform = { x: 100, y: 400, rotation: 0, scaleX: 1, scaleY: 1 };
+      fixes.push('transform');
+    }
+    if (!updatedPlayer.components.input) {
+      updatedPlayer.components.input = { moveSpeed: 200, jumpForce: -400, keys: { left: 'ArrowLeft', right: 'ArrowRight', jump: 'Space' } };
+      fixes.push('input');
+    }
+    if (!updatedPlayer.components.velocity) {
+      updatedPlayer.components.velocity = { vx: 0, vy: 0 };
+      fixes.push('velocity');
+    }
+    if (!updatedPlayer.components.collider) {
+      updatedPlayer.components.collider = { type: 'box' as const, width: 32, height: 48 };
+      fixes.push('collider');
+    }
+
+    if (fixes.length === 0) {
+      return { message: `Player entity looks complete! No fixes needed.` };
+    }
+
+    const updatedEntities = gameSpec.entities.map(e =>
+      e.name === playerEntity.name ? updatedPlayer : e
+    );
+
+    return {
+      message: `I'll add missing components to **${playerEntity.name}**: ${fixes.join(', ')}.`,
+      updatedSpec: { ...gameSpec, entities: updatedEntities },
+    };
+  }
+
   // Parse "rename game" pattern
   const renameMatch = lowerPrompt.match(/(?:rename|change|set)\s+(?:the\s+)?(?:game\s+)?(?:name|title)\s+(?:to\s+)?["']?(.+?)["']?$/i);
   if (renameMatch) {
@@ -989,33 +1232,78 @@ async function simulateAIResponse(
     };
   }
 
+  // Parse "help" command
+  if (lowerPrompt === 'help' || lowerPrompt === '?' || lowerPrompt.includes('what can you do')) {
+    return {
+      message: `# AI Assistant Commands
+
+## 🎮 Add Entities
+- \`Add a coin at (200, 400)\`
+- \`Add a platform at (300, 500)\`
+- \`Add an enemy at (400, 300)\`
+- \`Add moving platform\`
+- \`Add 5 coins\` / \`Add 3 enemies\`
+- \`Add 3 platforms in staircase\`
+- \`Add spawn point\` / \`Add checkpoint\`
+- \`Create health pickup\`
+
+## 🎨 Modify Player
+- \`Make player faster\` / \`Make player slower\`
+- \`Boost the jump\` / \`Jump higher\`
+- \`Make player red/blue/green/yellow/purple\`
+- \`Make player bigger/smaller/huge/tiny\`
+
+## 🔧 Components & Systems
+- \`Add health to enemy1\`
+- \`Add velocity to coin1\`
+- \`Add input to player\`
+- \`Add collider to platform1\`
+- \`Create physics system\`
+- \`Create score system\`
+
+## ⚙️ Physics & Settings
+- \`Moon gravity\` / \`Zero gravity\`
+- \`Set gravity to 500\`
+- \`Rename game to My Adventure\`
+
+## 🔍 Debug & Utilities
+- \`List entities\` - Show all game objects
+- \`Analyze game\` - Find potential issues
+- \`Fix player\` - Add missing components
+- \`Clone player\` / \`Duplicate coin1\`
+- \`Delete enemy1\` / \`Remove coin1\`
+
+*Click ⚙️ to add API key for full AI capabilities.*`,
+    };
+  }
+
   // Default response
   return {
     message: `I understand you want to: *"${prompt}"*
 
-I'm running in **demo mode** without an API key. Here's what I can do:
+I'm running in **demo mode**. Here's what I can do:
 
-**Add Entities:**
-- \`Add a coin at (x, y)\` / \`Add 5 coins\`
-- \`Add a platform at (x, y)\` / \`Add 3 platforms in staircase\`
-- \`Add an enemy at (x, y)\` / \`Add 3 enemies\`
-- \`Add moving platform\`
-- \`Create health pickup\` / \`Add spawn point\` / \`Add checkpoint\`
+**Entities:**
+- \`Add a coin/platform/enemy at (x, y)\`
+- \`Add 5 coins\` / \`Add moving platform\`
+- \`Clone player\` / \`Delete coin1\`
 
-**Modify Player:**
-- \`Make player faster\` / \`Boost the jump\`
-- \`Make player red/blue/green/yellow/purple/orange\`
-- \`Make player bigger/smaller/huge/tiny\`
+**Components & Systems:**
+- \`Add health to enemy1\`
+- \`Add input to player\`
+- \`Create physics system\`
 
-**Physics & Settings:**
-- \`Moon gravity\` / \`Zero gravity\` / \`Set gravity to 500\`
-- \`Rename game to My Adventure\`
+**Player:**
+- \`Make player faster/bigger/red\`
+- \`Boost the jump\`
 
-**Utilities:**
-- \`List entities\` - Show all game objects
-- \`Clone player\` / \`Duplicate coin1 at (300, 200)\`
-- \`Delete coin1\` / \`Remove enemy1\`
+**Physics:**
+- \`Moon gravity\` / \`Zero gravity\`
 
-To enable full AI capabilities, click ⚙️ and enter your Anthropic API key.`,
+**Debug:**
+- \`Analyze game\` - Find issues
+- \`Fix player\` - Add missing components
+
+Type \`help\` for full command list.`,
   };
 }
