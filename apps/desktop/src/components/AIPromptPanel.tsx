@@ -68,11 +68,14 @@ export default function AIPromptPanel({
 
   // Example prompts for quick access
   const examplePrompts = [
-    'Add a coin at position (200, 400)',
-    'Make the player move faster',
-    'Add 3 platforms in a staircase pattern',
-    'Add an enemy that patrols left and right',
-    'Create a health pickup item',
+    'Add a coin at (200, 400)',
+    'Make the player faster',
+    'Add 3 platforms in staircase',
+    'Add an enemy at (300, 200)',
+    'Create a health pickup',
+    'Make player red',
+    'Make player bigger',
+    'Boost the jump',
   ];
 
   // Parse JSON from AI response
@@ -548,17 +551,200 @@ async function simulateAIResponse(
     };
   }
 
+  // Parse "add platforms in staircase pattern" or "add X platforms"
+  const staircaseMatch = lowerPrompt.match(/add\s+(\d+)\s+platforms?\s+(?:in\s+)?(?:a\s+)?staircase/i);
+  if (staircaseMatch) {
+    const count = parseInt(staircaseMatch[1]);
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    const newEntities = [];
+    let counter = 1;
+
+    for (let i = 0; i < count; i++) {
+      while (existingNames.has(`platform${counter}`)) counter++;
+      existingNames.add(`platform${counter}`);
+
+      newEntities.push({
+        name: `platform${counter}`,
+        components: {
+          transform: { x: 150 + i * 120, y: 450 - i * 60, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'platform', width: 100, height: 20, tint: 0x8b4513 },
+          collider: { type: 'box' as const, width: 100, height: 20 },
+        },
+        tags: ['platform'],
+      });
+      counter++;
+    }
+
+    return {
+      message: `I'll add **${count} platforms** in a staircase pattern, starting from the bottom-left and going up to the right.`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, ...newEntities],
+      },
+    };
+  }
+
+  // Parse "add health pickup" or "create health pickup"
+  const healthMatch = lowerPrompt.match(/(?:add|create)\s+(?:a\s+)?health\s+(?:pickup|item|pack)\s*(?:at\s+)?(?:\()?(\d+)?\s*,?\s*(\d+)?(?:\))?/i);
+  if (healthMatch || (lowerPrompt.includes('health') && lowerPrompt.includes('pickup'))) {
+    const x = healthMatch?.[1] ? parseInt(healthMatch[1]) : 300;
+    const y = healthMatch?.[2] ? parseInt(healthMatch[2]) : 400;
+
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    while (existingNames.has(`health${counter}`)) counter++;
+
+    const newEntity = {
+      name: `health${counter}`,
+      components: {
+        transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+        sprite: { texture: 'health', width: 24, height: 24, tint: 0xff4488 },
+        collider: { type: 'box' as const, width: 24, height: 24 },
+      },
+      tags: ['collectible', 'health', 'pickup'],
+    };
+
+    return {
+      message: `I'll add a **health pickup** at (${x}, ${y}). When collected, it will restore player health.`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, newEntity],
+      },
+    };
+  }
+
+  // Parse "change player color" or "make player blue/red/green"
+  const colorMatch = lowerPrompt.match(/(?:change|make|set)\s+(?:the\s+)?player(?:'s)?\s+(?:color\s+)?(?:to\s+)?(red|blue|green|yellow|purple|orange|pink|white)/i);
+  if (colorMatch) {
+    const colorName = colorMatch[1].toLowerCase();
+    const colorMap: Record<string, number> = {
+      red: 0xff4444,
+      blue: 0x4488ff,
+      green: 0x44ff44,
+      yellow: 0xffff44,
+      purple: 0x9944ff,
+      orange: 0xff8844,
+      pink: 0xff44ff,
+      white: 0xffffff,
+    };
+    const tint = colorMap[colorName] || 0x4488ff;
+
+    const updatedEntities = gameSpec.entities.map(e => {
+      if (e.tags?.includes('player') && e.components.sprite) {
+        return {
+          ...e,
+          components: {
+            ...e.components,
+            sprite: { ...e.components.sprite, tint },
+          },
+        };
+      }
+      return e;
+    });
+
+    return {
+      message: `I'll change the player's color to **${colorName}**.`,
+      updatedSpec: { ...gameSpec, entities: updatedEntities },
+    };
+  }
+
+  // Parse "make player bigger/smaller"
+  const sizeMatch = lowerPrompt.match(/make\s+(?:the\s+)?player\s+(bigger|larger|smaller|tiny|huge)/i);
+  if (sizeMatch) {
+    const sizeWord = sizeMatch[1].toLowerCase();
+    const scaleMap: Record<string, number> = {
+      bigger: 1.5,
+      larger: 1.5,
+      smaller: 0.7,
+      tiny: 0.5,
+      huge: 2.0,
+    };
+    const scale = scaleMap[sizeWord] || 1;
+
+    const updatedEntities = gameSpec.entities.map(e => {
+      if (e.tags?.includes('player') && e.components.transform) {
+        return {
+          ...e,
+          components: {
+            ...e.components,
+            transform: { ...e.components.transform, scaleX: scale, scaleY: scale },
+          },
+        };
+      }
+      return e;
+    });
+
+    return {
+      message: `I'll make the player **${sizeWord}** (scale: ${scale}x).`,
+      updatedSpec: { ...gameSpec, entities: updatedEntities },
+    };
+  }
+
+  // Parse "delete entity" or "remove entity"
+  const deleteMatch = lowerPrompt.match(/(?:delete|remove)\s+(?:the\s+)?(?:entity\s+)?["']?(\w+)["']?/i);
+  if (deleteMatch) {
+    const entityName = deleteMatch[1].toLowerCase();
+    const entityToDelete = gameSpec.entities.find(e => e.name.toLowerCase() === entityName);
+
+    if (entityToDelete) {
+      const updatedEntities = gameSpec.entities.filter(e => e.name.toLowerCase() !== entityName);
+      return {
+        message: `I'll remove the entity **${entityToDelete.name}** from the game.`,
+        updatedSpec: { ...gameSpec, entities: updatedEntities },
+      };
+    }
+    return { message: `I couldn't find an entity named "${entityName}" to delete.` };
+  }
+
+  // Parse "increase/boost jump" pattern
+  if (lowerPrompt.includes('jump') && (lowerPrompt.includes('higher') || lowerPrompt.includes('boost') || lowerPrompt.includes('increase'))) {
+    const playerEntity = gameSpec.entities.find(e => e.tags?.includes('player'));
+    if (playerEntity && playerEntity.components.input) {
+      const currentJump = Math.abs(playerEntity.components.input.jumpForce || 400);
+      const newJump = Math.round(currentJump * 1.3);
+
+      const updatedEntities = gameSpec.entities.map(e => {
+        if (e.name === playerEntity.name && e.components.input) {
+          return {
+            ...e,
+            components: {
+              ...e.components,
+              input: { ...e.components.input, jumpForce: -newJump },
+            },
+          };
+        }
+        return e;
+      });
+
+      return {
+        message: `I'll increase the player's jump force from **${currentJump}** to **${newJump}**.`,
+        updatedSpec: { ...gameSpec, entities: updatedEntities },
+      };
+    }
+  }
+
   // Default response
   return {
     message: `I understand you want to: *"${prompt}"*
 
-However, I'm running in **demo mode** without an API key. In demo mode, I can handle these requests:
+I'm running in **demo mode** without an API key. In demo mode, I can handle these requests:
 
+**Add Entities:**
 - \`Add a coin at (x, y)\`
 - \`Add a platform at (x, y)\`
 - \`Add an enemy at (x, y)\`
-- \`Make the player faster\`
+- \`Add 3 platforms in staircase\`
+- \`Create a health pickup\`
 
-To enable full AI capabilities, click the settings icon and enter your Anthropic API key.`,
+**Modify Player:**
+- \`Make player faster\`
+- \`Boost the jump\`
+- \`Make player red/blue/green/yellow\`
+- \`Make player bigger/smaller/huge/tiny\`
+
+**Delete Entities:**
+- \`Delete coin1\` or \`Remove enemy1\`
+
+To enable full AI capabilities, click ⚙️ and enter your Anthropic API key.`,
   };
 }
