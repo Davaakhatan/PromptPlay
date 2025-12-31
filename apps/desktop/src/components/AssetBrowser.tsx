@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { fileSystem, type FileStat } from '../services/FileSystem';
 import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon } from './Icons';
 
 interface AssetBrowserProps {
@@ -41,19 +41,19 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
 
     try {
       const fullPath = dirPath ? `${projectPath}/${dirPath}` : projectPath;
-      const entries = await invoke<FileEntry[]>('list_directory', { path: fullPath });
+      const entries = await fileSystem.readDirectory(fullPath);
 
       const assetList: Asset[] = entries
         .filter(entry => {
-          if (entry.is_dir) return true;
-          const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf('.'));
+          if (entry.isDirectory) return true;
+          const ext = entry.extension ? `.${entry.extension}` : '';
           return IMAGE_EXTENSIONS.includes(ext) || SOUND_EXTENSIONS.includes(ext);
         })
         .map(entry => {
-          const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf('.'));
+          const ext = entry.extension ? `.${entry.extension}` : '';
           let type: 'image' | 'sound' | 'folder' = 'folder';
 
-          if (!entry.is_dir) {
+          if (!entry.isDirectory) {
             if (IMAGE_EXTENSIONS.includes(ext)) {
               type = 'image';
             } else if (SOUND_EXTENSIONS.includes(ext)) {
@@ -99,6 +99,110 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
     loadAssets(relativePath);
   };
 
+  // Handle Drag & Drop Import
+  useEffect(() => {
+    // Listen for file drops anywhere on the window
+    // In a real app we might scopes this, but for now global drop is fine
+    const unlistenPromise = (window as any).__TAURI_INTERNALS__?.invoke?.('tauri', {
+      cmd: 'listen',
+      event: 'tauri://file-drop',
+      handler: async (event: any) => {
+        const files = event.payload as string[];
+        if (!files || files.length === 0 || !projectPath) return;
+
+        setLoading(true);
+        try {
+          // Copy dropped files to current directory
+          for (const srcPath of files) {
+            const fileName = srcPath.split(/[/\\]/).pop();
+            if (fileName) {
+              const destPath = currentPath
+                ? `${projectPath}/${currentPath}/${fileName}`
+                : `${projectPath}/${fileName}`;
+
+              await fileSystem.copyFile(srcPath, destPath);
+            }
+          }
+
+          // Refresh assets
+          await loadAssets(currentPath);
+        } catch (err) {
+          setError(`Failed to import assets: ${err}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+
+    // Fallback: Use standard HTML5 drag/drop if Tauri listener is tricky to setup directly via React 
+    // actually, tauri v2 usually exposes a cleaner API. 
+    // Let's use the standard window 'drop' event which Tauri patches for webview
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      // Check if we have files
+      // Note: In Tauri, standard DragEvent might not have absolute paths unless configured.
+      // But usually tauri://file-drop is the way. 
+    }
+
+    return () => {
+      // Cleanup listener
+    }
+  }, [projectPath, currentPath, loadAssets]);
+
+  // Actually, let's use the official @tauri-apps/api/event if possible, but I didn't see it in imports.
+  // Using a simpler approach: standard event listener for 'drop' usually works if 'tauri://file-drop' is not used.
+  // But strictly speaking, the robust way in Tauri is to listen for the event.
+
+  // Implementation using window event listener for tauri://file-drop payload if the plugin is active
+  // Re-writing to use the standard getCurrentWindow().listen if available, or just the custom hook pattern.
+
+  useEffect(() => {
+    if (!projectPath) return;
+
+    const setupListener = async () => {
+      try {
+        // Dynamic import to avoid breaking if package version differs
+        const { listen } = await import('@tauri-apps/api/event');
+        const unlisten = await listen<string[]>('tauri://file-drop', async (event) => {
+          const files = event.payload;
+          if (!files || files.length === 0) return;
+
+          setLoading(true);
+          try {
+            for (const srcPath of files) {
+              const fileName = srcPath.split(/[/\\]/).pop();
+              if (fileName && !fileName.startsWith('.')) {
+                const destPath = currentPath
+                  ? `${projectPath}/${currentPath}/${fileName}`
+                  : `${projectPath}/${fileName}`;
+
+                // Prevent overwriting if possible or just overwrite
+                await fileSystem.copyFile(srcPath, destPath);
+              }
+            }
+            loadAssets(currentPath);
+          } catch (e) {
+            console.error('Import failed', e);
+            setError('Failed to import dropped files');
+          } finally {
+            setLoading(false);
+          }
+        });
+
+        return unlisten;
+      } catch (e) {
+        console.warn('Tauri event API not available', e);
+      }
+    };
+
+    const unlistenFnPromise = setupListener();
+
+    return () => {
+      unlistenFnPromise.then(unlisten => unlisten && unlisten());
+    };
+  }, [projectPath, currentPath, loadAssets]);
+
   const handleNavigateUp = () => {
     if (!currentPath) return;
     const parentPath = currentPath.split('/').slice(0, -1).join('/');
@@ -125,32 +229,32 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
   const getAssetIcon = (asset: Asset) => {
     switch (asset.type) {
       case 'image':
-        return <ImageIcon size={viewMode === 'grid' ? 32 : 16} className="text-blue-500" />;
+        return <ImageIcon size={viewMode === 'grid' ? 32 : 16} className="text-blue-400" />;
       case 'sound':
-        return <SoundIcon size={viewMode === 'grid' ? 32 : 16} className="text-green-500" />;
+        return <SoundIcon size={viewMode === 'grid' ? 32 : 16} className="text-green-400" />;
       case 'folder':
-        return <FolderIcon size={viewMode === 'grid' ? 32 : 16} className="text-yellow-500" />;
+        return <FolderIcon size={viewMode === 'grid' ? 32 : 16} className="text-yellow-400" />;
     }
   };
 
   if (!projectPath) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm p-4">
-        <ImageIcon size={32} className="text-gray-300 mb-2" />
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-4">
+        <ImageIcon size={32} className="text-text-tertiary opacity-50 mb-2" />
         <p>No project loaded</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-panel">
       {/* Header */}
-      <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+      <div className="px-3 py-2 bg-subtle border-b border-subtle">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-700">Assets</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Assets</h3>
           <button
             onClick={() => loadAssets(currentPath)}
-            className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded"
+            className="p-1 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
             title="Refresh"
           >
             <RefreshIcon size={14} />
@@ -158,13 +262,13 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
         </div>
 
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+        <div className="flex items-center gap-1 text-xs text-text-secondary mb-2">
           <button
             onClick={() => {
               setCurrentPath('');
               loadAssets('');
             }}
-            className="hover:text-blue-600"
+            className="hover:text-primary"
           >
             /
           </button>
@@ -177,7 +281,7 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
                   setCurrentPath(newPath);
                   loadAssets(newPath);
                 }}
-                className="hover:text-blue-600"
+                className="hover:text-primary"
               >
                 {part}
               </button>
@@ -190,25 +294,22 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
           <div className="flex gap-1">
             <button
               onClick={() => setFilter('all')}
-              className={`px-2 py-1 text-xs rounded ${
-                filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded transition-colors ${filter === 'all' ? 'bg-primary text-white' : 'bg-canvas text-text-secondary hover:text-text-primary'
+                }`}
             >
               All
             </button>
             <button
               onClick={() => setFilter('images')}
-              className={`px-2 py-1 text-xs rounded ${
-                filter === 'images' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded transition-colors ${filter === 'images' ? 'bg-primary text-white' : 'bg-canvas text-text-secondary hover:text-text-primary'
+                }`}
             >
               Images
             </button>
             <button
               onClick={() => setFilter('sounds')}
-              className={`px-2 py-1 text-xs rounded ${
-                filter === 'sounds' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded transition-colors ${filter === 'sounds' ? 'bg-primary text-white' : 'bg-canvas text-text-secondary hover:text-text-primary'
+                }`}
             >
               Sounds
             </button>
@@ -216,7 +317,7 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
           <div className="flex gap-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1 rounded ${viewMode === 'grid' ? 'bg-gray-300' : 'bg-gray-100'}`}
+              className={`p-1 rounded transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'bg-transparent text-text-tertiary hover:text-text-secondary'}`}
               title="Grid view"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -228,7 +329,7 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1 rounded ${viewMode === 'list' ? 'bg-gray-300' : 'bg-gray-100'}`}
+              className={`p-1 rounded transition-colors ${viewMode === 'list' ? 'bg-white/10 text-white' : 'bg-transparent text-text-tertiary hover:text-text-secondary'}`}
               title="List view"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -244,19 +345,19 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-2">
         {loading && (
-          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-32 text-text-tertiary text-sm">
             Loading...
           </div>
         )}
 
         {error && (
-          <div className="p-3 bg-red-50 text-red-600 text-xs rounded">
+          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded">
             {error}
           </div>
         )}
 
         {!loading && !error && filteredAssets.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-400 text-sm">
+          <div className="flex flex-col items-center justify-center h-32 text-text-tertiary text-sm">
             <p>No assets found</p>
             <p className="text-xs mt-1">Add images or sounds to your project</p>
           </div>
@@ -266,9 +367,9 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
         {currentPath && !loading && (
           <button
             onClick={handleNavigateUp}
-            className="flex items-center gap-2 w-full p-2 mb-2 text-left text-sm text-gray-600 hover:bg-gray-100 rounded"
+            className="flex items-center gap-2 w-full p-2 mb-2 text-left text-sm text-text-secondary hover:bg-white/5 rounded transition-colors"
           >
-            <FolderIcon size={16} className="text-gray-400" />
+            <FolderIcon size={16} className="text-text-tertiary" />
             <span>..</span>
           </button>
         )}
@@ -280,14 +381,13 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
               <button
                 key={asset.path}
                 onClick={() => handleAssetClick(asset)}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors ${
-                  selectedAsset === asset.path
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
+                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${selectedAsset === asset.path
+                  ? 'border-primary bg-primary/20 shadow-lg shadow-primary/10'
+                  : 'border-subtle hover:border-text-tertiary hover:bg-white/5'
+                  }`}
               >
                 {asset.type === 'image' ? (
-                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded overflow-hidden mb-1">
+                  <div className="w-12 h-12 flex items-center justify-center bg-canvas rounded overflow-hidden mb-1 border border-subtle">
                     <img
                       src={`file://${asset.path}`}
                       alt={asset.name}
@@ -297,14 +397,14 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
                         (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                       }}
                     />
-                    <ImageIcon size={24} className="text-gray-400 hidden" />
+                    <ImageIcon size={24} className="text-text-tertiary hidden" />
                   </div>
                 ) : (
                   <div className="w-12 h-12 flex items-center justify-center">
                     {getAssetIcon(asset)}
                   </div>
                 )}
-                <span className="text-xs text-gray-700 truncate w-full text-center mt-1">
+                <span className="text-xs text-text-secondary truncate w-full text-center mt-1">
                   {asset.name.length > 12 ? asset.name.slice(0, 10) + '...' : asset.name}
                 </span>
               </button>
@@ -319,17 +419,16 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
               <button
                 key={asset.path}
                 onClick={() => handleAssetClick(asset)}
-                className={`flex items-center gap-2 w-full p-2 text-left rounded transition-colors ${
-                  selectedAsset === asset.path
-                    ? 'bg-blue-100'
-                    : 'hover:bg-gray-100'
-                }`}
+                className={`flex items-center gap-2 w-full p-2 text-left rounded transition-colors ${selectedAsset === asset.path
+                  ? 'bg-primary/20 text-white'
+                  : 'hover:bg-white/5 text-text-secondary hover:text-text-primary'
+                  }`}
               >
                 {getAssetIcon(asset)}
-                <span className="text-sm text-gray-700 truncate flex-1">
+                <span className="text-sm truncate flex-1">
                   {asset.name}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-text-tertiary">
                   {asset.type}
                 </span>
               </button>
@@ -340,7 +439,7 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
 
       {/* Footer with selected asset info */}
       {selectedAsset && (
-        <div className="px-3 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 truncate">
+        <div className="px-3 py-2 bg-subtle border-t border-subtle text-xs text-text-secondary truncate">
           {selectedAsset.split('/').pop()}
         </div>
       )}

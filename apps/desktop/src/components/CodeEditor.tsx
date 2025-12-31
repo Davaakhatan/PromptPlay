@@ -83,10 +83,10 @@ export default function CodeEditor({ filePath, onSave }: CodeEditorProps) {
 
   if (!filePath) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-50">
+      <div className="flex items-center justify-center h-full bg-panel">
         <div className="text-center">
-          <p className="text-gray-500 text-sm">No file selected</p>
-          <p className="text-gray-400 text-xs mt-2">
+          <p className="text-text-secondary text-sm">No file selected</p>
+          <p className="text-text-tertiary text-xs mt-2">
             Select a file from the file tree to start editing
           </p>
         </div>
@@ -96,39 +96,39 @@ export default function CodeEditor({ filePath, onSave }: CodeEditorProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-50">
-        <p className="text-gray-500 text-sm">Loading...</p>
+      <div className="flex items-center justify-center h-full bg-panel">
+        <p className="text-text-secondary text-sm">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full bg-red-50">
-        <div className="text-center max-w-md p-4">
-          <p className="text-red-600 font-medium mb-2">Error loading file</p>
-          <p className="text-red-500 text-sm">{error}</p>
+      <div className="flex items-center justify-center h-full bg-panel">
+        <div className="text-center max-w-md p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-red-400 font-medium mb-2">Error loading file</p>
+          <p className="text-red-300 text-sm">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-canvas">
       {/* Editor Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-subtle border-b border-subtle">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 truncate max-w-md" title={filePath}>
+          <span className="text-sm font-medium text-text-primary truncate max-w-md" title={filePath}>
             {filePath.split('/').pop()}
           </span>
           {isDirty && (
-            <span className="text-xs text-orange-600 font-medium">● Modified</span>
+            <span className="text-xs text-yellow-500 font-medium">● Modified</span>
           )}
         </div>
         <button
           onClick={saveFile}
           disabled={!isDirty}
-          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-primary/20"
         >
           Save {isDirty && '(Cmd+S)'}
         </button>

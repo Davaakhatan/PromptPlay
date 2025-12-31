@@ -606,7 +606,7 @@ export default function GameCanvas({
           y1={0}
           x2={x}
           y2={height}
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth="1"
         />
       );
@@ -621,7 +621,7 @@ export default function GameCanvas({
           y1={y}
           x2={width}
           y2={y}
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth="1"
         />
       );
@@ -642,19 +642,19 @@ export default function GameCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full flex items-center justify-center bg-gray-900"
+      className="relative w-full h-full flex items-center justify-center bg-black/40"
     >
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-50 bg-opacity-90 z-10">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md">
-            <h3 className="text-lg font-semibold text-red-600 mb-2">
+        <div className="absolute inset-0 flex items-center justify-center bg-red-900/10 backdrop-blur-sm z-10">
+          <div className="bg-panel border border-red-500/20 rounded-lg shadow-xl p-6 max-w-md">
+            <h3 className="text-lg font-semibold text-red-400 mb-2">
               Error Loading Game
             </h3>
-            <p className="text-sm text-gray-700">{error}</p>
+            <p className="text-sm text-text-secondary">{error}</p>
             {onReset && (
               <button
                 onClick={onReset}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
               >
                 Reset
               </button>
@@ -664,7 +664,7 @@ export default function GameCanvas({
       )}
 
       {!gameSpec && !error && (
-        <div className="text-center text-gray-400">
+        <div className="text-center text-text-tertiary">
           <p className="text-lg mb-2">No game loaded</p>
           <p className="text-sm">Open a game project to begin</p>
         </div>
@@ -675,10 +675,9 @@ export default function GameCanvas({
           ref={canvasRef}
           width={800}
           height={600}
-          className={`rounded-lg shadow-xl absolute top-0 left-0 ${
-            isPlaying ? 'cursor-crosshair' : 'cursor-move'
-          }`}
-          style={{ display: gameSpec && !error ? 'block' : 'none' }}
+          className={`rounded-lg shadow-2xl absolute top-0 left-0 border border-subtle ${isPlaying ? 'cursor-crosshair' : 'cursor-move'
+            }`}
+          style={{ display: gameSpec && !error ? 'block' : 'none', backgroundColor: '#000' }}
           onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -697,47 +696,43 @@ export default function GameCanvas({
               <>
                 <button
                   onClick={() => setTransformMode('move')}
-                  className={`p-2 rounded ${
-                    transformMode === 'move'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-black bg-opacity-70 text-gray-300 hover:text-white'
-                  }`}
+                  className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'move'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    }`}
                   title="Move Tool (W)"
                 >
                   <MoveIcon size={16} />
                 </button>
                 <button
                   onClick={() => setTransformMode('rotate')}
-                  className={`p-2 rounded ${
-                    transformMode === 'rotate'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-black bg-opacity-70 text-gray-300 hover:text-white'
-                  }`}
+                  className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'rotate'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    }`}
                   title="Rotate Tool (E)"
                 >
                   <RotateIcon size={16} />
                 </button>
                 <button
                   onClick={() => setTransformMode('scale')}
-                  className={`p-2 rounded ${
-                    transformMode === 'scale'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-black bg-opacity-70 text-gray-300 hover:text-white'
-                  }`}
+                  className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'scale'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    }`}
                   title="Scale Tool (R)"
                 >
                   <ScaleIcon size={16} />
                 </button>
-                <div className="w-px h-6 bg-gray-600 mx-1" />
+                <div className="w-px h-6 bg-white/10 mx-1" />
               </>
             )}
             <button
               onClick={() => setShowGrid(prev => !prev)}
-              className={`p-2 rounded ${
-                showGrid
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-black bg-opacity-70 text-gray-300 hover:text-white'
-              }`}
+              className={`p-2 rounded backdrop-blur-md transition-all ${showGrid
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                }`}
               title="Toggle Grid (G)"
             >
               <GridIcon size={16} />
@@ -749,41 +744,40 @@ export default function GameCanvas({
                   setDebugEnabled(prev => !prev);
                 }
               }}
-              className={`p-2 rounded ${
-                debugEnabled
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-black bg-opacity-70 text-gray-300 hover:text-white'
-              }`}
+              className={`p-2 rounded backdrop-blur-md transition-all ${debugEnabled
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                }`}
               title="Toggle Debug (D)"
             >
               <DebugIcon size={16} />
             </button>
-            <div className="w-px h-6 bg-gray-600 mx-1" />
+            <div className="w-px h-6 bg-white/10 mx-1" />
             {/* Zoom controls */}
             <button
               onClick={handleZoomOut}
-              className="p-2 rounded bg-black bg-opacity-70 text-gray-300 hover:text-white"
+              className="p-2 rounded backdrop-blur-md bg-panel/80 text-text-secondary hover:text-white hover:bg-panel transition-all"
               title="Zoom Out"
             >
               <ZoomOutIcon size={16} />
             </button>
             <button
               onClick={handleZoomReset}
-              className="px-2 py-1 rounded bg-black bg-opacity-70 text-gray-300 hover:text-white text-xs font-mono min-w-[50px]"
+              className="px-2 py-1 rounded backdrop-blur-md bg-panel/80 text-text-secondary hover:text-white hover:bg-panel text-xs font-mono min-w-[50px] transition-all"
               title="Reset Zoom (Click to reset)"
             >
               {Math.round(zoomLevel * 100)}%
             </button>
             <button
               onClick={handleZoomIn}
-              className="p-2 rounded bg-black bg-opacity-70 text-gray-300 hover:text-white"
+              className="p-2 rounded backdrop-blur-md bg-panel/80 text-text-secondary hover:text-white hover:bg-panel transition-all"
               title="Zoom In"
             >
               <ZoomInIcon size={16} />
             </button>
             <button
               onClick={handleFitAll}
-              className="p-2 rounded bg-black bg-opacity-70 text-gray-300 hover:text-white"
+              className="p-2 rounded backdrop-blur-md bg-panel/80 text-text-secondary hover:text-white hover:bg-panel transition-all"
               title="Fit All Entities (F)"
             >
               <FitAllIcon size={16} />
@@ -793,8 +787,18 @@ export default function GameCanvas({
 
         {/* Mode indicator */}
         {gameSpec && !error && (
-          <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg text-sm">
-            {isPlaying ? 'Playing' : 'Editing'}
+          <div className="absolute top-2 left-2 bg-panel/90 backdrop-blur-md border border-subtle text-text-primary px-3 py-1 rounded-lg text-sm shadow-lg">
+            {isPlaying ? (
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Playing
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                Editing
+              </span>
+            )}
           </div>
         )}
 
@@ -826,11 +830,10 @@ export default function GameCanvas({
         {/* Selection highlight overlay with gizmo handles */}
         {selectedBounds && gameSpec && !error && (
           <div
-            className={`absolute pointer-events-none border-2 rounded-sm ${
-              dragState.isDragging
+            className={`absolute pointer-events-none border-2 rounded-sm ${dragState.isDragging
                 ? 'border-green-500 bg-green-500 bg-opacity-10'
                 : 'border-blue-500 bg-blue-500 bg-opacity-10'
-            }`}
+              }`}
             style={{
               left: `${selectedBounds.x}px`,
               top: `${selectedBounds.y}px`,
@@ -843,9 +846,8 @@ export default function GameCanvas({
             }}
           >
             {/* Entity name label */}
-            <div className={`absolute -top-6 left-0 text-xs font-medium whitespace-nowrap bg-gray-900 bg-opacity-75 px-1 rounded ${
-              dragState.isDragging ? 'text-green-400' : 'text-blue-400'
-            }`}>
+            <div className={`absolute -top-6 left-0 text-xs font-medium whitespace-nowrap bg-gray-900 bg-opacity-75 px-1 rounded ${dragState.isDragging ? 'text-green-400' : 'text-blue-400'
+              }`}>
               {selectedBounds.entityName}
               {dragPosition && dragState.handleType === 'move' && (
                 <span className="ml-2 text-gray-400">
@@ -885,9 +887,8 @@ export default function GameCanvas({
                     />
                     {/* Rotation handle circle */}
                     <div
-                      className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 pointer-events-auto cursor-grab ${
-                        dragState.handleType === 'rotate' ? 'bg-purple-500 border-purple-300' : 'bg-purple-600 border-purple-400'
-                      }`}
+                      className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 pointer-events-auto cursor-grab ${dragState.handleType === 'rotate' ? 'bg-purple-500 border-purple-300' : 'bg-purple-600 border-purple-400'
+                        }`}
                       style={{ top: '-28px' }}
                     />
                   </>
@@ -897,31 +898,23 @@ export default function GameCanvas({
                 {transformMode === 'scale' && (
                   <>
                     {/* Corner handles */}
-                    <div className={`absolute -top-1.5 -left-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-nw-resize ${
-                      dragState.handleType === 'nw' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute -top-1.5 -right-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-ne-resize ${
-                      dragState.handleType === 'ne' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-sw-resize ${
-                      dragState.handleType === 'sw' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-se-resize ${
-                      dragState.handleType === 'se' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
+                    <div className={`absolute -top-1.5 -left-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-nw-resize ${dragState.handleType === 'nw' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute -top-1.5 -right-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-ne-resize ${dragState.handleType === 'ne' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-sw-resize ${dragState.handleType === 'sw' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute -bottom-1.5 -right-1.5 w-3 h-3 rounded-sm pointer-events-auto cursor-se-resize ${dragState.handleType === 'se' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
                     {/* Edge handles */}
-                    <div className={`absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-n-resize ${
-                      dragState.handleType === 'n' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-s-resize ${
-                      dragState.handleType === 's' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-w-resize ${
-                      dragState.handleType === 'w' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
-                    <div className={`absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-e-resize ${
-                      dragState.handleType === 'e' ? 'bg-yellow-400' : 'bg-yellow-500'
-                    }`} />
+                    <div className={`absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-n-resize ${dragState.handleType === 'n' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-s-resize ${dragState.handleType === 's' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-w-resize ${dragState.handleType === 'w' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
+                    <div className={`absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 rounded-sm pointer-events-auto cursor-e-resize ${dragState.handleType === 'e' ? 'bg-yellow-400' : 'bg-yellow-500'
+                      }`} />
                   </>
                 )}
               </>

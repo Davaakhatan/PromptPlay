@@ -233,29 +233,29 @@ export default function AIPromptPanel({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 w-[450px] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col z-50 max-h-[700px]">
+    <div className="fixed bottom-4 right-4 w-[450px] bg-panel-solid rounded-xl shadow-2xl border border-subtle flex flex-col z-50 max-h-[700px] animate-scale-in overflow-hidden backdrop-blur-xl">
       {/* Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg flex items-center justify-between">
+      <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2">
           <AIIcon size={20} />
-          <span className="font-semibold">AI Assistant</span>
+          <span className="font-semibold tracking-wide">AI Assistant</span>
           {!hasApiKey && (
-            <span className="text-xs bg-yellow-500 text-yellow-900 px-1.5 py-0.5 rounded">
-              Demo Mode
+            <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              Demo
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="text-white/80 hover:text-white p-1"
+            className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
             title="Settings"
           >
             <SettingsIcon size={16} />
           </button>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white text-xl leading-none"
+            className="text-white/80 hover:text-white text-xl leading-none w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           >
             &times;
           </button>
@@ -264,36 +264,36 @@ export default function AIPromptPanel({
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">API Settings</h4>
+        <div className="px-4 py-3 bg-subtle border-b border-subtle">
+          <h4 className="text-sm font-medium text-text-primary mb-2">API Settings</h4>
           <div className="flex gap-2">
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter Anthropic API key"
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-1.5 bg-black/20 border border-subtle rounded text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary placeholder-text-tertiary"
             />
             <button
               onClick={handleSaveApiKey}
               disabled={!apiKey.trim()}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+              className="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
             >
               Save
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-text-tertiary mt-1">
             Or set ANTHROPIC_API_KEY environment variable
           </p>
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[250px] max-h-[400px]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[250px] max-h-[400px] bg-canvas/50">
         {messages.length === 0 && (
-          <div className="text-center text-gray-400 py-8">
-            <AIIcon size={32} className="mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">Ask me to modify your game!</p>
+          <div className="text-center text-text-tertiary py-8">
+            <AIIcon size={32} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium text-text-secondary">Ask me to modify your game!</p>
             <p className="text-xs mt-1">I can add entities, change properties, and more.</p>
           </div>
         )}
@@ -304,16 +304,15 @@ export default function AIPromptPanel({
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
+              className={`max-w-[90%] px-3 py-2 rounded-lg text-sm shadow-sm ${msg.role === 'user'
+                  ? 'bg-primary text-white'
                   : msg.role === 'system'
-                  ? 'bg-gray-100 text-gray-600 italic'
-                  : 'bg-gray-100 text-gray-800'
-              }`}
+                    ? 'bg-white/5 text-text-secondary italic border border-subtle'
+                    : 'bg-panel-solid border border-subtle text-text-primary'
+                }`}
             >
               {msg.role === 'assistant' ? (
-                <div className="prose prose-sm max-w-none prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-code:text-pink-600 prose-code:bg-gray-200 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+                <div className="prose prose-sm max-w-none prose-invert prose-pre:bg-black/50 prose-pre:border prose-pre:border-subtle prose-code:text-primary-light prose-code:bg-white/10 prose-code:px-1 prose-code:rounded">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
                   </ReactMarkdown>
@@ -327,11 +326,11 @@ export default function AIPromptPanel({
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 px-3 py-2 rounded-lg">
+            <div className="bg-panel-solid px-3 py-2 rounded-lg border border-subtle">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
@@ -342,19 +341,21 @@ export default function AIPromptPanel({
 
       {/* Pending Changes with Diff Preview */}
       {pendingChanges && gameSpec && (
-        <div className="px-4 py-3 bg-yellow-50 border-t border-yellow-200">
-          <p className="text-sm text-yellow-800 mb-2 font-medium">Review Changes</p>
-          <DiffPreview currentSpec={gameSpec} pendingSpec={pendingChanges} />
+        <div className="px-4 py-3 bg-primary/10 border-t border-primary/20 backdrop-blur-sm">
+          <p className="text-sm text-primary-light mb-2 font-medium">Review Changes</p>
+          <div className="bg-black/40 rounded border border-subtle overflow-hidden">
+            <DiffPreview currentSpec={gameSpec} pendingSpec={pendingChanges} />
+          </div>
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleApplyChanges}
-              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
+              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 shadow-lg shadow-green-900/20 transition-colors"
             >
               Apply Changes
             </button>
             <button
               onClick={handleRejectChanges}
-              className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300"
+              className="flex-1 px-3 py-1.5 bg-white/10 text-white rounded text-sm font-medium hover:bg-white/20 transition-colors"
             >
               Reject
             </button>
@@ -364,14 +365,14 @@ export default function AIPromptPanel({
 
       {/* Example prompts */}
       {messages.length === 0 && (
-        <div className="px-4 py-2 border-t border-gray-100">
-          <p className="text-xs text-gray-500 mb-2">Try these:</p>
+        <div className="px-4 py-2 border-t border-subtle bg-subtle/50">
+          <p className="text-xs text-text-tertiary mb-2">Try these:</p>
           <div className="flex flex-wrap gap-1">
             {examplePrompts.slice(0, 3).map((example, i) => (
               <button
                 key={i}
                 onClick={() => setPrompt(example)}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                className="text-xs px-2 py-1 bg-white/5 text-text-secondary rounded border border-subtle hover:bg-white/10 hover:text-text-primary transition-colors"
               >
                 {example.length > 30 ? example.slice(0, 30) + '...' : example}
               </button>
@@ -381,7 +382,7 @@ export default function AIPromptPanel({
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-gray-200">
+      <div className="p-3 border-t border-subtle bg-panel-solid">
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -389,7 +390,7 @@ export default function AIPromptPanel({
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe what you want to change..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 bg-black/20 border border-subtle rounded-lg text-sm text-text-primary resize-none focus:outline-none focus:ring-2 focus:ring-primary placeholder-text-tertiary"
             rows={2}
             disabled={isLoading}
           />
@@ -397,14 +398,14 @@ export default function AIPromptPanel({
             <button
               onClick={handleSubmit}
               disabled={!prompt.trim() || isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 transition-colors"
             >
               Send
             </button>
             {messages.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                className="px-2 py-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
               >
                 Clear
               </button>

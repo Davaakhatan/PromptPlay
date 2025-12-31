@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { GameSpec } from '@promptplay/shared-types';
 import { ChevronRightIcon, TrashIcon, CopyIcon, PlusIcon, TagIcon } from './Icons';
+import { componentRegistry, type FieldSchema } from '../services/ComponentRegistry';
 
 interface InspectorProps {
   gameSpec: GameSpec | null;
@@ -121,227 +122,159 @@ export default function Inspector({
     const currentValue = editedValues[editKey] !== undefined ? editedValues[editKey] : value;
     const isEdited = editedValues[editKey] !== undefined;
 
-    // Boolean toggle
-    if (typeof value === 'boolean') {
-      return (
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className={`
-            w-9 h-5 rounded-full peer peer-checked:after:translate-x-full
-            after:content-[''] after:absolute after:top-0.5 after:left-[2px]
-            after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all
-            ${currentValue ? 'bg-blue-600' : 'bg-gray-300'}
-          `} />
-        </label>
-      );
-    }
+    // 1. Try to get schema definition
+    const schema = componentRegistry.get(componentName);
+    const fieldSchema = schema?.fields[key];
 
-    // Color picker for tint
-    if (key === 'tint' && typeof value === 'number') {
-      const colorHex = numberToHex(currentValue);
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={colorHex}
-            onChange={(e) => handleValueChange(componentName, key, hexToNumber(e.target.value))}
-            className="w-8 h-8 rounded cursor-pointer border border-gray-300"
-          />
-          <input
-            type="text"
-            value={colorHex}
-            onChange={(e) => {
-              const hex = e.target.value;
-              if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-                handleValueChange(componentName, key, hexToNumber(hex));
-              }
-            }}
-            className={`
-              w-20 px-2 py-1 text-xs font-mono border rounded
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-            `}
-          />
-        </div>
-      );
-    }
-
-    // Slider for rotation
-    if (key === 'rotation' && typeof value === 'number') {
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min="-180"
-            max="180"
-            step="1"
-            value={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value))}
-            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-          <input
-            type="number"
-            value={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
-            className={`
-              w-16 px-2 py-1 text-xs border rounded text-center
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-            `}
-          />
-        </div>
-      );
-    }
-
-    // Slider for scale
-    if ((key === 'scaleX' || key === 'scaleY') && typeof value === 'number') {
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min="0.1"
-            max="5"
-            step="0.1"
-            value={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value))}
-            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-          <input
-            type="number"
-            value={currentValue}
-            step="0.1"
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
-            className={`
-              w-16 px-2 py-1 text-xs border rounded text-center
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-            `}
-          />
-        </div>
-      );
-    }
-
-    // Slider for zoom
-    if (key === 'zoom' && typeof value === 'number') {
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="range"
-            min="0.5"
-            max="3"
-            step="0.1"
-            value={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value))}
-            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-          <input
-            type="number"
-            value={currentValue}
-            step="0.1"
-            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
-            className={`
-              w-16 px-2 py-1 text-xs border rounded text-center
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-            `}
-          />
-        </div>
-      );
-    }
-
-    // Number input with appropriate step
-    if (typeof value === 'number') {
-      // Determine step based on key name
-      let step = 1;
-      if (key.includes('speed') || key.includes('force') || key.includes('gravity')) {
-        step = 10;
-      } else if (key.includes('smoothing') || key.includes('intensity')) {
-        step = 0.1;
+    // 2. Generic Input Renderer Helper
+    const renderInput = (type: string, props: any = {}) => {
+      // Color Input
+      if (type === 'color') {
+        const colorHex = typeof currentValue === 'number' ? numberToHex(currentValue) : currentValue;
+        return (
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={colorHex}
+              onChange={(e) => handleValueChange(componentName, key, typeof value === 'number' ? hexToNumber(e.target.value) : e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer border border-subtle bg-canvas"
+            />
+            <input
+              type="text"
+              value={colorHex}
+              onChange={(e) => {
+                const hex = e.target.value;
+                if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+                  handleValueChange(componentName, key, typeof value === 'number' ? hexToNumber(hex) : hex);
+                }
+              }}
+              className={`
+                w-20 px-2 py-1 text-xs font-mono border rounded bg-canvas text-text-primary
+                ${isEdited ? 'border-primary bg-primary/10' : 'border-subtle'}
+              `}
+            />
+          </div>
+        );
       }
 
-      return (
-        <input
-          type="number"
-          value={currentValue}
-          onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
-          className={`
-            w-full px-2 py-1 text-sm border rounded
-            ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-          `}
-          step={step}
-        />
-      );
-    }
+      // Range/Slider Input
+      if (props.min !== undefined && props.max !== undefined && type === 'number') {
+        return (
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={props.min}
+              max={props.max}
+              step={props.step || 1}
+              value={currentValue}
+              onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value))}
+              className="flex-1 h-2 bg-subtle rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <input
+              type="number"
+              value={currentValue}
+              step={props.step || 1}
+              onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
+              className={`
+                w-16 px-2 py-1 text-xs border rounded text-center bg-canvas text-text-primary
+                ${isEdited ? 'border-primary bg-primary/10' : 'border-subtle'}
+              `}
+            />
+          </div>
+        );
+      }
 
-    // Text input
-    if (typeof value === 'string') {
-      // Dropdown for collider type
-      if (key === 'type' && componentName === 'collider') {
+      // Boolean Input
+      if (type === 'boolean') {
+        return (
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={currentValue}
+              onChange={(e) => handleValueChange(componentName, key, e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className={`
+              w-9 h-5 rounded-full peer peer-checked:after:translate-x-full
+              after:content-[''] after:absolute after:top-0.5 after:left-[2px]
+              after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all
+              ${currentValue ? 'bg-primary' : 'bg-subtle'}
+            `} />
+          </label>
+        );
+      }
+
+      // Select Input
+      if (type === 'select' && props.options) {
         return (
           <select
             value={currentValue}
             onChange={(e) => handleValueChange(componentName, key, e.target.value)}
             className={`
-              w-full px-2 py-1 text-sm border rounded
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
+              w-full px-2 py-1 text-sm border rounded bg-canvas text-text-primary
+              ${isEdited ? 'border-primary bg-primary/10' : 'border-subtle'}
             `}
           >
-            <option value="box">Box</option>
-            <option value="circle">Circle</option>
+            {props.options.map((opt: any) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
         );
       }
 
-      // Dropdown for texture
-      if (key === 'texture') {
+      // Standard Number Input
+      if (type === 'number') {
         return (
-          <select
+          <input
+            type="number"
             value={currentValue}
-            onChange={(e) => handleValueChange(componentName, key, e.target.value)}
+            onChange={(e) => handleValueChange(componentName, key, parseFloat(e.target.value) || 0)}
             className={`
-              w-full px-2 py-1 text-sm border rounded
-              ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
+              w-full px-2 py-1 text-sm border rounded bg-canvas text-text-primary
+              ${isEdited ? 'border-primary bg-primary/10' : 'border-subtle'}
             `}
-          >
-            <option value="default">Default</option>
-            <option value="player">Player</option>
-            <option value="enemy">Enemy</option>
-            <option value="platform">Platform</option>
-            <option value="coin">Coin</option>
-          </select>
+            step={props.step || 1}
+          />
         );
       }
 
+      // Default String Input
       return (
         <input
           type="text"
           value={currentValue}
           onChange={(e) => handleValueChange(componentName, key, e.target.value)}
           className={`
-            w-full px-2 py-1 text-sm border rounded
-            ${isEdited ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
+            w-full px-2 py-1 text-sm border rounded bg-canvas text-text-primary
+            ${isEdited ? 'border-primary bg-primary/10' : 'border-subtle'}
           `}
         />
       );
+    };
+
+    // 3. Render based on Schema or Fallback
+    if (fieldSchema) {
+      return renderInput(fieldSchema.type, fieldSchema);
     }
 
-    return <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>;
+    // Fallback: Guess based on value type
+    const guessedType = typeof value;
+    return renderInput(guessedType);
   };
 
   const hasChanges = Object.keys(editedValues).length > 0;
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-panel">
       {/* Header */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <div className="px-4 py-3 bg-subtle border-b border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">{entity.name}</h3>
+          <h3 className="text-sm font-semibold text-text-primary">{entity.name}</h3>
           <div className="flex items-center gap-1">
             {onDuplicateEntity && (
               <button
                 onClick={() => onDuplicateEntity(entity.name)}
-                className="p-1.5 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
                 title="Duplicate Entity"
               >
                 <CopyIcon size={14} />
@@ -350,7 +283,7 @@ export default function Inspector({
             {onDeleteEntity && (
               <button
                 onClick={() => onDeleteEntity(entity.name)}
-                className="p-1.5 rounded hover:bg-red-100 text-gray-500 hover:text-red-600"
+                className="p-1.5 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400 transition-colors"
                 title="Delete Entity"
               >
                 <TrashIcon size={14} />
@@ -362,16 +295,16 @@ export default function Inspector({
         {/* Tags */}
         <div className="mt-2">
           <div className="flex items-center gap-1 flex-wrap">
-            <TagIcon size={12} className="text-gray-400" />
+            <TagIcon size={12} className="text-text-tertiary" />
             {entity.tags && entity.tags.map((tag) => (
               <span
                 key={tag}
-                className="group px-2 py-0.5 text-xs bg-gray-200 text-gray-700 rounded flex items-center gap-1"
+                className="group px-2 py-0.5 text-xs bg-canvas text-text-secondary border border-subtle rounded flex items-center gap-1"
               >
                 {tag}
                 <button
                   onClick={() => handleRemoveTag(tag)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-600"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400"
                 >
                   &times;
                 </button>
@@ -397,13 +330,13 @@ export default function Inspector({
                   }
                 }}
                 placeholder="tag name"
-                className="px-2 py-0.5 text-xs border border-gray-300 rounded w-20"
+                className="px-2 py-0.5 text-xs border border-subtle bg-canvas text-text-primary rounded w-20 focus:outline-none focus:border-primary"
                 autoFocus
               />
             ) : (
               <button
                 onClick={() => setShowAddTag(true)}
-                className="p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+                className="p-0.5 rounded hover:bg-white/10 text-text-tertiary hover:text-text-secondary"
                 title="Add Tag"
               >
                 <PlusIcon size={12} />
@@ -414,37 +347,46 @@ export default function Inspector({
       </div>
 
       {/* Components */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
-          {entity.components && Object.entries(entity.components).map(([componentName, component]) => (
-            <div key={componentName} className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-600 uppercase">
-                  {componentName}
-                </h4>
-              </div>
-              <div className="p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {entity.components && Object.entries(entity.components).map(([componentName, component]) => (
+          <div key={componentName} className="relative group">
+            {/* Component Header with floating badge style */}
+            <div className="absolute -top-2.5 left-3 px-2 bg-panel z-10 flex items-center gap-2">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-primary/20 border border-primary/30 px-2 py-0.5 rounded shadow-sm shadow-black/50">
+                {componentName}
+              </span>
+            </div>
+
+            <div className="border border-subtle rounded-xl bg-white/5 p-4 pt-5 transition-all hover:border-white/10 hover:bg-white/[0.07]">
+              <div className="space-y-3">
                 {Object.entries(component as Record<string, any>).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <label className="text-xs text-gray-500 font-medium">{key}</label>
-                    {renderValue(componentName, key, value)}
+                  <div key={key} className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase tracking-wide text-text-secondary font-semibold ml-1 opacity-90">{key}</label>
+                    <div className="bg-black/40 rounded-lg p-1 border border-white/5 focus-within:border-primary/50 transition-colors">
+                      {renderValue(componentName, key, value)}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+        {/* Add Component Button Placeholder */}
+        <button className="w-full py-2 rounded-xl border border-dashed border-subtle text-text-tertiary text-xs hover:border-text-secondary hover:text-text-secondary transition-all flex items-center justify-center gap-2 group">
+          <PlusIcon size={14} className="group-hover:scale-110 transition-transform" />
+          <span>Add Component</span>
+        </button>
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-xs text-gray-500">
+      <div className="px-4 py-3 bg-panel border-t border-subtle flex items-center justify-between">
+        <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">
           {Object.keys(entity.components || {}).length} components
         </span>
         {hasChanges && (
           <button
             onClick={handleApplyChanges}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+            className="px-4 py-1.5 text-xs font-medium text-white bg-primary rounded-full hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
           >
             Apply Changes
           </button>

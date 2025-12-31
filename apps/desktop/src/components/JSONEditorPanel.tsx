@@ -243,24 +243,24 @@ export default function JSONEditorPanel({
 
   if (!gameSpec) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm p-4">
-        <CodeIcon size={32} className="text-gray-300 mb-2" />
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-4 bg-panel">
+        <CodeIcon size={32} className="text-text-tertiary opacity-50 mb-2" />
         <p>No game loaded</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
+    <div className="h-full flex flex-col bg-canvas">
       {/* Header */}
-      <div className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+      <div className="px-3 py-2 bg-subtle border-b border-subtle flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CodeIcon size={16} className="text-gray-400" />
-          <span className="text-sm font-medium text-gray-200">
+          <CodeIcon size={16} className="text-text-secondary" />
+          <span className="text-sm font-medium text-text-primary">
             {showEntityOnly && selectedEntity ? `${selectedEntity}.json` : 'game.json'}
           </span>
           {hasChanges && (
-            <span className="px-1.5 py-0.5 text-xs bg-orange-600 text-white rounded">
+            <span className="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded border border-yellow-500/20">
               Modified
             </span>
           )}
@@ -269,18 +269,17 @@ export default function JSONEditorPanel({
           {selectedEntity && (
             <button
               onClick={() => setShowEntityOnly(!showEntityOnly)}
-              className={`px-2 py-1 text-xs rounded ${
-                showEntityOnly
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+              className={`px-2 py-1 text-xs rounded transition-colors ${showEntityOnly
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                  : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10'
+                }`}
             >
               {showEntityOnly ? 'Full Spec' : 'Entity Only'}
             </button>
           )}
           <button
             onClick={handleFormat}
-            className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+            className="px-2 py-1 text-xs bg-white/5 text-text-secondary rounded hover:text-text-primary hover:bg-white/10 transition-colors"
           >
             Format
           </button>
@@ -289,8 +288,8 @@ export default function JSONEditorPanel({
 
       {/* Validation Error */}
       {validationError && (
-        <div className="px-3 py-2 bg-red-900/50 border-b border-red-800 text-red-200 text-xs">
-          <span className="font-medium">Error (Line {validationError.line}):</span>{' '}
+        <div className="px-3 py-2 bg-red-900/20 border-b border-red-500/20 text-red-300 text-xs backdrop-blur-sm">
+          <span className="font-medium text-red-200">Error (Line {validationError.line}):</span>{' '}
           {validationError.message}
         </div>
       )}
@@ -328,8 +327,8 @@ export default function JSONEditorPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-2 bg-gray-800 border-t border-gray-700 flex items-center justify-between">
-        <div className="text-xs text-gray-500">
+      <div className="px-3 py-2 bg-subtle border-t border-subtle flex items-center justify-between">
+        <div className="text-xs text-text-tertiary">
           {showEntityOnly ? 'Editing entity' : `${gameSpec.entities?.length || 0} entities`}
           {' • Cmd+Enter to apply'}
         </div>
@@ -337,14 +336,14 @@ export default function JSONEditorPanel({
           <button
             onClick={handleReset}
             disabled={!hasChanges}
-            className="px-3 py-1.5 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs bg-white/5 text-text-secondary rounded hover:text-text-primary hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Reset
           </button>
           <button
             onClick={handleApply}
             disabled={!hasChanges || !!validationError}
-            className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 transition-colors"
           >
             Apply Changes
           </button>

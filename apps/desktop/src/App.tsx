@@ -807,7 +807,7 @@ function App() {
   }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame]);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
       {/* File Change Notification */}
       {notification && (
         <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
@@ -823,37 +823,34 @@ function App() {
       )}
 
       {/* Left Panel - File Tree / Scene Tree */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-64 bg-panel border-r border-subtle flex flex-col backdrop-blur-md">
         {/* Panel Mode Tabs */}
         {projectPath && gameSpec && (
-          <div className="flex gap-1 bg-gray-100 p-2 border-b border-gray-200">
+          <div className="flex gap-1 bg-panel border-b border-subtle p-2">
             <button
               onClick={() => setLeftPanelMode('files')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                leftPanelMode === 'files'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${leftPanelMode === 'files'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
             >
               Files
             </button>
             <button
               onClick={() => setLeftPanelMode('scene')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                leftPanelMode === 'scene'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${leftPanelMode === 'scene'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
             >
               Scene
             </button>
             <button
               onClick={() => setLeftPanelMode('assets')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                leftPanelMode === 'assets'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${leftPanelMode === 'assets'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
             >
               <ImageIcon size={12} />
               Assets
@@ -863,12 +860,12 @@ function App() {
 
         {/* Panel Header */}
         {(!projectPath || !gameSpec) && (
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="p-4 border-b border-subtle">
+            <h2 className="text-lg font-semibold text-text-primary">
               {leftPanelMode === 'files' ? 'Files' : 'Scene'}
             </h2>
             {projectPath && (
-              <p className="text-xs text-gray-500 mt-1 truncate" title={projectPath}>
+              <p className="text-xs text-text-secondary mt-1 truncate" title={projectPath}>
                 {projectPath.split('/').pop()}
               </p>
             )}
@@ -905,11 +902,11 @@ function App() {
 
         {/* Footer Info */}
         {gameSpec && leftPanelMode === 'files' && (
-          <div className="p-4 border-t border-gray-200 space-y-1">
-            <p className="text-sm font-medium text-gray-700">
+          <div className="p-4 border-t border-subtle space-y-1">
+            <p className="text-sm font-medium text-text-primary">
               {gameSpec.metadata?.title || 'Untitled Game'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text-secondary">
               {gameSpec.entities?.length || 0} entities • {gameSpec.systems?.length || 0} systems
             </p>
           </div>
@@ -919,30 +916,29 @@ function App() {
       {/* Center Panel - Game Canvas / Code Editor */}
       <main className="flex-1 flex flex-col">
         {/* Toolbar */}
-        <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between">
+        {/* Toolbar */}
+        <div className="bg-panel border-b border-subtle p-3 flex items-center justify-between backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-900">PromptPlay Desktop</h1>
+            <h1 className="text-xl font-bold text-text-primary">PromptPlay Desktop</h1>
 
             {/* View Mode Tabs */}
             {projectPath && (
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <div className="flex gap-1 bg-subtle rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('game')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'game'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'game'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                    }`}
                 >
                   Game
                 </button>
                 <button
                   onClick={() => setViewMode('code')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'code'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'code'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                    }`}
                 >
                   Code
                 </button>
@@ -954,7 +950,7 @@ function App() {
             {/* New Project */}
             <button
               onClick={() => setShowNewProjectModal(true)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md transition-all"
               title="New Project"
             >
               <NewProjectIcon size={18} />
@@ -976,17 +972,16 @@ function App() {
             </button>
 
             {/* Divider */}
-            {projectPath && <div className="w-px h-6 bg-gray-300" />}
+            {projectPath && <div className="w-px h-6 bg-subtle" />}
 
             {/* Save */}
             {projectPath && (
               <button
                 onClick={saveProject}
-                className={`p-2 rounded-md ${
-                  hasUnsavedChanges
-                    ? 'text-blue-600 hover:bg-blue-50'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`p-2 rounded-md ${hasUnsavedChanges
+                  ? 'text-blue-600 hover:bg-blue-50'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  }`}
                 title="Save Project (Cmd+S)"
               >
                 <SaveIcon size={18} />
@@ -999,7 +994,7 @@ function App() {
                 <button
                   onClick={handleUndo}
                   disabled={!canUndo}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   title="Undo (Cmd+Z)"
                 >
                   <UndoIcon size={18} />
@@ -1007,7 +1002,7 @@ function App() {
                 <button
                   onClick={handleRedo}
                   disabled={!canRedo}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   title="Redo (Cmd+Shift+Z)"
                 >
                   <RedoIcon size={18} />
@@ -1022,11 +1017,10 @@ function App() {
               <>
                 <button
                   onClick={togglePlayPause}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    isPlaying
-                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${isPlaying
+                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
                 >
                   {isPlaying ? 'Pause' : 'Play'}
                 </button>
@@ -1046,11 +1040,10 @@ function App() {
             {projectPath && (
               <button
                 onClick={() => setShowAIPanel(prev => !prev)}
-                className={`p-2 rounded-md flex items-center gap-1 ${
-                  showAIPanel
-                    ? 'bg-purple-600 text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`p-2 rounded-md flex items-center gap-1 ${showAIPanel
+                  ? 'bg-purple-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
                 title="AI Assistant"
               >
                 <AIIcon size={18} />
@@ -1120,27 +1113,25 @@ function App() {
       </main>
 
       {/* Right Panel - Inspector / JSON Editor */}
-      <aside className="w-80 bg-white border-l border-gray-200 flex flex-col">
+      <aside className="w-80 bg-panel border-l border-subtle flex flex-col backdrop-blur-md">
         {/* Panel Mode Tabs */}
         {projectPath && gameSpec && viewMode === 'game' && (
-          <div className="flex gap-1 bg-gray-100 p-2 border-b border-gray-200">
+          <div className="flex gap-1 bg-panel border-b border-subtle p-2">
             <button
               onClick={() => setRightPanelMode('inspector')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                rightPanelMode === 'inspector'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${rightPanelMode === 'inspector'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
             >
               Inspector
             </button>
             <button
               onClick={() => setRightPanelMode('json')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                rightPanelMode === 'json'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'json'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
             >
               <CodeIcon size={14} />
               JSON
@@ -1166,14 +1157,14 @@ function App() {
             />
           ) : viewMode === 'code' && selectedFile ? (
             <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">File Info</h2>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Path</h3>
-              <p className="text-xs text-gray-500 break-all">{selectedFile}</p>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">File Info</h2>
+              <h3 className="text-sm font-medium text-text-secondary mb-2">Path</h3>
+              <p className="text-xs text-text-tertiary break-all font-mono bg-subtle p-2 rounded">{selectedFile}</p>
             </div>
           ) : (
-            <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Inspector</h2>
-              <p className="text-sm text-gray-500">
+            <div className="p-4 flex flex-col items-center justify-center h-full text-center opacity-70">
+              <h2 className="text-lg font-semibold text-text-primary mb-2">Inspector</h2>
+              <p className="text-sm text-text-secondary">
                 {projectPath ? 'Select an entity or open a file' : 'Open a project to view details'}
               </p>
             </div>
@@ -1183,11 +1174,11 @@ function App() {
 
       {/* New Project Modal */}
       {showNewProjectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Project</h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-panel-solid border border-subtle rounded-xl shadow-2xl p-6 w-96 animate-scale-in">
+            <h2 className="text-xl font-bold text-text-primary mb-4">Create New Project</h2>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
                 Project Name
               </label>
               <input
@@ -1195,7 +1186,7 @@ function App() {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="my-game"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-canvas border border-subtle rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder-text-tertiary"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') createNewProject();
@@ -1206,7 +1197,7 @@ function App() {
                 }}
               />
             </div>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-text-secondary mb-6">
               This will create a new folder with a starter game template.
             </p>
             <div className="flex justify-end gap-2">
@@ -1215,14 +1206,14 @@ function App() {
                   setShowNewProjectModal(false);
                   setNewProjectName('');
                 }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm font-medium"
+                className="px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md text-sm font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createNewProject}
                 disabled={!newProjectName.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
               >
                 Create Project
               </button>

@@ -69,17 +69,17 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
       const isExpanded = expandedDirs.has(file.path);
       const isSelected = selectedFile === file.path;
       const isEditable = file.name.endsWith('.ts') ||
-                        file.name.endsWith('.tsx') ||
-                        file.name.endsWith('.js') ||
-                        file.name.endsWith('.jsx') ||
-                        file.name.endsWith('.json');
+        file.name.endsWith('.tsx') ||
+        file.name.endsWith('.js') ||
+        file.name.endsWith('.jsx') ||
+        file.name.endsWith('.json');
 
       return (
         <div key={file.path}>
           <div
             className={`
-              flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-100 rounded
-              ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}
+              flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-white/5 rounded transition-colors
+              ${isSelected ? 'bg-primary/20 text-white' : 'text-text-secondary'}
             `}
             style={{ paddingLeft: `${level * 12 + 8}px` }}
             onClick={() => {
@@ -92,18 +92,18 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
           >
             {file.is_directory ? (
               <>
-                <span className="w-3 text-gray-400">
+                <span className="w-3 text-text-tertiary">
                   {isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
                 </span>
-                <FolderIcon size={14} className={isExpanded ? 'text-amber-500' : 'text-amber-400'} />
+                <FolderIcon size={14} className={isExpanded ? 'text-yellow-400' : 'text-yellow-500/80'} />
               </>
             ) : (
               <>
                 <span className="w-3" />
-                <FileIcon size={14} className="text-gray-400" />
+                <FileIcon size={14} className="text-text-tertiary" />
               </>
             )}
-            <span className="text-sm truncate flex-1" title={file.name}>
+            <span className={`text-sm truncate flex-1 ${isSelected ? 'font-medium' : ''}`} title={file.name}>
               {file.name}
             </span>
           </div>
@@ -115,17 +115,17 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
 
   if (!projectPath) {
     return (
-      <div className="text-sm text-gray-500 text-center py-4">
+      <div className="text-sm text-text-tertiary text-center py-4">
         No project open
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      <div className="flex-1">
+    <div className="flex flex-col h-full overflow-y-auto bg-panel">
+      <div className="flex-1 py-2 px-2">
         {loading && files.length === 0 ? (
-          <div className="text-sm text-gray-500 text-center py-4">Loading...</div>
+          <div className="text-sm text-text-tertiary text-center py-4">Loading...</div>
         ) : (
           renderFileTree(projectPath)
         )}
