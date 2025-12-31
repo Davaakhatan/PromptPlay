@@ -31,7 +31,7 @@ export class GameWorld {
 
   // System management
   addSystem(system: ISystem): void {
-    system.init(this.world);
+    system.init(this);
     this.systems.push(system);
   }
 
@@ -39,7 +39,7 @@ export class GameWorld {
     const index = this.systems.indexOf(system);
     if (index > -1) {
       if (system.cleanup) {
-        system.cleanup(this.world);
+        system.cleanup(this);
       }
       this.systems.splice(index, 1);
     }
@@ -55,7 +55,7 @@ export class GameWorld {
 
   update(deltaTime: number): void {
     for (const system of this.systems) {
-      system.update(this.world, deltaTime);
+      system.update(this, deltaTime);
     }
   }
 
@@ -183,7 +183,7 @@ export class GameWorld {
 
     for (const system of this.systems) {
       if (system.cleanup) {
-        system.cleanup(this.world);
+        system.cleanup(this);
       }
     }
     this.systems = [];

@@ -86,7 +86,7 @@ export class Deserializer {
       addComponent(w, Input, eid);
       Input.moveSpeed[eid] = components.input.moveSpeed;
       Input.jumpForce[eid] = components.input.jumpForce;
-      Input.canJump[eid] = components.input.canJump ?? true ? 1 : 0;
+      Input.canJump[eid] = (components.input.canJump ?? true) ? 1 : 0;
     }
 
     // Deserialize Health

@@ -1,12 +1,13 @@
-import { Engine, World, Bodies, Body, Events } from 'matter-js';
+import { Engine, World, Bodies, Body, Events, Pair } from 'matter-js';
 import { hasComponent } from 'bitecs';
-import { GameWorld, Transform, Velocity, Collider } from '@promptplay/ecs-core';
+import { GameWorld, Transform, Velocity, Collider, Input } from '@promptplay/ecs-core';
 
 export class MatterPhysics {
   private engine: Engine;
   private world: GameWorld;
   private bodyMap: Map<number, Body> = new Map();
   private collisionCallbacks: Array<(a: number, b: number) => void> = [];
+  private groundContacts: Map<number, Set<number>> = new Map();
 
   constructor(engine: Engine, world: GameWorld) {
     this.engine = engine;
@@ -15,25 +16,87 @@ export class MatterPhysics {
     // Set up collision events
     Events.on(this.engine, 'collisionStart', (event) => {
       for (const pair of event.pairs) {
-        const bodyA = pair.bodyA;
-        const bodyB = pair.bodyB;
-
-        // Find entity IDs for these bodies
-        let eidA: number | undefined;
-        let eidB: number | undefined;
-
-        for (const [eid, body] of this.bodyMap) {
-          if (body === bodyA) eidA = eid;
-          if (body === bodyB) eidB = eid;
-        }
-
-        if (eidA !== undefined && eidB !== undefined) {
-          for (const callback of this.collisionCallbacks) {
-            callback(eidA, eidB);
-          }
-        }
+        this.handleCollision(pair, true);
       }
     });
+
+    Events.on(this.engine, 'collisionEnd', (event) => {
+      for (const pair of event.pairs) {
+        this.handleCollision(pair, false);
+      }
+    });
+  }
+
+  private getEntityFromBody(body: Body): number | undefined {
+    for (const [eid, b] of this.bodyMap) {
+      if (b === body) return eid;
+    }
+    return undefined;
+  }
+
+  private handleCollision(pair: Pair, isStart: boolean): void {
+    const eidA = this.getEntityFromBody(pair.bodyA);
+    const eidB = this.getEntityFromBody(pair.bodyB);
+
+    if (eidA === undefined || eidB === undefined) return;
+
+    // Fire collision callbacks on start
+    if (isStart) {
+      for (const callback of this.collisionCallbacks) {
+        callback(eidA, eidB);
+      }
+    }
+
+    // Check for ground contact using collision normal
+    // Normal points from A to B, so if normal.y < 0, A is on top of B
+    if (pair.collision && pair.collision.normal) {
+      const normal = pair.collision.normal;
+
+      if (normal.y < -0.5) {
+        // A is landing on B
+        if (isStart) {
+          this.addGroundContact(eidA, eidB);
+        } else {
+          this.removeGroundContact(eidA, eidB);
+        }
+      } else if (normal.y > 0.5) {
+        // B is landing on A
+        if (isStart) {
+          this.addGroundContact(eidB, eidA);
+        } else {
+          this.removeGroundContact(eidB, eidA);
+        }
+      }
+    }
+  }
+
+  private addGroundContact(eid: number, groundEid: number): void {
+    if (!this.groundContacts.has(eid)) {
+      this.groundContacts.set(eid, new Set());
+    }
+    this.groundContacts.get(eid)!.add(groundEid);
+    this.updateGroundedState(eid);
+  }
+
+  private removeGroundContact(eid: number, groundEid: number): void {
+    const contacts = this.groundContacts.get(eid);
+    if (contacts) {
+      contacts.delete(groundEid);
+      this.updateGroundedState(eid);
+    }
+  }
+
+  private updateGroundedState(eid: number): void {
+    const w = this.world.getWorld();
+    if (hasComponent(w, Input, eid)) {
+      const contacts = this.groundContacts.get(eid);
+      Input.isGrounded[eid] = (contacts && contacts.size > 0) ? 1 : 0;
+    }
+  }
+
+  isGrounded(eid: number): boolean {
+    const contacts = this.groundContacts.get(eid);
+    return contacts !== undefined && contacts.size > 0;
   }
 
   initialize(): void {

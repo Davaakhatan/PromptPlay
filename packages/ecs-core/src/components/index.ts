@@ -5,3 +5,7 @@ export { Collider } from './Collider';
 export { Input } from './Input';
 export { Health } from './Health';
 export { AIBehavior } from './AIBehavior';
+export { Animation } from './Animation';
+export { Audio } from './Audio';
+export { Camera } from './Camera';
+export { ParticleEmitter, Particle } from './Particle';

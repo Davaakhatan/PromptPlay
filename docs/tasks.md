@@ -1,11 +1,35 @@
-# PromptPlay - Task Breakdown
+# PromptPlay Desktop - Task Breakdown
 
 ## Overview
-This document provides a comprehensive task breakdown for the PromptPlay project, organized by work package and priority.
+This document provides a comprehensive task breakdown for the PromptPlay Desktop project (Tauri 2.0), organized by work package and priority.
+
+**Status:** Architecture Pivot to Desktop (December 2024)
+**Previous Version:** Web-based MVP (Complete)
+**Current Version:** Tauri Desktop Engine
 
 ---
 
-## Work Package 1: Core Infrastructure ✅ COMPLETE
+## Migration Status
+
+### Web MVP (Complete ✅)
+The initial web-based prototype is complete with all core features:
+- AI game generation via prompts
+- 2D runtime (PixiJS + Matter.js)
+- Game controls and spec editor
+- Save/load system
+- Minimalist UI redesign
+
+### Desktop Pivot (In Progress ⏳)
+Moving to Tauri desktop architecture to enable:
+- File system access for real project folders
+- External editor integration (Claude Code)
+- Built-in AI chat panel
+- Visual scene editor
+- Professional game engine UX
+
+---
+
+## Work Package 1: Core Infrastructure (Web MVP) ✅ COMPLETE
 
 ### WP1.1: Monorepo Setup ✅
 **Priority:** P0 | **Effort:** 2 days | **Status:** Complete
@@ -520,22 +544,335 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 
 ---
 
+## Work Package 8: Tauri Desktop Foundation ✅ COMPLETE
+
+### WP8.1: Tauri Setup & Project Structure ✅
+**Priority:** P0 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Install Rust toolchain (rustup)
+- [x] Install Tauri CLI (`cargo install tauri-cli`)
+- [x] Initialize new Tauri app with React + TypeScript
+- [x] Configure Vite + Tailwind CSS
+- [x] Set up monorepo integration with existing packages
+- [x] Create basic window layout (Scene | Code | Inspector)
+- [x] Test Tauri app runs on macOS
+
+**Deliverables:**
+- Working Tauri desktop application
+- React frontend with three-panel layout
+- Existing packages integrated via imports
+
+---
+
+### WP8.2: File System Operations (Rust IPC) ✅
+**Priority:** P0 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Implement `open_project(path)` command
+- [x] Implement `create_project(name, location)` command
+- [x] Implement `read_file(path)` command
+- [x] Implement `write_file(path, content)` command
+- [x] Implement `list_directory(path)` command
+- [x] Create FileTree component (React)
+- [x] Test project folder operations
+
+**Deliverables:**
+- Rust IPC commands for file operations
+- File tree UI component
+- Open/create project workflows
+
+---
+
+### WP8.3: Game Runtime Integration ✅
+**Priority:** P0 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Copy packages/ from web MVP (ecs-core, runtime-2d, shared-types)
+- [x] Configure package imports in Tauri frontend
+- [x] Create GameCanvas component with PixiJS
+- [x] Integrate Runtime2D class
+- [x] Load game.json from project folder
+- [x] Implement play/pause/reset controls
+- [x] Test with platformer demo
+
+**Deliverables:**
+- Game runtime working in desktop app
+- Can load and play game.json specs
+
+---
+
+### WP8.4: Monaco Code Editor Integration ✅
+**Priority:** P0 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Install @monaco-editor/react
+- [x] Create CodeEditor component with tabs
+- [x] Configure TypeScript language support
+- [x] Implement file editing workflow
+- [x] Sync editor with file tree selection
+- [x] Add keyboard shortcuts (Ctrl+S save)
+- [x] Test editing TypeScript files
+
+**Deliverables:**
+- Monaco editor integrated
+- Can edit and save TypeScript files
+- Tab-based multi-file editing
+
+---
+
+## Work Package 9: Hot Reload System ✅ COMPLETE
+
+### WP9.1: File Watcher (Rust) ✅
+
+**Priority:** P0 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Implement file watcher with notify crate
+- [x] Watch project directory recursively
+- [x] Detect changes to game.json, src/\*\*/\*.ts, assets/\*
+- [x] Emit IPC events to frontend on file changes
+- [x] Add debouncing (300ms) to prevent spam
+- [x] Test with external editor (VSCode, Claude Code)
+
+**Deliverables:**
+- File watcher detecting external changes
+- IPC events sent to frontend
+
+---
+
+### WP9.2: Auto-Reload System ✅
+
+**Priority:** P0 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Frontend listens to file-changed events
+- [x] Reload game runtime on game.json changes
+- [x] Reload game on TypeScript file changes
+- [x] Preserve game state when possible
+- [x] Show "Reloading..." indicator
+- [x] Display errors on failed reload
+
+**Deliverables:**
+- Seamless auto-reload on file changes
+- Works with Claude Code terminal workflow
+
+---
+
+### WP9.3: TypeScript Compilation
+**Priority:** P0 | **Effort:** 4 days | **Status:** Not Started
+
+- [ ] Integrate esbuild or swc for TS compilation
+- [ ] Compile src/ directory to JavaScript
+- [ ] Bundle with game runtime
+- [ ] Handle compilation errors gracefully
+- [ ] Display errors in UI overlay
+- [ ] Cache builds for performance
+
+**Deliverables:**
+- Custom TypeScript code compiles and runs
+- Error reporting in UI
+
+---
+
+## Work Package 10: Visual Scene Editor ✅ COMPLETE
+
+### WP10.1: Scene Tree Component ✅
+
+**Priority:** P0 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Create SceneTree component (left panel)
+- [x] Display hierarchical entity list from game.json
+- [x] Implement entity selection (click to select)
+- [x] Sync selection with game canvas
+- [x] Add/delete entity buttons
+- [x] Duplicate entity functionality
+
+**Deliverables:**
+- Scene tree UI matching Godot quality
+- Entity selection working
+
+---
+
+### WP10.2: Inspector Panel ✅
+
+**Priority:** P0 | **Effort:** 5 days | **Status:** Complete
+
+- [x] Create Inspector component (right panel)
+- [x] Display selected entity's components
+- [x] Edit Transform (x, y, rotation, scale) with sliders
+- [x] Edit Sprite (texture dropdown, size, tint color picker)
+- [x] Edit Collider (type dropdown, size)
+- [x] Edit Input, Health, AIBehavior components
+- [x] Tag management (add/remove tags)
+- [x] Save changes back to game.json
+- [x] Auto-reload game on component changes
+
+**Deliverables:**
+- Visual component editor with color pickers, sliders, dropdowns
+- Real-time game updates on property changes
+
+---
+
+### WP10.3: Canvas Entity Selection ✅
+
+**Priority:** P1 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Click entities in game canvas to select
+- [x] Highlight selected entity with bounding box
+- [x] Sync selection with scene tree
+- [x] Show transform gizmos (move/rotate/scale)
+- [x] Drag entities in canvas to move
+- [x] Grid snapping for positioning
+- [x] Keyboard shortcuts (W/E/R for tools)
+
+**Deliverables:**
+- Interactive game canvas
+- Visual entity manipulation with gizmos
+
+---
+
+### WP10.4: Asset Browser ✅
+
+**Priority:** P1 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Create AssetBrowser component (left panel tab)
+- [x] List image and sound files in project folder
+- [x] Grid and list view modes
+- [x] Filter by asset type (images/sounds)
+- [x] Directory navigation with breadcrumbs
+- [x] Image thumbnails in grid view
+
+**Deliverables:**
+- Asset management UI
+- File browsing workflow
+
+---
+
+## Work Package 11: AI Integration ⏳ IN PROGRESS
+
+### WP11.1: Chat Panel UI ✅
+
+**Priority:** P0 | **Effort:** 3 days | **Status:** Complete
+
+- [x] Create ChatPanel component (right side, toggleable)
+- [x] Message list with user/AI bubbles
+- [x] Input field with send button
+- [x] Markdown rendering for code blocks (react-markdown + remark-gfm)
+- [x] Loading indicator during AI response
+- [x] Error handling for API failures
+- [x] Settings panel for API key configuration
+- [x] Demo mode fallback when no API key
+
+**Deliverables:**
+
+- Chat UI component with full markdown support
+
+---
+
+### WP11.2: Anthropic API Client (Rust) ✅
+
+**Priority:** P0 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Create Rust client for Anthropic API
+- [x] Implement ai_send_message IPC command
+- [x] Read game context and pass to AI
+- [x] Handle API errors gracefully
+- [x] ai_set_api_key and ai_check_api_key commands
+- [ ] Stream AI responses to frontend (future enhancement)
+- [ ] Store chat history in .promptplay/chat-history.json (future enhancement)
+
+**Deliverables:**
+- Anthropic API integration
+- Chat backend working
+
+---
+
+### WP11.3: AI Code Generation ⏳
+
+**Priority:** P0 | **Effort:** 5 days | **Status:** In Progress
+
+- [x] Create AI prompt templates for game dev
+- [x] AI can read current game.json
+- [x] AI suggests code changes (JSON code blocks)
+- [x] User approves → apply changes to game
+- [ ] Show diff preview before applying
+- [ ] AI can create components/systems
+- [ ] AI can debug errors
+- [ ] Test with real scenarios
+
+**Deliverables:**
+- End-to-end AI pair programming
+- Code generation working
+
+---
+
+## Work Package 12: Export & Polish ✅ COMPLETE
+
+### WP12.1: Game Export System ✅
+
+**Priority:** P1 | **Effort:** 4 days | **Status:** Complete
+
+- [x] Build system for bundling game
+- [x] Export as single HTML file
+- [ ] Export as web folder (for hosting) (future)
+- [x] Minify and optimize assets (embedded in HTML)
+- [x] Test exported games work standalone
+- [x] Add export UI (Ctrl+E / Export button)
+
+**Deliverables:**
+
+- Game export functionality with embedded Canvas2D + Matter.js runtime
+
+---
+
+### WP12.2: UI/UX Polish ✅
+
+**Priority:** P1 | **Effort:** 5 days | **Status:** Complete
+
+- [x] Refine Tailwind design system
+- [x] Add keyboard shortcuts (Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+E)
+- [x] Welcome screen with templates
+- [x] Sample projects (platformer, shooter, puzzle, empty)
+- [ ] In-app tutorials/tooltips (future)
+- [x] Error messages with helpful hints (ErrorDisplay component)
+- [x] Loading states and animations (LoadingSpinner, slide-in notifications)
+
+**Deliverables:**
+- Polished professional UI
+- Beta-ready experience
+
+---
+
+## Tauri Desktop Timeline Summary
+
+| Phase | Work Packages | Estimated Weeks | Status |
+|-------|---------------|-----------------|--------|
+| Phase 1: Foundation | WP8 (Desktop app + runtime) | 2 weeks | ✅ Complete |
+| Phase 2: Hot Reload | WP9 (File watching + TS compilation) | 1.5 weeks | ✅ Complete |
+| Phase 3: Visual Editor | WP10 (Scene tree + inspector + assets) | 2.5 weeks | ✅ Complete |
+| Phase 4: AI Integration | WP11 (Chat + Anthropic API) | 2 weeks | ⏳ In Progress |
+| Phase 5: Export & Polish | WP12 (Export + UX polish) | 1.5 weeks | ✅ Complete |
+| **Total Desktop MVP** | **WP8-WP12** | **~10 weeks** | **~90% Complete** |
+
+---
+
 ## Next Steps
 
 ### Immediate (This Week)
-1. Complete comprehensive unit tests for serialization
-2. Add E2E tests for critical flows
-3. Fix ESLint prettier config warning
-4. Cross-browser testing
+1. ✅ Complete documentation updates (PRD, MVP, Tasks)
+2. 🚧 Install Rust and Tauri CLI
+3. 🚧 Initialize new Tauri app structure
+4. 🚧 Begin WP8.1: Tauri setup
 
-### Short Term (Next Sprint)
-1. Implement icon system
-2. Add syntax highlighting to spec editor
-3. Improve error messages
-4. Add loading states
+### Short Term (Weeks 1-2)
+1. Complete WP8: Tauri foundation
+2. Get game runtime working in desktop app
+3. Integrate Monaco code editor
+4. Test with existing game demos
 
-### Long Term (Phase 2)
-1. User authentication
-2. Cloud save/load
-3. Game sharing
-4. Visual asset library
+### Medium Term (Weeks 3-6)
+1. Implement file watching and hot reload
+2. Build visual scene editor
+3. Add asset browser
+4. Achieve feature parity with web MVP
+
+### Long Term (Weeks 7-10)
+1. AI chat integration
+2. Game export system
+3. UI/UX polish
+4. Beta testing and launch

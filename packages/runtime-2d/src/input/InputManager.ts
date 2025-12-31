@@ -10,23 +10,40 @@ export class InputManager {
 
   private element: HTMLElement;
 
+  // Store bound event handlers to properly remove them later
+  private boundHandleKeyDown: (e: KeyboardEvent) => void;
+  private boundHandleKeyUp: (e: KeyboardEvent) => void;
+  private boundHandleMouseMove: (e: MouseEvent) => void;
+  private boundHandleMouseDown: (e: MouseEvent) => void;
+  private boundHandleMouseUp: (e: MouseEvent) => void;
+  private boundHandleContextMenu: (e: Event) => void;
+
   constructor(element: HTMLElement) {
     this.element = element;
+
+    // Create bound handlers once
+    this.boundHandleKeyDown = this.handleKeyDown.bind(this);
+    this.boundHandleKeyUp = this.handleKeyUp.bind(this);
+    this.boundHandleMouseMove = this.handleMouseMove.bind(this);
+    this.boundHandleMouseDown = this.handleMouseDown.bind(this);
+    this.boundHandleMouseUp = this.handleMouseUp.bind(this);
+    this.boundHandleContextMenu = (e) => e.preventDefault();
+
     this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
     // Keyboard events
-    window.addEventListener('keydown', this.handleKeyDown.bind(this));
-    window.addEventListener('keyup', this.handleKeyUp.bind(this));
+    window.addEventListener('keydown', this.boundHandleKeyDown);
+    window.addEventListener('keyup', this.boundHandleKeyUp);
 
     // Mouse events
-    this.element.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.element.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    this.element.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.element.addEventListener('mousemove', this.boundHandleMouseMove);
+    this.element.addEventListener('mousedown', this.boundHandleMouseDown);
+    this.element.addEventListener('mouseup', this.boundHandleMouseUp);
 
     // Prevent context menu on right click
-    this.element.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.element.addEventListener('contextmenu', this.boundHandleContextMenu);
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
@@ -119,10 +136,11 @@ export class InputManager {
   }
 
   cleanup(): void {
-    window.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    window.removeEventListener('keyup', this.handleKeyUp.bind(this));
-    this.element.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.element.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-    this.element.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    window.removeEventListener('keydown', this.boundHandleKeyDown);
+    window.removeEventListener('keyup', this.boundHandleKeyUp);
+    this.element.removeEventListener('mousemove', this.boundHandleMouseMove);
+    this.element.removeEventListener('mousedown', this.boundHandleMouseDown);
+    this.element.removeEventListener('mouseup', this.boundHandleMouseUp);
+    this.element.removeEventListener('contextmenu', this.boundHandleContextMenu);
   }
 }

@@ -27,6 +27,8 @@ export class InputSystem implements ISystem {
 
       const moveSpeed = Input.moveSpeed[eid];
       const jumpForce = Input.jumpForce[eid];
+      const canJump = Input.canJump[eid] === 1;
+      const isGrounded = Input.isGrounded[eid] === 1;
 
       // Horizontal movement
       let vx = 0;
@@ -43,9 +45,10 @@ export class InputSystem implements ISystem {
         this.physics.setVelocity(eid, vx, currentVy);
       }
 
-      // Jump (only if canJump is true)
-      if (Input.canJump[eid] === 1 && this.inputManager.isJumpPressed()) {
-        this.physics.applyForce(eid, 0, jumpForce);
+      // Jump only when grounded and canJump is enabled
+      // Use isKeyPressed for single jump (not held)
+      if (canJump && isGrounded && this.inputManager.isKeyPressed('Space')) {
+        this.physics.setVelocity(eid, vx, jumpForce);
       }
     }
   }

@@ -1,104 +1,303 @@
-# AI-Friendly Game Engine MVP Plan  
-## Prompt-to-Playable 2D/3D Games with Built-In TRELLIS.2 3D Asset Generation  
-**Date:** December 30, 2025  
-**Goal:** Build a web-first, modular, ECS-based game engine where users create playable games (2D, 3D, FPS/TPS) via natural language prompts. Include self-hosted TRELLIS.2 for native text/image/sketch-to-3D asset generation.  
-**Developer:** Solo (you)  
-**Target MVP Timeline:** 8–10 weeks  
+# PromptPlay Desktop MVP
+## AI-First 2D Game Engine
+
+**Date:** December 30, 2024
+**Goal:** Build a Tauri desktop game engine where users create 2D games through AI collaboration
+**Developer:** Solo (you)
+**Target MVP Timeline:** 13 weeks
 
 ---
 
-### Project Vision
-Create an innovative “prompt-to-game” platform:
-- User types: “platformer with jumping fox chasing apples” or “FPS with cyberpunk gun in neon city”
-- Engine generates ECS JSON spec + optional 3D assets via TRELLIS.2
-- Instant playable scene runs in the browser
-- Editor UI allows tweaking, saving, and exporting
+## Vision
 
-No external 3D generation APIs — everything self-hosted with TRELLIS.2 (Microsoft’s SOTA open-source 3D model, MIT license).
+PromptPlay is the first game engine **designed for AI pair programming from the ground up**. Unlike Godot or Unity where AI is an afterthought, PromptPlay makes collaborating with AI as natural as using the engine itself.
 
----
+**Two Ways to Develop:**
 
-### Core Architecture (Layered ECS)
+1. **Beginners**: Use visual scene editor + chat with AI
+2. **Developers**: Code in Claude Code terminal → auto-reload in engine
 
-1. **AI Layer**  
-   - Claude/Cursor API → structured ECS JSON specs  
-   - TRELLIS.2 pipeline (text → image → 3D or direct image/sketch → 3D)
-
-2. **ECS Core**  
-   - Library: `bitecs.ts` (TypeScript-native, archetype-based)  
-   - Components: Position, Velocity, Mesh (Three.js object), Collider, Camera (FPS/TPS), etc.  
-   - Systems: Physics, Input, Render, AIBehavior
-
-3. **Render Layer**  
-   - 2D: PixiJS (sprites, animations)  
-   - 3D: Three.js + WebGPU (PBR support for TRELLIS.2 textures)
-
-4. **Platform Layer**  
-   - Web-first (browser events, Canvas/WebGPU)  
-   - Later: Electron (desktop), Capacitor (mobile)
-
-5. **Editor/Tools Layer**  
-   - Next.js dashboard (prompt input, spec editor, 3D preview, asset generator)
-
-6. **Inference Backend**  
-   - Python server (FastAPI/Gradio) running TRELLIS.2 on dedicated GPU
+**Core Problem Solved:**
+- Godot + AI: User asks AI → AI gives code → User manually applies → Friction
+- PromptPlay: User asks AI → AI writes files → Engine auto-reloads → Seamless
 
 ---
 
-### Tech Stack
+## Architecture
 
-| Layer              | Technology                                                                 |
-|--------------------|----------------------------------------------------------------------------|
-| Frontend/Engine    | TypeScript, Next.js, Three.js, PixiJS, bitecs.ts                           |
-| Physics            | Matter.js (2D), Cannon.js (3D)                                             |
-| AI Specs           | Claude API (via Node.js)                                                   |
-| 3D Generation      | TRELLIS.2 (PyTorch), optional Flux/SD3 for text-to-image chaining          |
-| Backend (Inference)| Python 3.10, FastAPI/Gradio, Docker                                        |
-| GPU Hosting        | RunPod / Vast.ai / local RTX 4090+ (24GB VRAM required)                    |
-| Deployment         | Vercel (web UI), Docker (inference server)                                 |
+### Desktop Application (Tauri 2.0)
+
+**Why Tauri over Web?**
+- Full file system access for real project folders
+- File watching for external editor integration
+- Native performance
+- Small bundle size (3-5MB vs Electron's 100MB+)
+- Cross-platform (Windows, macOS, Linux)
+
+**Tech Stack:**
+
+```
+Frontend (UI)    → React + TypeScript + Tailwind CSS
+Backend (Rust)   → Tauri 2.0 + tokio
+Game Runtime     → PixiJS (rendering) + Matter.js (physics)
+Code Editor      → Monaco Editor (VSCode in browser)
+File Watching    → notify (Rust) / chokidar (Node)
+AI Integration   → Anthropic API (Claude)
+Build System     → Vite (frontend) + Cargo (Rust)
+```
+
+### Game Projects
+
+Users work with **real folders on disk** (not browser storage):
+
+```
+my-platformer/              # User's game project
+├── .promptplay/
+│   ├── project.json        # Project metadata
+│   └── chat-history.json   # AI conversation
+├── game.json               # ECS game specification
+├── src/                    # Custom TypeScript code
+│   ├── components/
+│   ├── systems/
+│   └── main.ts
+└── assets/
+    ├── sprites/
+    └── sounds/
+```
+
+### ECS Architecture (Reuse Existing!)
+
+All existing packages (`ecs-core`, `runtime-2d`, `shared-types`) will be imported unchanged!
+
+**Components:**
+- Transform, Velocity, Sprite, Collider, Input, Health, AIBehavior
+
+**Systems:**
+- PhysicsSystem, InputSystem, CollisionSystem, RenderSystem
+
+**Game Spec:**
+- Declarative JSON defines entities, components, systems
+- Custom TypeScript extends functionality
 
 ---
 
-### MVP Scope & Success Criteria
+## MVP Scope
 
-- Web-based prototype (browser only)
-- Prompt → JSON spec → playable 2D or simple 3D scene
-- Built-in TRELLIS.2 generation: text, image upload, or sketch → game-ready GLB (PBR)
-- Test with 3 genres: platformer, shooter, puzzle (one with custom TRELLIS.2 asset)
-- FPS/TPS camera stubs included
-- Editor UI with localStorage saves and embed/export links
+### Phase 1 MVP (Weeks 1-3): Basic Desktop App
+**Goal:** Desktop app that can load and run games
+
+- ✅ Tauri app with React UI
+- ✅ File system operations (open/create project)
+- ✅ Game canvas with PixiJS
+- ✅ Load existing `game.json` specs
+- ✅ Play/pause/reset controls
+- ✅ Monaco code editor for TypeScript files
+
+**Success Metric:** Can open a platformer project and play it
+
+### Phase 2 MVP (Weeks 4-5): Hot Reload
+**Goal:** Support external editors like Claude Code
+
+- ✅ File watcher detects code changes
+- ✅ Auto-reload game when files change
+- ✅ TypeScript compilation (esbuild)
+- ✅ Execute custom components/systems
+- ✅ Error overlay with stack traces
+
+**Success Metric:** Edit code in Claude Code → game updates instantly
+
+### Phase 3 MVP (Weeks 6-8): Visual Editor
+**Goal:** Godot-quality scene editor
+
+- ✅ Scene tree (hierarchical entity list)
+- ✅ Inspector panel (edit components)
+- ✅ Click to select entities
+- ✅ Drag-and-drop from asset browser
+- ✅ Save changes to `game.json`
+
+**Success Metric:** Create a simple platformer without code
+
+### Phase 4 MVP (Weeks 9-11): AI Integration
+**Goal:** AI pair programming built-in
+
+- ✅ Chat panel in UI
+- ✅ Anthropic API client (Rust)
+- ✅ AI reads project files
+- ✅ AI suggests code changes (show diffs)
+- ✅ User approves → files update
+- ✅ Chat history persists
+
+**Success Metric:** Chat "add double-jump" → AI implements it → works
+
+### Phase 5 MVP (Weeks 12-13): Polish & Export
+**Goal:** Ready for beta users
+
+- ✅ Export games as HTML files
+- ✅ Keyboard shortcuts (Ctrl+S, Ctrl+O, etc.)
+- ✅ Welcome screen with templates
+- ✅ Sample projects (platformer, shooter, puzzle)
+- ✅ Professional UI/UX
+
+**Success Metric:** Share a playable game link
 
 ---
 
-### Development Roadmap (8–10 Weeks)
+## Success Criteria
 
-| Phase | Focus                              | Weeks | Key Deliverables                                                                                  | Main Tech Additions                          |
-|-------|------------------------------------|-------|---------------------------------------------------------------------------------------------------|----------------------------------------------|
-| 1     | Core ECS & 2D Runtime              | 1–3   | Playable 2D prototypes from prompts (e.g., platformer, shooter, puzzle)                           | bitecs.ts, PixiJS, Matter.js, Claude API     |
-| 2     | Editor UI & Basic 3D Rendering     | 3–5   | Next.js dashboard, spec tweaking, 3D preview canvas, manual GLB loading                           | Next.js, Three.js, GLTFLoader                |
-| 3     | TRELLIS.2 Integration              | 5–7   | Self-hosted 3D generation UI: text/image/sketch → GLB → auto-add to ECS scene                     | Python FastAPI, TRELLIS.2 pipeline, Docker   |
-| 4     | Polish & Cross-Platform Stubs      | 7–9   | Full prompt-to-3D-game flow, FPS/TPS demos, performance tweaks, mobile preview                    | WebGPU, Capacitor stub, LOD/Draco compression|
-| 5     | Final MVP & Iteration              | 9–10  | Deployable demo, user testing, documentation                                                      | Vercel + Docker deploy                       |
+Desktop PromptPlay v1.0 MVP is done when:
+
+1. ✅ User can create new game project
+2. ✅ Visual editor works (drag-drop, inspector)
+3. ✅ Code editor works (Monaco, TypeScript)
+4. ✅ File watcher works (Claude Code integration)
+5. ✅ AI chat works (modify game via conversation)
+6. ✅ Can export game as HTML
+7. ✅ Runs at 60 FPS with <50 entities
+8. ✅ 3 demo genres work (platformer, shooter, puzzle)
 
 ---
 
-### TRELLIS.2 Integration Details
+## Non-Goals for MVP
 
-#### Requirements
-- NVIDIA GPU with ≥24GB VRAM (RTX 4090, A100, H100)
-- CUDA 12.x (or 11.8 for compatibility)
-- Python 3.10 Conda environment
+**Future Features (Post-MVP):**
+- 3D graphics (Three.js)
+- Multiplayer/networking
+- Mobile deployment (Capacitor)
+- Visual scripting (node editor)
+- Animation timeline
+- Particle effects
+- Sound/music editor
+- Sprite editor
+- Tilemap editor
+- Save/load game state
 
-#### Setup Steps (Phase 3)
-1. Rent/deploy GPU instance (RunPod recommended)
-2. `git clone https://github.com/microsoft/TRELLIS.2`
-3. Create Conda env + install requirements (spconv, nvdiffrast, kaolin, etc.)
-4. Download model: `huggingface-cli download microsoft/TRELLIS.2-4B`
-5. Build FastAPI server with endpoints:
-   - `/image-to-3d` (POST image file → GLB)
-   - `/text-to-3d` (optional: chain with Flux/SD3 → TRELLIS.2)
-6. Dockerize for reliable deployment
-7. Enable memory optimizations:
-   ```bash
-   export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
-   export SPCONV_ALGO="native"
+**Scope Discipline:**
+MVP focuses on **core workflow**: AI collaboration + file watching + visual editing. Everything else is post-MVP.
+
+---
+
+## Migration from Web MVP
+
+**Existing Code (Reusable):**
+- `packages/ecs-core` ✅ Copy unchanged
+- `packages/runtime-2d` ✅ Copy unchanged
+- `packages/shared-types` ✅ Copy unchanged
+- `packages/ai-prompt` ⚠️ Adapt to Rust Anthropic client
+
+**Rebuild from Scratch:**
+- `apps/editor` → New Tauri app
+- UI components → React (but desktop-specific)
+- API routes → Rust IPC commands
+
+**Estimated Migration Effort:** 2-3 weeks (Phase 1)
+
+---
+
+## Development Environment
+
+### Requirements
+
+- Node.js 18+
+- pnpm 8+
+- Rust 1.70+ (install via rustup)
+- Tauri CLI (`cargo install tauri-cli`)
+
+### Setup
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Tauri CLI
+cargo install tauri-cli
+
+# Create new Tauri app
+npm create tauri-app@latest
+
+# Install dependencies
+pnpm install
+
+# Run dev
+pnpm tauri dev
+
+# Build for production
+pnpm tauri build
+```
+
+---
+
+## Risk Assessment
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Tauri learning curve | Medium | Follow official docs, start simple |
+| Rust/TypeScript bridge complexity | Medium | Use Tauri's built-in IPC, avoid complex data |
+| File watching performance | Low | Use debouncing, limit watch scope |
+| TypeScript compilation speed | Low | Use esbuild (fast), cache builds |
+| AI API costs | Low | Rate limiting, user brings own key |
+| Cross-platform bugs | Medium | Test on all platforms weekly |
+
+---
+
+## Timeline Summary
+
+```
+Weeks 1-3:  Tauri foundation + game runtime
+Weeks 4-5:  File watching + hot reload
+Weeks 6-8:  Visual scene editor
+Weeks 9-11: AI chat integration
+Weeks 12-13: Polish + export
+
+Total: 13 weeks to MVP
+```
+
+---
+
+## Post-MVP Roadmap (Future)
+
+**Phase 2 (Months 4-6):**
+- 3D support (Three.js)
+- Advanced AI features (code review, debugging)
+- Performance profiling tools
+- Plugin system
+
+**Phase 3 (Months 7-12):**
+- Multiplayer framework
+- Mobile export (Capacitor)
+- Steam/itch.io publishing
+- Asset store
+
+**Phase 4 (Year 2):**
+- Visual scripting
+- Animation editor
+- Sound designer
+- Community marketplace
+
+---
+
+## Metrics for Success
+
+**Usage Metrics:**
+- Weekly active users
+- Games created per user
+- AI chat interactions per session
+- Export rate (% users who export games)
+
+**Quality Metrics:**
+- Engine performance (FPS in benchmark scenes)
+- Time to first playable game
+- User satisfaction (NPS score)
+- Bug reports per release
+
+**Business Metrics (Future):**
+- Conversion to paid plans
+- Asset store transactions
+- Enterprise licenses
+
+---
+
+## Conclusion
+
+PromptPlay Desktop MVP focuses on **one thing done exceptionally well**: AI-collaborative 2D game development. By constraining scope and building on proven technologies (Tauri, React, PixiJS), we can ship a polished v1.0 in 13 weeks.
+
+The key innovation isn't flashy features—it's making AI pair programming feel **native** instead of tacked on.

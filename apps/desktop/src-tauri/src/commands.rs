@@ -82,3 +82,245 @@ pub async fn load_game_spec(project_path: String) -> Result<String, String> {
 pub async fn path_exists(path: String) -> Result<bool, String> {
     Ok(PathBuf::from(path).exists())
 }
+
+/// Create a directory (and all parent directories)
+#[tauri::command]
+pub async fn create_directory(path: String) -> Result<(), String> {
+    fs::create_dir_all(&path)
+        .map_err(|e| format!("Failed to create directory {}: {}", path, e))
+}
+
+/// Export game as a standalone HTML file
+#[tauri::command]
+pub async fn export_game_html(
+    game_spec_json: String,
+    output_path: String,
+    game_title: String,
+) -> Result<(), String> {
+    let html_content = generate_standalone_html(&game_spec_json, &game_title);
+    fs::write(&output_path, html_content)
+        .map_err(|e| format!("Failed to write export file {}: {}", output_path, e))
+}
+
+fn generate_standalone_html(game_spec_json: &str, title: &str) -> String {
+    format!(r##"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        #game-container {{
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }}
+        canvas {{ display: block; }}
+        .controls {{
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }}
+        #game-container:hover .controls {{ opacity: 1; }}
+        .controls button {{
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+        }}
+        .controls button:hover {{ background: #fff; }}
+        .game-title {{
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.7;
+        }}
+        .credits {{
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+        }}
+        .credits a {{ color: rgba(255,255,255,0.6); text-decoration: none; }}
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="game-title">{title}</div>
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div class="controls">
+            <button id="play-btn">Play</button>
+            <button id="reset-btn">Reset</button>
+        </div>
+    </div>
+    <div class="credits">Made with <a href="https://promptplay.dev" target="_blank">PromptPlay</a></div>
+
+    <script id="game-spec" type="application/json">{game_spec}</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script type="module">
+        const gameSpec = JSON.parse(document.getElementById('game-spec').textContent);
+
+        class GameRuntime {{
+            constructor(canvas, spec) {{
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.spec = spec;
+                this.entities = [];
+                this.isPlaying = false;
+                this.keys = new Map();
+                this.lastTime = 0;
+                this.engine = Matter.Engine.create({{ gravity: {{ x: spec.config.gravity.x, y: spec.config.gravity.y }} }});
+                this.bodies = new Map();
+                this.setupInput();
+                this.loadEntities();
+            }}
+
+            setupInput() {{
+                window.addEventListener('keydown', (e) => this.keys.set(e.code, true));
+                window.addEventListener('keyup', (e) => this.keys.set(e.code, false));
+            }}
+
+            loadEntities() {{
+                this.entities = [];
+                this.bodies.clear();
+                Matter.Composite.clear(this.engine.world);
+
+                for (const es of this.spec.entities) {{
+                    const e = {{
+                        name: es.name,
+                        x: es.components.transform?.x || 0,
+                        y: es.components.transform?.y || 0,
+                        rotation: es.components.transform?.rotation || 0,
+                        width: es.components.sprite?.width || 32,
+                        height: es.components.sprite?.height || 32,
+                        color: '#' + (es.components.sprite?.tint || 0x808080).toString(16).padStart(6, '0'),
+                        hasInput: !!es.components.input,
+                        moveSpeed: es.components.input?.moveSpeed || 200,
+                        jumpForce: es.components.input?.jumpForce || -400,
+                        tags: es.tags || [],
+                        isGrounded: false
+                    }};
+
+                    if (es.components.collider) {{
+                        const isStatic = !es.components.velocity && !es.components.input;
+                        const body = Matter.Bodies.rectangle(e.x, e.y,
+                            es.components.collider.width || e.width,
+                            es.components.collider.height || e.height,
+                            {{ isStatic, label: es.name }});
+                        Matter.Composite.add(this.engine.world, body);
+                        this.bodies.set(es.name, body);
+                    }}
+                    this.entities.push(e);
+                }}
+
+                Matter.Events.on(this.engine, 'collisionStart', (ev) => {{
+                    for (const p of ev.pairs) {{
+                        const a = this.entities.find(e => e.name === p.bodyA.label);
+                        const b = this.entities.find(e => e.name === p.bodyB.label);
+                        if (a?.hasInput && (b?.tags?.includes('ground') || b?.tags?.includes('platform'))) a.isGrounded = true;
+                        if (b?.hasInput && (a?.tags?.includes('ground') || a?.tags?.includes('platform'))) b.isGrounded = true;
+                    }}
+                }});
+
+                Matter.Events.on(this.engine, 'collisionEnd', (ev) => {{
+                    for (const p of ev.pairs) {{
+                        const a = this.entities.find(e => e.name === p.bodyA.label);
+                        const b = this.entities.find(e => e.name === p.bodyB.label);
+                        if (a?.hasInput && (b?.tags?.includes('ground') || b?.tags?.includes('platform'))) a.isGrounded = false;
+                        if (b?.hasInput && (a?.tags?.includes('ground') || a?.tags?.includes('platform'))) b.isGrounded = false;
+                    }}
+                }});
+            }}
+
+            start() {{ this.isPlaying = true; this.lastTime = performance.now(); this.loop(); }}
+            pause() {{ this.isPlaying = false; }}
+            reset() {{ this.loadEntities(); }}
+
+            loop() {{
+                if (!this.isPlaying) return;
+                const now = performance.now();
+                const dt = Math.min((now - this.lastTime) / 1000, 0.1);
+                this.lastTime = now;
+                this.update(dt);
+                this.render();
+                requestAnimationFrame(() => this.loop());
+            }}
+
+            update(dt) {{
+                for (const e of this.entities) {{
+                    if (!e.hasInput) continue;
+                    const body = this.bodies.get(e.name);
+                    if (!body) continue;
+                    let vx = 0;
+                    if (this.keys.get('ArrowLeft') || this.keys.get('KeyA')) vx = -e.moveSpeed;
+                    if (this.keys.get('ArrowRight') || this.keys.get('KeyD')) vx = e.moveSpeed;
+                    Matter.Body.setVelocity(body, {{ x: vx * 0.01, y: body.velocity.y }});
+                    if ((this.keys.get('Space') || this.keys.get('ArrowUp') || this.keys.get('KeyW')) && e.isGrounded) {{
+                        Matter.Body.setVelocity(body, {{ x: body.velocity.x, y: e.jumpForce * 0.01 }});
+                        e.isGrounded = false;
+                    }}
+                }}
+                Matter.Engine.update(this.engine, dt * 1000);
+                for (const e of this.entities) {{
+                    const body = this.bodies.get(e.name);
+                    if (body) {{ e.x = body.position.x; e.y = body.position.y; e.rotation = body.angle; }}
+                }}
+            }}
+
+            render() {{
+                const ctx = this.ctx;
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                for (const e of this.entities) {{
+                    ctx.save();
+                    ctx.translate(e.x, e.y);
+                    ctx.rotate(e.rotation);
+                    ctx.fillStyle = e.color;
+                    ctx.fillRect(-e.width/2, -e.height/2, e.width, e.height);
+                    ctx.restore();
+                }}
+            }}
+        }}
+
+        const canvas = document.getElementById('game-canvas');
+        const runtime = new GameRuntime(canvas, gameSpec);
+        let isPlaying = false;
+
+        document.getElementById('play-btn').addEventListener('click', () => {{
+            if (isPlaying) {{ runtime.pause(); document.getElementById('play-btn').textContent = 'Play'; }}
+            else {{ runtime.start(); document.getElementById('play-btn').textContent = 'Pause'; }}
+            isPlaying = !isPlaying;
+        }});
+
+        document.getElementById('reset-btn').addEventListener('click', () => {{
+            runtime.reset();
+            if (!isPlaying) runtime.render();
+        }});
+
+        runtime.render();
+    </script>
+</body>
+</html>"##, title = title, game_spec = game_spec_json)
+}

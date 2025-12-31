@@ -1,16 +1,29 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import type { GameSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
 import CodeEditor from './components/CodeEditor';
 import FileTree from './components/FileTree';
 import SceneTree from './components/SceneTree';
 import Inspector from './components/Inspector';
+import JSONEditorPanel from './components/JSONEditorPanel';
+import AIPromptPanel from './components/AIPromptPanel';
+import AssetBrowser from './components/AssetBrowser';
+import WelcomeScreen from './components/WelcomeScreen';
+import ErrorDisplay from './components/ErrorDisplay';
 import { useFileWatcher } from './hooks/useFileWatcher';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ImageIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
-type LeftPanelMode = 'files' | 'scene';
+type LeftPanelMode = 'files' | 'scene' | 'assets';
+type RightPanelMode = 'inspector' | 'json';
+
+// History entry for undo/redo
+interface HistoryEntry {
+  gameSpec: GameSpec;
+  description: string;
+}
 
 function App() {
   const [gameSpec, setGameSpec] = useState<GameSpec | null>(null);
@@ -23,6 +36,73 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('inspector');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Undo/Redo history
+  const historyRef = useRef<HistoryEntry[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const isUndoRedoRef = useRef(false);
+
+  // Push to history
+  const pushHistory = useCallback((spec: GameSpec, description: string) => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+
+    // Remove any future history if we're in the middle
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+
+    // Add new entry
+    historyRef.current.push({
+      gameSpec: JSON.parse(JSON.stringify(spec)),
+      description,
+    });
+
+    // Limit history size
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+    } else {
+      historyIndexRef.current++;
+    }
+  }, []);
+
+  // Undo
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+
+    historyIndexRef.current--;
+    isUndoRedoRef.current = true;
+
+    const entry = historyRef.current[historyIndexRef.current];
+    setGameSpec(JSON.parse(JSON.stringify(entry.gameSpec)));
+    setHasUnsavedChanges(true);
+    setNotification(`Undo: ${entry.description}`);
+    setTimeout(() => setNotification(null), 2000);
+  }, []);
+
+  // Redo
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+
+    historyIndexRef.current++;
+    isUndoRedoRef.current = true;
+
+    const entry = historyRef.current[historyIndexRef.current];
+    setGameSpec(JSON.parse(JSON.stringify(entry.gameSpec)));
+    setHasUnsavedChanges(true);
+    setNotification(`Redo: ${entry.description}`);
+    setTimeout(() => setNotification(null), 2000);
+  }, []);
+
+  // Check if undo/redo available
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
   // Handle entity selection - auto switch to Scene tab
   const handleEntitySelect = useCallback((entityName: string | null) => {
@@ -62,7 +142,7 @@ function App() {
     onFileChanged: handleFileChanged,
   });
 
-  const openProject = async () => {
+  const openProject = useCallback(async () => {
     let gameJsonStr = '';
     try {
       setLoading(true);
@@ -92,8 +172,13 @@ function App() {
       const spec = JSON.parse(gameJsonStr) as GameSpec;
       console.log('Parsed game spec:', spec);
       setGameSpec(spec);
-      setIsPlaying(true);
+      setIsPlaying(false); // Start in editing mode
       setLoading(false);
+      setHasUnsavedChanges(false);
+
+      // Initialize history
+      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(spec)), description: 'Initial state' }];
+      historyIndexRef.current = 0;
     } catch (err) {
       console.error('Full error:', err);
       console.error('Game JSON string:', gameJsonStr);
@@ -101,7 +186,7 @@ function App() {
       setLoading(false);
       setIsPlaying(false);
     }
-  };
+  }, []);
 
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -114,6 +199,415 @@ function App() {
       setIsPlaying(true);
     }
   };
+
+  // Save project to disk
+  const saveProject = async () => {
+    if (!gameSpec || !projectPath) return;
+
+    try {
+      const gameJsonPath = `${projectPath}/game.json`;
+      const gameJsonContent = JSON.stringify(gameSpec, null, 2);
+
+      await invoke('write_file', {
+        path: gameJsonPath,
+        content: gameJsonContent,
+      });
+
+      setHasUnsavedChanges(false);
+      setNotification('Project saved');
+      setTimeout(() => setNotification(null), 2000);
+    } catch (err) {
+      console.error('Failed to save project:', err);
+      setError('Failed to save project: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Create new project
+  const createNewProject = async () => {
+    if (!newProjectName.trim()) return;
+
+    try {
+      // Ask user where to save
+      const selectedPath = await save({
+        title: 'Create New Project',
+        defaultPath: newProjectName,
+      });
+
+      if (!selectedPath) return;
+
+      // Create project directory
+      await invoke('create_directory', { path: selectedPath });
+
+      // Create default game.json
+      const defaultSpec: GameSpec = {
+        version: '1.0.0',
+        metadata: {
+          title: newProjectName,
+          genre: 'platformer',
+          description: 'A new game created with PromptPlay',
+        },
+        config: {
+          gravity: { x: 0, y: 1 },
+          worldBounds: { width: 800, height: 600 },
+        },
+        entities: [
+          {
+            name: 'player',
+            components: {
+              transform: { x: 400, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+              sprite: { texture: 'default', width: 32, height: 32, tint: 0x4488ff },
+              velocity: { vx: 0, vy: 0 },
+              collider: { type: 'box', width: 32, height: 32 },
+              input: { moveSpeed: 200, jumpForce: 400 },
+            },
+            tags: ['player'],
+          },
+          {
+            name: 'ground',
+            components: {
+              transform: { x: 400, y: 580, rotation: 0, scaleX: 1, scaleY: 1 },
+              sprite: { texture: 'default', width: 800, height: 40, tint: 0x664422 },
+              collider: { type: 'box', width: 800, height: 40 },
+            },
+            tags: ['ground', 'platform'],
+          },
+        ],
+        systems: ['input', 'physics', 'collision', 'render'],
+      };
+
+      const gameJsonPath = `${selectedPath}/game.json`;
+      await invoke('write_file', {
+        path: gameJsonPath,
+        content: JSON.stringify(defaultSpec, null, 2),
+      });
+
+      // Load the new project
+      setProjectPath(selectedPath);
+      setGameSpec(defaultSpec);
+      setIsPlaying(false);
+      setHasUnsavedChanges(false);
+      setShowNewProjectModal(false);
+      setNewProjectName('');
+
+      // Initialize history
+      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(defaultSpec)), description: 'Initial state' }];
+      historyIndexRef.current = 0;
+
+      setNotification('Project created');
+      setTimeout(() => setNotification(null), 2000);
+    } catch (err) {
+      console.error('Failed to create project:', err);
+      setError('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Template specs for different game types
+  const getTemplateSpec = (templateId: string, projectName: string): GameSpec => {
+    const baseSpec = {
+      version: '1.0.0',
+      metadata: {
+        title: projectName,
+        genre: 'platformer' as const,
+        description: `A ${templateId} game created with PromptPlay`,
+      },
+      config: {
+        gravity: { x: 0, y: 1 },
+        worldBounds: { width: 800, height: 600 },
+      },
+      systems: ['input', 'physics', 'collision', 'render'],
+    };
+
+    switch (templateId) {
+      case 'platformer':
+        return {
+          ...baseSpec,
+          metadata: { ...baseSpec.metadata, genre: 'platformer' },
+          entities: [
+            {
+              name: 'player',
+              components: {
+                transform: { x: 100, y: 400, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 32, height: 48, tint: 0x4488ff },
+                velocity: { vx: 0, vy: 0 },
+                collider: { type: 'box', width: 32, height: 48 },
+                input: { moveSpeed: 200, jumpForce: -400 },
+              },
+              tags: ['player'],
+            },
+            {
+              name: 'ground',
+              components: {
+                transform: { x: 400, y: 580, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 800, height: 40, tint: 0x664422 },
+                collider: { type: 'box', width: 800, height: 40 },
+              },
+              tags: ['ground', 'platform'],
+            },
+            {
+              name: 'platform1',
+              components: {
+                transform: { x: 200, y: 450, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 150, height: 20, tint: 0x886644 },
+                collider: { type: 'box', width: 150, height: 20 },
+              },
+              tags: ['platform'],
+            },
+            {
+              name: 'platform2',
+              components: {
+                transform: { x: 500, y: 350, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 150, height: 20, tint: 0x886644 },
+                collider: { type: 'box', width: 150, height: 20 },
+              },
+              tags: ['platform'],
+            },
+            {
+              name: 'coin1',
+              components: {
+                transform: { x: 200, y: 410, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 20, height: 20, tint: 0xffdd00 },
+                collider: { type: 'box', width: 20, height: 20 },
+              },
+              tags: ['collectible', 'coin'],
+            },
+            {
+              name: 'coin2',
+              components: {
+                transform: { x: 500, y: 310, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 20, height: 20, tint: 0xffdd00 },
+                collider: { type: 'box', width: 20, height: 20 },
+              },
+              tags: ['collectible', 'coin'],
+            },
+          ],
+        };
+
+      case 'shooter':
+        return {
+          ...baseSpec,
+          metadata: { ...baseSpec.metadata, genre: 'shooter' },
+          config: { ...baseSpec.config, gravity: { x: 0, y: 0 } },
+          entities: [
+            {
+              name: 'player',
+              components: {
+                transform: { x: 400, y: 500, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 40, height: 40, tint: 0x44aaff },
+                velocity: { vx: 0, vy: 0 },
+                collider: { type: 'box', width: 40, height: 40 },
+                input: { moveSpeed: 300, jumpForce: 0 },
+              },
+              tags: ['player'],
+            },
+            {
+              name: 'enemy1',
+              components: {
+                transform: { x: 200, y: 100, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 36, height: 36, tint: 0xff4444 },
+                velocity: { vx: 50, vy: 0 },
+                collider: { type: 'box', width: 36, height: 36 },
+              },
+              tags: ['enemy'],
+            },
+            {
+              name: 'enemy2',
+              components: {
+                transform: { x: 600, y: 150, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 36, height: 36, tint: 0xff4444 },
+                velocity: { vx: -50, vy: 0 },
+                collider: { type: 'box', width: 36, height: 36 },
+              },
+              tags: ['enemy'],
+            },
+            {
+              name: 'wall_left',
+              components: {
+                transform: { x: 10, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 20, height: 600, tint: 0x666666 },
+                collider: { type: 'box', width: 20, height: 600 },
+              },
+              tags: ['wall'],
+            },
+            {
+              name: 'wall_right',
+              components: {
+                transform: { x: 790, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 20, height: 600, tint: 0x666666 },
+                collider: { type: 'box', width: 20, height: 600 },
+              },
+              tags: ['wall'],
+            },
+          ],
+        };
+
+      case 'puzzle':
+        return {
+          ...baseSpec,
+          metadata: { ...baseSpec.metadata, genre: 'puzzle' },
+          config: { ...baseSpec.config, gravity: { x: 0, y: 0 } },
+          entities: [
+            {
+              name: 'player',
+              components: {
+                transform: { x: 100, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 48, height: 48, tint: 0x44aa88 },
+                velocity: { vx: 0, vy: 0 },
+                collider: { type: 'box', width: 48, height: 48 },
+                input: { moveSpeed: 150, jumpForce: 0 },
+              },
+              tags: ['player'],
+            },
+            {
+              name: 'block1',
+              components: {
+                transform: { x: 300, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 48, height: 48, tint: 0x8866aa },
+                collider: { type: 'box', width: 48, height: 48 },
+              },
+              tags: ['block', 'pushable'],
+            },
+            {
+              name: 'block2',
+              components: {
+                transform: { x: 400, y: 200, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 48, height: 48, tint: 0x8866aa },
+                collider: { type: 'box', width: 48, height: 48 },
+              },
+              tags: ['block', 'pushable'],
+            },
+            {
+              name: 'goal',
+              components: {
+                transform: { x: 700, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 56, height: 56, tint: 0xffdd44 },
+                collider: { type: 'box', width: 56, height: 56 },
+              },
+              tags: ['goal'],
+            },
+            {
+              name: 'wall_top',
+              components: {
+                transform: { x: 400, y: 20, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 800, height: 40, tint: 0x444444 },
+                collider: { type: 'box', width: 800, height: 40 },
+              },
+              tags: ['wall'],
+            },
+            {
+              name: 'wall_bottom',
+              components: {
+                transform: { x: 400, y: 580, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 800, height: 40, tint: 0x444444 },
+                collider: { type: 'box', width: 800, height: 40 },
+              },
+              tags: ['wall'],
+            },
+          ],
+        };
+
+      case 'empty':
+      default:
+        return {
+          ...baseSpec,
+          entities: [
+            {
+              name: 'player',
+              components: {
+                transform: { x: 400, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+                sprite: { texture: 'default', width: 32, height: 32, tint: 0x4488ff },
+                velocity: { vx: 0, vy: 0 },
+                collider: { type: 'box', width: 32, height: 32 },
+                input: { moveSpeed: 200, jumpForce: -400 },
+              },
+              tags: ['player'],
+            },
+          ],
+        };
+    }
+  };
+
+  // Create project from template
+  const createFromTemplate = async (templateId: string) => {
+    const projectName = `${templateId}-game`;
+
+    try {
+      // Ask user where to save
+      const selectedPath = await save({
+        title: `Create ${templateId.charAt(0).toUpperCase() + templateId.slice(1)} Project`,
+        defaultPath: projectName,
+      });
+
+      if (!selectedPath) return;
+
+      // Create project directory
+      await invoke('create_directory', { path: selectedPath });
+
+      // Get template spec
+      const templateSpec = getTemplateSpec(templateId, projectName);
+
+      // Write game.json
+      const gameJsonPath = `${selectedPath}/game.json`;
+      await invoke('write_file', {
+        path: gameJsonPath,
+        content: JSON.stringify(templateSpec, null, 2),
+      });
+
+      // Load the new project
+      setProjectPath(selectedPath);
+      setGameSpec(templateSpec);
+      setIsPlaying(false);
+      setHasUnsavedChanges(false);
+
+      // Initialize history
+      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(templateSpec)), description: 'Initial state' }];
+      historyIndexRef.current = 0;
+
+      setNotification(`${templateId} project created`);
+      setTimeout(() => setNotification(null), 2000);
+    } catch (err) {
+      console.error('Failed to create project from template:', err);
+      setError('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Export game as standalone HTML
+  const exportGame = useCallback(async () => {
+    if (!gameSpec) return;
+
+    try {
+      setIsExporting(true);
+
+      const gameTitle = gameSpec.metadata?.title || 'PromptPlay Game';
+      const defaultFileName = `${gameTitle.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.html`;
+
+      // Ask user where to save
+      const outputPath = await save({
+        title: 'Export Game as HTML',
+        defaultPath: defaultFileName,
+        filters: [{ name: 'HTML Files', extensions: ['html'] }],
+      });
+
+      if (!outputPath) {
+        setIsExporting(false);
+        return;
+      }
+
+      // Call Rust to generate and save the HTML
+      await invoke('export_game_html', {
+        gameSpecJson: JSON.stringify(gameSpec),
+        outputPath,
+        gameTitle,
+      });
+
+      setNotification('Game exported successfully!');
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error('Failed to export game:', err);
+      setError('Failed to export game: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [gameSpec]);
 
   const handleFileSave = async (filePath: string, content: string) => {
     // If game.json was saved, reload the game spec
@@ -129,167 +623,201 @@ function App() {
   };
 
   const handleUpdateEntity = async (entityName: string, updates: any) => {
-    if (!gameSpec || !projectPath) return;
+    if (!gameSpec) return;
 
-    try {
-      // Update the game spec with modified entity
-      const updatedEntities = gameSpec.entities?.map((entity) =>
-        entity.name === entityName ? { ...entity, ...updates } : entity
-      );
+    // Update the game spec with modified entity
+    const updatedEntities = gameSpec.entities?.map((entity) =>
+      entity.name === entityName ? { ...entity, ...updates } : entity
+    );
 
-      const updatedSpec = {
-        ...gameSpec,
-        entities: updatedEntities,
-      };
+    const updatedSpec = {
+      ...gameSpec,
+      entities: updatedEntities,
+    };
 
-      // Save to game.json file
-      const gameJsonPath = `${projectPath}/game.json`;
-      const gameJsonContent = JSON.stringify(updatedSpec, null, 2);
+    // Push to history
+    pushHistory(updatedSpec, `Update ${entityName}`);
 
-      await invoke('write_file', {
-        path: gameJsonPath,
-        content: gameJsonContent,
-      });
-
-      // Update state
-      setGameSpec(updatedSpec);
-      setNotification('Entity updated');
-      setTimeout(() => setNotification(null), 2000);
-    } catch (err) {
-      console.error('Failed to update entity:', err);
-      setError('Failed to save entity changes: ' + (err instanceof Error ? err.message : String(err)));
-    }
+    // Update state (don't auto-save, mark as unsaved)
+    setGameSpec(updatedSpec);
+    setHasUnsavedChanges(true);
   };
 
   const handleCreateEntity = async () => {
-    if (!gameSpec || !projectPath) return;
+    if (!gameSpec) return;
 
-    try {
-      // Generate unique name
-      const baseName = 'entity';
-      let counter = 1;
-      const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-      while (existingNames.has(`${baseName}${counter}`)) {
-        counter++;
-      }
-      const newName = `${baseName}${counter}`;
-
-      // Create new entity with default components
-      const newEntity = {
-        name: newName,
-        components: {
-          transform: { x: 400, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
-          sprite: { texture: 'default', width: 32, height: 32, tint: 8421504 },
-        },
-        tags: [],
-      };
-
-      const updatedSpec = {
-        ...gameSpec,
-        entities: [...(gameSpec.entities || []), newEntity],
-      };
-
-      // Save to file
-      const gameJsonPath = `${projectPath}/game.json`;
-      await invoke('write_file', {
-        path: gameJsonPath,
-        content: JSON.stringify(updatedSpec, null, 2),
-      });
-
-      setGameSpec(updatedSpec);
-      setSelectedEntity(newName);
-      setLeftPanelMode('scene');
-      setNotification('Entity created');
-      setTimeout(() => setNotification(null), 2000);
-    } catch (err) {
-      console.error('Failed to create entity:', err);
-      setError('Failed to create entity: ' + (err instanceof Error ? err.message : String(err)));
+    // Generate unique name
+    const baseName = 'entity';
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
+    while (existingNames.has(`${baseName}${counter}`)) {
+      counter++;
     }
+    const newName = `${baseName}${counter}`;
+
+    // Create new entity with default components
+    const newEntity = {
+      name: newName,
+      components: {
+        transform: { x: 400, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
+        sprite: { texture: 'default', width: 32, height: 32, tint: 8421504 },
+      },
+      tags: [],
+    };
+
+    const updatedSpec = {
+      ...gameSpec,
+      entities: [...(gameSpec.entities || []), newEntity],
+    };
+
+    // Push to history
+    pushHistory(updatedSpec, `Create ${newName}`);
+
+    setGameSpec(updatedSpec);
+    setSelectedEntity(newName);
+    setLeftPanelMode('scene');
+    setHasUnsavedChanges(true);
+    setNotification('Entity created');
+    setTimeout(() => setNotification(null), 2000);
   };
 
   const handleDeleteEntity = async (entityName: string) => {
-    if (!gameSpec || !projectPath) return;
+    if (!gameSpec) return;
 
-    try {
-      const updatedEntities = gameSpec.entities?.filter((e) => e.name !== entityName) || [];
+    const updatedEntities = gameSpec.entities?.filter((e) => e.name !== entityName) || [];
 
-      const updatedSpec = {
-        ...gameSpec,
-        entities: updatedEntities,
-      };
+    const updatedSpec = {
+      ...gameSpec,
+      entities: updatedEntities,
+    };
 
-      // Save to file
-      const gameJsonPath = `${projectPath}/game.json`;
-      await invoke('write_file', {
-        path: gameJsonPath,
-        content: JSON.stringify(updatedSpec, null, 2),
-      });
+    // Push to history
+    pushHistory(updatedSpec, `Delete ${entityName}`);
 
-      setGameSpec(updatedSpec);
-      if (selectedEntity === entityName) {
-        setSelectedEntity(null);
-      }
-      setNotification('Entity deleted');
-      setTimeout(() => setNotification(null), 2000);
-    } catch (err) {
-      console.error('Failed to delete entity:', err);
-      setError('Failed to delete entity: ' + (err instanceof Error ? err.message : String(err)));
+    setGameSpec(updatedSpec);
+    if (selectedEntity === entityName) {
+      setSelectedEntity(null);
     }
+    setHasUnsavedChanges(true);
+    setNotification('Entity deleted');
+    setTimeout(() => setNotification(null), 2000);
   };
 
   const handleDuplicateEntity = async (entityName: string) => {
-    if (!gameSpec || !projectPath) return;
+    if (!gameSpec) return;
 
-    try {
-      const entity = gameSpec.entities?.find((e) => e.name === entityName);
-      if (!entity) return;
+    const entity = gameSpec.entities?.find((e) => e.name === entityName);
+    if (!entity) return;
 
-      // Generate unique name
-      let counter = 1;
-      const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-      while (existingNames.has(`${entityName}_copy${counter}`)) {
-        counter++;
-      }
-      const newName = `${entityName}_copy${counter}`;
-
-      // Deep clone and offset position
-      const newEntity = JSON.parse(JSON.stringify(entity));
-      newEntity.name = newName;
-      if (newEntity.components?.transform) {
-        newEntity.components.transform.x += 50;
-        newEntity.components.transform.y += 50;
-      }
-
-      const updatedSpec = {
-        ...gameSpec,
-        entities: [...(gameSpec.entities || []), newEntity],
-      };
-
-      // Save to file
-      const gameJsonPath = `${projectPath}/game.json`;
-      await invoke('write_file', {
-        path: gameJsonPath,
-        content: JSON.stringify(updatedSpec, null, 2),
-      });
-
-      setGameSpec(updatedSpec);
-      setSelectedEntity(newName);
-      setNotification('Entity duplicated');
-      setTimeout(() => setNotification(null), 2000);
-    } catch (err) {
-      console.error('Failed to duplicate entity:', err);
-      setError('Failed to duplicate entity: ' + (err instanceof Error ? err.message : String(err)));
+    // Generate unique name
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
+    while (existingNames.has(`${entityName}_copy${counter}`)) {
+      counter++;
     }
+    const newName = `${entityName}_copy${counter}`;
+
+    // Deep clone and offset position
+    const newEntity = JSON.parse(JSON.stringify(entity));
+    newEntity.name = newName;
+    if (newEntity.components?.transform) {
+      newEntity.components.transform.x += 50;
+      newEntity.components.transform.y += 50;
+    }
+
+    const updatedSpec = {
+      ...gameSpec,
+      entities: [...(gameSpec.entities || []), newEntity],
+    };
+
+    // Push to history
+    pushHistory(updatedSpec, `Duplicate ${entityName}`);
+
+    setGameSpec(updatedSpec);
+    setSelectedEntity(newName);
+    setHasUnsavedChanges(true);
+    setNotification('Entity duplicated');
+    setTimeout(() => setNotification(null), 2000);
   };
+
+  // Handle AI-generated changes
+  const handleAIChanges = useCallback((updatedSpec: GameSpec) => {
+    if (!gameSpec) return;
+
+    pushHistory(updatedSpec, 'AI modification');
+    setGameSpec(updatedSpec);
+    setHasUnsavedChanges(true);
+    setNotification('AI changes applied');
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, pushHistory]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // New Project: Cmd/Ctrl + N
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        setShowNewProjectModal(true);
+      }
+      // Open Project: Cmd/Ctrl + O
+      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+        e.preventDefault();
+        openProject();
+      }
+      // Save: Cmd/Ctrl + S
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (gameSpec && projectPath) {
+          try {
+            const gameJsonPath = `${projectPath}/game.json`;
+            const gameJsonContent = JSON.stringify(gameSpec, null, 2);
+            await invoke('write_file', {
+              path: gameJsonPath,
+              content: gameJsonContent,
+            });
+            setHasUnsavedChanges(false);
+            setNotification('Project saved');
+            setTimeout(() => setNotification(null), 2000);
+          } catch (err) {
+            console.error('Failed to save project:', err);
+          }
+        }
+      }
+      // Undo: Cmd/Ctrl + Z
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Cmd/Ctrl + Shift + Z or Cmd/Ctrl + Y
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+      // Export: Cmd/Ctrl + E
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+        e.preventDefault();
+        if (gameSpec) {
+          exportGame();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame]);
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* File Change Notification */}
       {notification && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
+          {notification.toLowerCase().includes('saved') || notification.toLowerCase().includes('success') || notification.toLowerCase().includes('exported') || notification.toLowerCase().includes('created') ? (
+            <CheckIcon size={16} className="text-white" />
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
           <span className="text-sm font-medium">{notification}</span>
         </div>
       )}
@@ -301,7 +829,7 @@ function App() {
           <div className="flex gap-1 bg-gray-100 p-2 border-b border-gray-200">
             <button
               onClick={() => setLeftPanelMode('files')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                 leftPanelMode === 'files'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
@@ -311,13 +839,24 @@ function App() {
             </button>
             <button
               onClick={() => setLeftPanelMode('scene')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                 leftPanelMode === 'scene'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Scene
+            </button>
+            <button
+              onClick={() => setLeftPanelMode('assets')}
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                leftPanelMode === 'assets'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <ImageIcon size={12} />
+              Assets
             </button>
           </div>
         )}
@@ -338,18 +877,28 @@ function App() {
 
         {/* Panel Content */}
         <div className="flex-1 overflow-y-auto">
-          {leftPanelMode === 'files' ? (
+          {leftPanelMode === 'files' && (
             <FileTree
               projectPath={projectPath}
               onFileSelect={setSelectedFile}
               selectedFile={selectedFile}
             />
-          ) : (
+          )}
+          {leftPanelMode === 'scene' && (
             <SceneTree
               gameSpec={gameSpec}
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               onCreateEntity={handleCreateEntity}
+            />
+          )}
+          {leftPanelMode === 'assets' && (
+            <AssetBrowser
+              projectPath={projectPath}
+              onAssetSelect={(path, type) => {
+                console.log('Selected asset:', path, type);
+                // Could be used to set texture on selected entity
+              }}
             />
           )}
         </div>
@@ -402,19 +951,82 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* New Project */}
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="New Project"
+            >
+              <NewProjectIcon size={18} />
+            </button>
+
             <button
               onClick={openProject}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
             >
-              {loading ? 'Loading...' : projectPath ? 'Change Project' : 'Open Project'}
+              {loading ? (
+                <>
+                  <LoadingSpinner size={16} />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                projectPath ? 'Change Project' : 'Open Project'
+              )}
             </button>
+
+            {/* Divider */}
+            {projectPath && <div className="w-px h-6 bg-gray-300" />}
+
+            {/* Save */}
+            {projectPath && (
+              <button
+                onClick={saveProject}
+                className={`p-2 rounded-md ${
+                  hasUnsavedChanges
+                    ? 'text-blue-600 hover:bg-blue-50'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Save Project (Cmd+S)"
+              >
+                <SaveIcon size={18} />
+              </button>
+            )}
+
+            {/* Undo/Redo */}
+            {projectPath && (
+              <>
+                <button
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Undo (Cmd+Z)"
+                >
+                  <UndoIcon size={18} />
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Redo (Cmd+Shift+Z)"
+                >
+                  <RedoIcon size={18} />
+                </button>
+              </>
+            )}
+
+            {/* Divider */}
+            {gameSpec && viewMode === 'game' && <div className="w-px h-6 bg-gray-300" />}
 
             {gameSpec && viewMode === 'game' && (
               <>
                 <button
                   onClick={togglePlayPause}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 text-sm font-medium"
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    isPlaying
+                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
                 >
                   {isPlaying ? 'Pause' : 'Play'}
                 </button>
@@ -426,38 +1038,63 @@ function App() {
                 </button>
               </>
             )}
+
+            {/* Divider */}
+            {projectPath && <div className="w-px h-6 bg-gray-300" />}
+
+            {/* AI Assistant */}
+            {projectPath && (
+              <button
+                onClick={() => setShowAIPanel(prev => !prev)}
+                className={`p-2 rounded-md flex items-center gap-1 ${
+                  showAIPanel
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                title="AI Assistant"
+              >
+                <AIIcon size={18} />
+                <span className="text-sm font-medium">AI</span>
+              </button>
+            )}
+
+            {/* Export */}
+            {gameSpec && (
+              <button
+                onClick={exportGame}
+                disabled={isExporting}
+                className="px-3 py-2 rounded-md flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                title="Export as HTML (Ctrl+E)"
+              >
+                {isExporting ? (
+                  <LoadingSpinner size={16} />
+                ) : (
+                  <ExportIcon size={16} />
+                )}
+                <span className="text-sm font-medium">{isExporting ? 'Exporting...' : 'Export'}</span>
+              </button>
+            )}
+
+            {/* Unsaved indicator */}
+            {hasUnsavedChanges && (
+              <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+            )}
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden">
           {error && (
-            <div className="p-4 bg-red-50 border-l-4 border-red-500">
-              <p className="text-sm font-medium text-red-800">Error</p>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
+            <ErrorDisplay error={error} onDismiss={() => setError(null)} />
           )}
 
           {!projectPath && !loading && !error && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Welcome to PromptPlay
-                </h2>
-                <p className="text-gray-600 mb-8">
-                  AI-First 2D Game Engine for Desktop
-                </p>
-                <button
-                  onClick={openProject}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                >
-                  Open Game Project
-                </button>
-                <p className="text-sm text-gray-500 mt-4">
-                  Select a folder containing a game.json file
-                </p>
-              </div>
-            </div>
+            <WelcomeScreen
+              onOpenProject={openProject}
+              onNewProject={() => setShowNewProjectModal(true)}
+              onCreateFromTemplate={createFromTemplate}
+              loading={loading}
+            />
           )}
 
           {projectPath && viewMode === 'game' && (
@@ -467,6 +1104,9 @@ function App() {
               selectedEntity={selectedEntity}
               onEntitySelect={handleEntitySelect}
               onReset={resetGame}
+              onUpdateEntity={handleUpdateEntity}
+              gridEnabled={false}
+              gridSize={16}
             />
           )}
 
@@ -479,31 +1119,125 @@ function App() {
         </div>
       </main>
 
-      {/* Right Panel - Inspector */}
-      <aside className="w-80 bg-white border-l border-gray-200">
-        {viewMode === 'game' && gameSpec ? (
-          <Inspector
-            gameSpec={gameSpec}
-            selectedEntity={selectedEntity}
-            onUpdateEntity={handleUpdateEntity}
-            onDeleteEntity={handleDeleteEntity}
-            onDuplicateEntity={handleDuplicateEntity}
-          />
-        ) : viewMode === 'code' && selectedFile ? (
-          <div className="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">File Info</h2>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Path</h3>
-            <p className="text-xs text-gray-500 break-all">{selectedFile}</p>
-          </div>
-        ) : (
-          <div className="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Inspector</h2>
-            <p className="text-sm text-gray-500">
-              {projectPath ? 'Select an entity or open a file' : 'Open a project to view details'}
-            </p>
+      {/* Right Panel - Inspector / JSON Editor */}
+      <aside className="w-80 bg-white border-l border-gray-200 flex flex-col">
+        {/* Panel Mode Tabs */}
+        {projectPath && gameSpec && viewMode === 'game' && (
+          <div className="flex gap-1 bg-gray-100 p-2 border-b border-gray-200">
+            <button
+              onClick={() => setRightPanelMode('inspector')}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                rightPanelMode === 'inspector'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Inspector
+            </button>
+            <button
+              onClick={() => setRightPanelMode('json')}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                rightPanelMode === 'json'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <CodeIcon size={14} />
+              JSON
+            </button>
           </div>
         )}
+
+        {/* Panel Content */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'game' && gameSpec && rightPanelMode === 'inspector' ? (
+            <Inspector
+              gameSpec={gameSpec}
+              selectedEntity={selectedEntity}
+              onUpdateEntity={handleUpdateEntity}
+              onDeleteEntity={handleDeleteEntity}
+              onDuplicateEntity={handleDuplicateEntity}
+            />
+          ) : viewMode === 'game' && gameSpec && rightPanelMode === 'json' ? (
+            <JSONEditorPanel
+              gameSpec={gameSpec}
+              onApplyChanges={handleAIChanges}
+              selectedEntity={selectedEntity}
+            />
+          ) : viewMode === 'code' && selectedFile ? (
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">File Info</h2>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Path</h3>
+              <p className="text-xs text-gray-500 break-all">{selectedFile}</p>
+            </div>
+          ) : (
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Inspector</h2>
+              <p className="text-sm text-gray-500">
+                {projectPath ? 'Select an entity or open a file' : 'Open a project to view details'}
+              </p>
+            </div>
+          )}
+        </div>
       </aside>
+
+      {/* New Project Modal */}
+      {showNewProjectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Project</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Project Name
+              </label>
+              <input
+                type="text"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="my-game"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createNewProject();
+                  if (e.key === 'Escape') {
+                    setShowNewProjectModal(false);
+                    setNewProjectName('');
+                  }
+                }}
+              />
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              This will create a new folder with a starter game template.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowNewProjectModal(false);
+                  setNewProjectName('');
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createNewProject}
+                disabled={!newProjectName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Prompt Panel */}
+      <AIPromptPanel
+        gameSpec={gameSpec}
+        onApplyChanges={handleAIChanges}
+        isVisible={showAIPanel}
+        onClose={() => setShowAIPanel(false)}
+      />
     </div>
   );
 }

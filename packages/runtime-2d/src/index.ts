@@ -9,3 +9,11 @@ export { GameLoop } from './gameloop/GameLoop';
 
 // Export systems
 export { InputSystem } from './systems/InputSystem';
+export { AnimationSystem } from './systems/AnimationSystem';
+export { AIBehaviorSystem } from './systems/AIBehaviorSystem';
+export { CameraSystem, CameraState } from './systems/CameraSystem';
+export { ParticleSystem } from './systems/ParticleSystem';
+export { CollisionEventSystem, CollisionHandler, CollisionRule } from './systems/CollisionEventSystem';
+
+// Export types
+export { RenderableParticle, DebugInfo } from './renderers/Canvas2DRenderer';

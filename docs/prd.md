@@ -3,29 +3,55 @@
 ## Executive Summary
 
 **Product Name:** PromptPlay
-**Version:** 1.0 MVP
+**Version:** 2.0 Desktop
 **Date:** December 2024
-**Status:** Phase 1 Complete - UI Redesign Complete
+**Status:** Architecture Pivot - Moving to Tauri Desktop
 
-PromptPlay is a web-based AI game engine that enables users to create playable 2D games through natural language prompts. Users describe their game idea in plain English, and the system generates a fully playable game using Claude API for intelligent game specification generation and a custom ECS (Entity Component System) architecture for runtime execution.
+PromptPlay is an **AI-first desktop game engine** that enables users to create 2D games through seamless AI collaboration. Unlike traditional engines where AI assistance is an afterthought, PromptPlay is built from the ground up for AI pair programming. Users can develop games through visual editing, direct coding with AI in the terminal (Claude Code), or conversational development with the built-in AI chat panel.
 
 ---
 
 ## Product Vision
 
 ### Mission
-Democratize game development by removing technical barriers, allowing anyone to create playable 2D games through simple text descriptions.
+**Make AI-collaborative game development feel native, not tacked on.**
+
+PromptPlay solves the friction of using AI with traditional game engines. In Godot or Unity, users ask AI for code, then manually copy-paste it. In PromptPlay, AI writes code directly to the project files, and the engine instantly reloads—zero friction.
 
 ### Target Audience
-- **Primary:** Beginners and non-programmers interested in game creation
-- **Secondary:** Game designers prototyping mechanics
-- **Tertiary:** Educators teaching game design concepts
+
+**Primary: Indie Game Developers (18-35)**
+- Comfortable with code
+- Want rapid iteration
+- Use AI tools (ChatGPT, Claude, GitHub Copilot)
+- Frustrated with slow iteration cycles in Unity/Godot
+
+**Secondary: Beginners (16-25)**
+- Want to learn game development
+- Prefer visual tools + AI guidance
+- Need gentle learning curve
+
+**Tertiary: Educators (25-50)**
+- Teaching game design or programming
+- Need tools that work reliably
+- Want students to focus on concepts, not boilerplate
 
 ### Success Metrics
-- Users can generate a playable game from prompt in under 30 seconds
-- 90% of generated games run without errors
-- Users can iterate on games through spec editing
-- Support for 3+ distinct game genres (platformer, shooter, puzzle)
+
+**Engagement:**
+- Users create first playable game within 10 minutes
+- 70%+ retention after first week
+- Average 5+ games created per user
+
+**Quality:**
+- Engine runs at 60 FPS with 50+ entities
+- 95%+ of AI-generated code compiles successfully
+- <5% crash rate
+
+**Business (Future):**
+- 1,000 MAU within 6 months
+- 20% conversion to paid plans (cloud hosting, advanced AI)
+- 50+ NPS score
 
 ---
 

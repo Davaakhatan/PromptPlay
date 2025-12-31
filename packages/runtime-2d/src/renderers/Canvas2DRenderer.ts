@@ -1,5 +1,25 @@
 import { hasComponent } from 'bitecs';
 import { GameWorld, Transform, Sprite } from '@promptplay/ecs-core';
+import { CameraState } from '../systems/CameraSystem';
+
+// Particle data for rendering
+export interface RenderableParticle {
+  x: number;
+  y: number;
+  size: number;
+  lifetime: number;
+  maxLifetime: number;
+  startColor: number;
+  endColor: number;
+}
+
+// Debug info for overlay
+export interface DebugInfo {
+  fps: number;
+  entityCount: number;
+  particleCount: number;
+  showDebug: boolean;
+}
 
 export class Canvas2DRenderer {
   private canvas: HTMLCanvasElement;
@@ -8,6 +28,20 @@ export class Canvas2DRenderer {
   private width: number;
   private height: number;
   private backgroundColor: string;
+
+  // Camera state
+  private cameraState: CameraState | null = null;
+
+  // Particles to render
+  private particles: RenderableParticle[] = [];
+
+  // Debug overlay
+  private debugInfo: DebugInfo = {
+    fps: 0,
+    entityCount: 0,
+    particleCount: 0,
+    showDebug: false,
+  };
 
   constructor(canvas: HTMLCanvasElement, world: GameWorld, options: {
     width: number;
@@ -35,6 +69,22 @@ export class Canvas2DRenderer {
     canvas.height = this.height;
   }
 
+  setCameraState(state: CameraState | null): void {
+    this.cameraState = state;
+  }
+
+  setParticles(particles: RenderableParticle[]): void {
+    this.particles = particles;
+  }
+
+  setDebugInfo(info: Partial<DebugInfo>): void {
+    Object.assign(this.debugInfo, info);
+  }
+
+  toggleDebug(): void {
+    this.debugInfo.showDebug = !this.debugInfo.showDebug;
+  }
+
   async initialize(): Promise<void> {
     // No async initialization needed for Canvas2D
   }
@@ -46,6 +96,18 @@ export class Canvas2DRenderer {
     // Clear canvas with background color
     this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fillRect(0, 0, this.width, this.height);
+
+    // Apply camera transformation
+    this.ctx.save();
+    if (this.cameraState) {
+      const cam = this.cameraState;
+      // Center camera on viewport
+      this.ctx.translate(this.width / 2, this.height / 2);
+      // Apply zoom
+      this.ctx.scale(cam.zoom, cam.zoom);
+      // Apply camera position (inverted - move world opposite to camera)
+      this.ctx.translate(-cam.x + cam.shakeOffsetX, -cam.y + cam.shakeOffsetY);
+    }
 
     // Sort entities by z-order if needed (for now, render in order)
     for (const eid of entities) {
@@ -87,6 +149,83 @@ export class Canvas2DRenderer {
       // Restore context state
       this.ctx.restore();
     }
+
+    // Render particles
+    this.renderParticles();
+
+    // Restore camera transformation
+    this.ctx.restore();
+
+    // Render debug overlay (not affected by camera)
+    if (this.debugInfo.showDebug) {
+      this.renderDebugOverlay();
+    }
+  }
+
+  private renderParticles(): void {
+    for (const p of this.particles) {
+      const progress = p.lifetime / p.maxLifetime;
+
+      // Interpolate color
+      const color = this.lerpColor(p.startColor, p.endColor, progress);
+      const alpha = 1 - progress; // Fade out
+
+      // Convert to CSS color
+      const r = (color >> 16) & 0xff;
+      const g = (color >> 8) & 0xff;
+      const b = color & 0xff;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, p.size * (1 - progress * 0.5), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
+  private lerpColor(start: number, end: number, t: number): number {
+    const sr = (start >> 16) & 0xff;
+    const sg = (start >> 8) & 0xff;
+    const sb = start & 0xff;
+    const er = (end >> 16) & 0xff;
+    const eg = (end >> 8) & 0xff;
+    const eb = end & 0xff;
+
+    const r = Math.round(sr + (er - sr) * t);
+    const g = Math.round(sg + (eg - sg) * t);
+    const b = Math.round(sb + (eb - sb) * t);
+
+    return (r << 16) | (g << 8) | b;
+  }
+
+  private renderDebugOverlay(): void {
+    const padding = 10;
+    const lineHeight = 18;
+    const lines = [
+      `FPS: ${this.debugInfo.fps}`,
+      `Entities: ${this.debugInfo.entityCount}`,
+      `Particles: ${this.debugInfo.particleCount}`,
+    ];
+
+    if (this.cameraState) {
+      lines.push(`Camera: (${this.cameraState.x.toFixed(0)}, ${this.cameraState.y.toFixed(0)})`);
+      lines.push(`Zoom: ${this.cameraState.zoom.toFixed(2)}x`);
+    }
+
+    // Draw background
+    const boxWidth = 150;
+    const boxHeight = lines.length * lineHeight + padding * 2;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(padding, padding, boxWidth, boxHeight);
+
+    // Draw text
+    this.ctx.fillStyle = '#00ff00';
+    this.ctx.font = '14px monospace';
+    lines.forEach((line, i) => {
+      this.ctx.fillText(line, padding * 2, padding * 2 + i * lineHeight);
+    });
   }
 
   cleanup(): void {
