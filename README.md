@@ -189,11 +189,14 @@ Games are defined in JSON format:
 |-----------|-----------|-------------|
 | **Transform** | x, y, rotation, scaleX, scaleY | Position and orientation |
 | **Velocity** | vx, vy | Movement speed |
-| **Sprite** | texture, width, height, tint, visible | Visual representation |
-| **Collider** | type, width, height, radius, isSensor | Physics shape |
+| **Sprite** | texture, width, height, tint, visible, zIndex, frameX/Y, anchorX/Y, flipX/Y | Visual representation with sprite sheet & layering |
+| **Collider** | type, width, height, radius, isSensor, layer | Physics shape |
 | **Input** | moveSpeed, jumpForce, canJump | Player controls |
 | **Health** | current, max | Damage system |
 | **AIBehavior** | type, speed, detectionRadius | Enemy AI |
+| **Animation** | frameCount, frameDuration, loop, isPlaying | Sprite animations |
+| **Camera** | zoom, followTarget, followSmoothing, shake | Camera control |
+| **ParticleEmitter** | emitRate, lifetime, size, speed, colors | Particle effects |
 
 ---
 
@@ -279,6 +282,10 @@ PromptPlay uses bitecs for high-performance game logic:
 
 ```
 GameSpec → Deserializer → ECS World → Canvas2DRenderer → Screen
+                                            ↓
+                                    Texture Loading
+                                    Z-Index Sorting
+                                    Sprite Sheet Frames
 ```
 
 ### Physics Integration

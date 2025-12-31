@@ -132,8 +132,20 @@ interface SpriteData {
   texture: string;
   width: number;
   height: number;
-  tint?: string; // Hex color: "#RRGGBBAAhex"
+  tint?: string | number;  // Hex color or number
   visible?: boolean;
+  zIndex?: number;         // Render order (higher = front)
+  // Sprite sheet support
+  frameX?: number;         // Frame X position in sheet
+  frameY?: number;         // Frame Y position in sheet
+  frameWidth?: number;     // Frame width (0 = full texture)
+  frameHeight?: number;    // Frame height (0 = full texture)
+  // Anchor point (0-1, default 0.5 = center)
+  anchorX?: number;
+  anchorY?: number;
+  // Flip support
+  flipX?: boolean;
+  flipY?: boolean;
 }
 ```
 
@@ -176,6 +188,59 @@ interface AIBehaviorData {
   targetEntity?: number;
   detectionRadius?: number;
   speed: number;
+}
+```
+
+#### AnimationData
+
+```typescript
+interface AnimationData {
+  currentFrame?: number;
+  frameCount: number;
+  frameDuration: number;  // Duration per frame in ms
+  isPlaying?: boolean;
+  loop?: boolean;
+  animationId?: number;
+}
+```
+
+#### CameraData
+
+```typescript
+interface CameraData {
+  offsetX?: number;
+  offsetY?: number;
+  zoom?: number;              // Default: 1
+  followTarget?: number;      // Entity ID to follow
+  followSmoothing?: number;   // Lerp factor (0-1)
+  viewportWidth?: number;
+  viewportHeight?: number;
+  shakeIntensity?: number;    // Shake amount in pixels
+  shakeDuration?: number;     // Shake duration in ms
+  isActive?: boolean;
+}
+```
+
+#### ParticleEmitterData
+
+```typescript
+interface ParticleEmitterData {
+  emitRate?: number;          // Particles per second
+  maxParticles?: number;
+  minLifetime?: number;       // Seconds
+  maxLifetime?: number;
+  minSize?: number;
+  maxSize?: number;
+  minSpeed?: number;
+  maxSpeed?: number;
+  minAngle?: number;          // Radians
+  maxAngle?: number;
+  startColor?: number | string;
+  endColor?: number | string;
+  gravityX?: number;
+  gravityY?: number;
+  isEmitting?: boolean;
+  burstCount?: number;        // Particles per burst
 }
 ```
 
@@ -363,7 +428,10 @@ import {
   Collider,
   Input,
   Health,
-  AIBehavior
+  AIBehavior,
+  Animation,
+  Camera,
+  ParticleEmitter
 } from '@promptplay/ecs-core';
 
 // Get transform data for an entity
@@ -562,7 +630,7 @@ if (bounds) {
 
 ### Canvas2DRenderer
 
-Canvas2D rendering integration.
+Canvas2D rendering integration with texture loading and z-ordering.
 
 #### `initialize(): void`
 
@@ -572,13 +640,35 @@ Sets up the Canvas2D context and prepares for rendering.
 
 #### `render(): void`
 
-Renders all entities by reading directly from ECS Transform and Sprite components.
+Renders all entities with z-index sorting. Supports:
+
+- Loaded texture images with caching
+- Sprite sheet frame rendering
+- Anchor points for rotation/scaling pivot
+- Horizontal and vertical flipping
+- Color tint overlay
+
+---
+
+#### `async preloadTextures(): Promise<void>`
+
+Preloads all textures registered in the world.
+
+---
+
+#### `setAssetBasePath(path: string): void`
+
+Sets the base path for loading texture assets.
+
+**Parameters:**
+
+- `path` - Base directory for assets (e.g., '/assets/' or 'file:///path/to/assets/')
 
 ---
 
 #### `cleanup(): void`
 
-Cleans up rendering resources.
+Cleans up rendering resources and texture cache.
 
 ---
 

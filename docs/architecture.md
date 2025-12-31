@@ -265,13 +265,33 @@ export const Transform = defineComponent({
   scaleY: Types.f32,
 });
 
-// Similar definitions for:
+// Sprite.ts - Enhanced with z-ordering, sprite sheets, anchors, flipping
+export const Sprite = defineComponent({
+  textureId: Types.ui32,
+  width: Types.f32,
+  height: Types.f32,
+  tint: Types.ui32,
+  visible: Types.ui8,
+  zIndex: Types.i16,           // Render order (-32768 to 32767)
+  frameX: Types.ui16,          // Sprite sheet frame X
+  frameY: Types.ui16,          // Sprite sheet frame Y
+  frameWidth: Types.ui16,      // Frame width (0 = full texture)
+  frameHeight: Types.ui16,     // Frame height (0 = full texture)
+  anchorX: Types.f32,          // Anchor point X (0-1)
+  anchorY: Types.f32,          // Anchor point Y (0-1)
+  flipX: Types.ui8,            // Horizontal flip
+  flipY: Types.ui8,            // Vertical flip
+});
+
+// Other components:
 // - Velocity (vx, vy)
-// - Sprite (texture, width, height, tint)
-// - Collider (type, width, height, radius, isSensor)
-// - Input (moveSpeed, jumpForce)
+// - Collider (type, width, height, radius, isSensor, layer)
+// - Input (moveSpeed, jumpForce, canJump)
 // - Health (current, max)
 // - AIBehavior (behaviorType, targetEntity, detectionRadius, speed)
+// - Animation (currentFrame, frameCount, frameDuration, isPlaying, loop)
+// - Camera (offsetX/Y, zoom, followTarget, followSmoothing, shake)
+// - ParticleEmitter (emitRate, lifetime, size, speed, colors, gravity)
 ```
 
 #### World Management
@@ -360,12 +380,25 @@ class Canvas2DRenderer {
   private ctx: CanvasRenderingContext2D;
   private world: GameWorld;
   private backgroundColor: number;
+  private textureCache: Map<number, TextureEntry>;  // Loaded images
+  private assetBasePath: string;                     // Asset directory
 
   initialize(): void;
-  render(): void; // Reads from ECS Transform/Sprite components
+  render(): void;      // Z-sorted rendering with texture support
   cleanup(): void;
+  setAssetBasePath(path: string): void;
+  async preloadTextures(): Promise<void>;  // Async texture loading
 }
 ```
+
+**Rendering Features:**
+
+- **Texture Loading:** Async image loading with caching
+- **Z-Index Sorting:** Entities sorted by zIndex before rendering
+- **Sprite Sheets:** Frame-based rendering (frameX, frameY, frameWidth, frameHeight)
+- **Anchor Points:** Custom pivot points for rotation/scaling
+- **Flip Support:** Horizontal and vertical sprite flipping
+- **Tint Overlay:** Color tinting for loaded textures
 
 #### MatterPhysics
 
