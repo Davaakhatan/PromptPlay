@@ -9,6 +9,8 @@ export class GameWorld {
   private entityTags: Map<number, Set<string>> = new Map(); // eid -> Set<tag>
   private textureRegistry: Map<string, number> = new Map(); // texture name -> id
   private nextTextureId = 0;
+  private audioRegistry: Map<string, number> = new Map(); // audio name -> id
+  private nextAudioId = 0;
 
   private metadata: GameMetadata = {
     title: '',
@@ -147,6 +149,25 @@ export class GameWorld {
     return undefined;
   }
 
+  // Audio registry
+  getAudioId(audioName: string): number {
+    if (!this.audioRegistry.has(audioName)) {
+      this.audioRegistry.set(audioName, this.nextAudioId++);
+    }
+    return this.audioRegistry.get(audioName)!;
+  }
+
+  getAudioName(audioId: number): string | undefined {
+    for (const [name, id] of this.audioRegistry) {
+      if (id === audioId) return name;
+    }
+    return undefined;
+  }
+
+  getAudioRegistry(): Map<string, number> {
+    return this.audioRegistry;
+  }
+
   // Metadata and config
   setMetadata(metadata: GameMetadata): void {
     this.metadata = metadata;
@@ -189,5 +210,7 @@ export class GameWorld {
     this.systems = [];
     this.textureRegistry.clear();
     this.nextTextureId = 0;
+    this.audioRegistry.clear();
+    this.nextAudioId = 0;
   }
 }

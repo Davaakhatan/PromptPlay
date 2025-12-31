@@ -12,6 +12,7 @@ import {
   Animation,
   Camera,
   ParticleEmitter,
+  Audio,
 } from '../components';
 
 export class Serializer {
@@ -173,6 +174,22 @@ export class Serializer {
         gravityY: ParticleEmitter.gravityY[eid],
         isEmitting: ParticleEmitter.isEmitting[eid] === 1,
         burstCount: ParticleEmitter.burstCount[eid],
+      };
+    }
+
+    // Serialize Audio
+    if (hasComponent(w, Audio, eid)) {
+      const audioId = Audio.sourceId[eid];
+      const audioName = world.getAudioName(audioId) ?? 'unknown';
+
+      components.audio = {
+        source: audioName,
+        volume: Audio.volume[eid],
+        pitch: Audio.pitch[eid],
+        isPlaying: Audio.isPlaying[eid] === 1,
+        loop: Audio.loop[eid] === 1,
+        spatial: Audio.spatial[eid] === 1,
+        maxDistance: Audio.maxDistance[eid],
       };
     }
 

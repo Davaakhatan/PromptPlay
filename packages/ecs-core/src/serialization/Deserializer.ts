@@ -12,6 +12,7 @@ import {
   Animation,
   Camera,
   ParticleEmitter,
+  Audio,
 } from '../components';
 
 export class Deserializer {
@@ -195,6 +196,19 @@ export class Deserializer {
       ParticleEmitter.burstCount[eid] = pe.burstCount ?? 0;
       ParticleEmitter.timeSinceEmit[eid] = 0;
       ParticleEmitter.activeParticles[eid] = 0;
+    }
+
+    // Deserialize Audio
+    if (components.audio) {
+      addComponent(w, Audio, eid);
+      const audioId = world.getAudioId(components.audio.source);
+      Audio.sourceId[eid] = audioId;
+      Audio.volume[eid] = components.audio.volume ?? 1;
+      Audio.pitch[eid] = components.audio.pitch ?? 1;
+      Audio.isPlaying[eid] = (components.audio.isPlaying ?? false) ? 1 : 0;
+      Audio.loop[eid] = (components.audio.loop ?? false) ? 1 : 0;
+      Audio.spatial[eid] = (components.audio.spatial ?? false) ? 1 : 0;
+      Audio.maxDistance[eid] = components.audio.maxDistance ?? 1000;
     }
 
     // Add tags

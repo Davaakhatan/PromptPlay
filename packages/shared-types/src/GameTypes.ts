@@ -44,6 +44,7 @@ export interface EntityComponents {
   animation?: AnimationComponent;
   camera?: CameraComponent;
   particleEmitter?: ParticleEmitterComponent;
+  audio?: AudioComponent;
 }
 
 // Component type definitions
@@ -152,4 +153,14 @@ export interface ParticleEmitterComponent {
   gravityY?: number;
   isEmitting?: boolean;
   burstCount?: number;
+}
+
+export interface AudioComponent {
+  source: string;
+  volume?: number;
+  pitch?: number;
+  isPlaying?: boolean;
+  loop?: boolean;
+  spatial?: boolean;
+  maxDistance?: number;
 }
