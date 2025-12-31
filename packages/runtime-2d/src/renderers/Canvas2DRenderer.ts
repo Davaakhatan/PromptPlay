@@ -21,6 +21,13 @@ export interface DebugInfo {
   showDebug: boolean;
 }
 
+// Texture cache entry
+interface TextureEntry {
+  image: HTMLImageElement;
+  loaded: boolean;
+  error: boolean;
+}
+
 export class Canvas2DRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -43,15 +50,23 @@ export class Canvas2DRenderer {
     showDebug: false,
   };
 
+  // Texture cache: textureId -> TextureEntry
+  private textureCache: Map<number, TextureEntry> = new Map();
+
+  // Asset base path for loading textures
+  private assetBasePath: string = '';
+
   constructor(canvas: HTMLCanvasElement, world: GameWorld, options: {
     width: number;
     height: number;
     backgroundColor: number;
+    assetBasePath?: string;
   }) {
     this.canvas = canvas;
     this.world = world;
     this.width = options.width;
     this.height = options.height;
+    this.assetBasePath = options.assetBasePath || '';
 
     // Convert number color to CSS hex string
     const bgHex = (options.backgroundColor & 0xFFFFFF).toString(16).padStart(6, '0');
@@ -67,6 +82,10 @@ export class Canvas2DRenderer {
     // Set canvas size
     canvas.width = this.width;
     canvas.height = this.height;
+  }
+
+  setAssetBasePath(path: string): void {
+    this.assetBasePath = path;
   }
 
   setCameraState(state: CameraState | null): void {
@@ -85,8 +104,90 @@ export class Canvas2DRenderer {
     this.debugInfo.showDebug = !this.debugInfo.showDebug;
   }
 
+  // Load a texture by name and cache it
+  loadTexture(textureName: string, textureId: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if already cached
+      if (this.textureCache.has(textureId)) {
+        const entry = this.textureCache.get(textureId)!;
+        if (entry.loaded) {
+          resolve();
+          return;
+        }
+        if (entry.error) {
+          reject(new Error(`Texture ${textureName} failed to load`));
+          return;
+        }
+      }
+
+      // Create new image
+      const img = new Image();
+      const entry: TextureEntry = {
+        image: img,
+        loaded: false,
+        error: false,
+      };
+      this.textureCache.set(textureId, entry);
+
+      img.onload = () => {
+        entry.loaded = true;
+        resolve();
+      };
+
+      img.onerror = () => {
+        entry.error = true;
+        console.warn(`Failed to load texture: ${textureName}`);
+        resolve(); // Don't reject, just fallback to color rendering
+      };
+
+      // Build texture path
+      const path = this.buildTexturePath(textureName);
+      img.src = path;
+    });
+  }
+
+  private buildTexturePath(textureName: string): string {
+    // If already a full path or data URL, use as-is
+    if (textureName.startsWith('http') || textureName.startsWith('data:') || textureName.startsWith('/')) {
+      return textureName;
+    }
+
+    // Add extension if not present
+    let fileName = textureName;
+    if (!fileName.match(/\.(png|jpg|jpeg|gif|webp|svg)$/i)) {
+      fileName += '.png';
+    }
+
+    // Combine with base path
+    if (this.assetBasePath) {
+      return `${this.assetBasePath}/${fileName}`;
+    }
+
+    return fileName;
+  }
+
+  // Preload all textures from world
+  async preloadTextures(): Promise<void> {
+    const entities = this.world.getEntities();
+    const w = this.world.getWorld();
+    const loadPromises: Promise<void>[] = [];
+
+    for (const eid of entities) {
+      if (hasComponent(w, Sprite, eid)) {
+        const textureId = Sprite.textureId[eid];
+        const textureName = this.world.getTextureName(textureId);
+        if (textureName && !this.textureCache.has(textureId)) {
+          loadPromises.push(this.loadTexture(textureName, textureId));
+        }
+      }
+    }
+
+    await Promise.all(loadPromises);
+  }
+
   async initialize(): Promise<void> {
-    // No async initialization needed for Canvas2D
+    // Preload textures on init
+    await this.preloadTextures();
   }
 
   render(): void {
@@ -109,45 +210,29 @@ export class Canvas2DRenderer {
       this.ctx.translate(-cam.x + cam.shakeOffsetX, -cam.y + cam.shakeOffsetY);
     }
 
-    // Sort entities by z-order if needed (for now, render in order)
+    // Collect renderable entities with z-index for sorting
+    const renderables: { eid: number; zIndex: number }[] = [];
+
     for (const eid of entities) {
       if (!hasComponent(w, Sprite, eid) || !hasComponent(w, Transform, eid)) {
         continue;
       }
-
       // Check if visible
       if (Sprite.visible[eid] !== 1) {
         continue;
       }
+      renderables.push({
+        eid,
+        zIndex: Sprite.zIndex[eid] || 0,
+      });
+    }
 
-      const x = Transform.x[eid];
-      const y = Transform.y[eid];
-      const rotation = Transform.rotation[eid];
-      const scaleX = Transform.scaleX[eid];
-      const scaleY = Transform.scaleY[eid];
+    // Sort by z-index (lower first = background, higher last = foreground)
+    renderables.sort((a, b) => a.zIndex - b.zIndex);
 
-      const width = Sprite.width[eid];
-      const height = Sprite.height[eid];
-      const tint = Sprite.tint[eid];
-
-      // Convert tint to CSS color
-      const colorHex = (tint & 0xFFFFFF).toString(16).padStart(6, '0');
-      const color = `#${colorHex}`;
-
-      // Save context state
-      this.ctx.save();
-
-      // Apply transformations
-      this.ctx.translate(x, y);
-      this.ctx.rotate(rotation);
-      this.ctx.scale(scaleX, scaleY);
-
-      // Draw rectangle centered at origin
-      this.ctx.fillStyle = color;
-      this.ctx.fillRect(-width / 2, -height / 2, width, height);
-
-      // Restore context state
-      this.ctx.restore();
+    // Render sorted entities
+    for (const { eid } of renderables) {
+      this.renderEntity(eid);
     }
 
     // Render particles
@@ -160,6 +245,93 @@ export class Canvas2DRenderer {
     if (this.debugInfo.showDebug) {
       this.renderDebugOverlay();
     }
+  }
+
+  private renderEntity(eid: number): void {
+    const x = Transform.x[eid];
+    const y = Transform.y[eid];
+    const rotation = Transform.rotation[eid];
+    const scaleX = Transform.scaleX[eid];
+    const scaleY = Transform.scaleY[eid];
+
+    const width = Sprite.width[eid];
+    const height = Sprite.height[eid];
+    const tint = Sprite.tint[eid];
+    const textureId = Sprite.textureId[eid];
+
+    // Get anchor (default to center)
+    const anchorX = Sprite.anchorX[eid] || 0.5;
+    const anchorY = Sprite.anchorY[eid] || 0.5;
+
+    // Get flip state
+    const flipX = Sprite.flipX[eid] === 1;
+    const flipY = Sprite.flipY[eid] === 1;
+
+    // Get sprite sheet frame data
+    const frameX = Sprite.frameX[eid] || 0;
+    const frameY = Sprite.frameY[eid] || 0;
+    const frameWidth = Sprite.frameWidth[eid] || 0;
+    const frameHeight = Sprite.frameHeight[eid] || 0;
+
+    // Save context state
+    this.ctx.save();
+
+    // Apply transformations
+    this.ctx.translate(x, y);
+    this.ctx.rotate(rotation);
+    this.ctx.scale(
+      scaleX * (flipX ? -1 : 1),
+      scaleY * (flipY ? -1 : 1)
+    );
+
+    // Calculate draw position based on anchor
+    const drawX = -width * anchorX;
+    const drawY = -height * anchorY;
+
+    // Check for loaded texture
+    const textureEntry = this.textureCache.get(textureId);
+
+    if (textureEntry && textureEntry.loaded) {
+      // Draw image with optional sprite sheet frame
+      const img = textureEntry.image;
+
+      if (frameWidth > 0 && frameHeight > 0) {
+        // Draw sprite sheet frame
+        this.ctx.drawImage(
+          img,
+          frameX * frameWidth, frameY * frameHeight, // Source x, y
+          frameWidth, frameHeight, // Source width, height
+          drawX, drawY, // Dest x, y
+          width, height // Dest width, height
+        );
+      } else {
+        // Draw full image
+        this.ctx.drawImage(img, drawX, drawY, width, height);
+      }
+
+      // Apply tint as overlay if not white
+      if (tint !== 0xFFFFFF && tint !== 0xFFFFFFFF) {
+        this.ctx.globalCompositeOperation = 'multiply';
+        const colorHex = (tint & 0xFFFFFF).toString(16).padStart(6, '0');
+        this.ctx.fillStyle = `#${colorHex}`;
+        this.ctx.fillRect(drawX, drawY, width, height);
+        this.ctx.globalCompositeOperation = 'source-over';
+      }
+    } else {
+      // Fallback: Draw colored rectangle
+      const colorHex = (tint & 0xFFFFFF).toString(16).padStart(6, '0');
+      const color = `#${colorHex}`;
+      this.ctx.fillStyle = color;
+      this.ctx.fillRect(drawX, drawY, width, height);
+
+      // Draw outline for better visibility in editor
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(drawX, drawY, width, height);
+    }
+
+    // Restore context state
+    this.ctx.restore();
   }
 
   private renderParticles(): void {
@@ -207,6 +379,7 @@ export class Canvas2DRenderer {
       `FPS: ${this.debugInfo.fps}`,
       `Entities: ${this.debugInfo.entityCount}`,
       `Particles: ${this.debugInfo.particleCount}`,
+      `Textures: ${this.textureCache.size}`,
     ];
 
     if (this.cameraState) {
@@ -215,7 +388,7 @@ export class Canvas2DRenderer {
     }
 
     // Draw background
-    const boxWidth = 150;
+    const boxWidth = 160;
     const boxHeight = lines.length * lineHeight + padding * 2;
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     this.ctx.fillRect(padding, padding, boxWidth, boxHeight);
@@ -231,6 +404,8 @@ export class Canvas2DRenderer {
   cleanup(): void {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.width, this.height);
+    // Clear texture cache
+    this.textureCache.clear();
   }
 
   // Get canvas for external use
@@ -241,5 +416,16 @@ export class Canvas2DRenderer {
   // Get context for external use
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
+  }
+
+  // Get texture cache size
+  getTextureCount(): number {
+    return this.textureCache.size;
+  }
+
+  // Check if a texture is loaded
+  isTextureLoaded(textureId: number): boolean {
+    const entry = this.textureCache.get(textureId);
+    return entry?.loaded ?? false;
   }
 }

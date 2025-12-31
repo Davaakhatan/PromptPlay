@@ -9,6 +9,9 @@ import {
   Input,
   Health,
   AIBehavior,
+  Animation,
+  Camera,
+  ParticleEmitter,
 } from '../components';
 
 export class Serializer {
@@ -62,7 +65,20 @@ export class Serializer {
         texture: textureName,
         width: Sprite.width[eid],
         height: Sprite.height[eid],
-        tint: `#${Sprite.tint[eid].toString(16).padStart(8, '0')}`,
+        tint: Sprite.tint[eid],
+        visible: Sprite.visible[eid] === 1,
+        zIndex: Sprite.zIndex[eid],
+        // Sprite sheet
+        frameX: Sprite.frameX[eid],
+        frameY: Sprite.frameY[eid],
+        frameWidth: Sprite.frameWidth[eid],
+        frameHeight: Sprite.frameHeight[eid],
+        // Anchor
+        anchorX: Sprite.anchorX[eid],
+        anchorY: Sprite.anchorY[eid],
+        // Flip
+        flipX: Sprite.flipX[eid] === 1,
+        flipY: Sprite.flipY[eid] === 1,
       };
     }
 
@@ -107,6 +123,56 @@ export class Serializer {
         speed: AIBehavior.speed[eid],
         detectionRadius: AIBehavior.detectionRadius[eid],
         targetEntity: AIBehavior.targetEntity[eid],
+      };
+    }
+
+    // Serialize Animation
+    if (hasComponent(w, Animation, eid)) {
+      components.animation = {
+        currentFrame: Animation.currentFrame[eid],
+        frameCount: Animation.frameCount[eid],
+        frameDuration: Animation.frameDuration[eid],
+        isPlaying: Animation.isPlaying[eid] === 1,
+        loop: Animation.loop[eid] === 1,
+        animationId: Animation.animationId[eid],
+      };
+    }
+
+    // Serialize Camera
+    if (hasComponent(w, Camera, eid)) {
+      components.camera = {
+        offsetX: Camera.offsetX[eid],
+        offsetY: Camera.offsetY[eid],
+        zoom: Camera.zoom[eid],
+        followTarget: Camera.followTarget[eid],
+        followSmoothing: Camera.followSmoothing[eid],
+        viewportWidth: Camera.viewportWidth[eid],
+        viewportHeight: Camera.viewportHeight[eid],
+        shakeIntensity: Camera.shakeIntensity[eid],
+        shakeDuration: Camera.shakeDuration[eid],
+        isActive: Camera.isActive[eid] === 1,
+      };
+    }
+
+    // Serialize ParticleEmitter
+    if (hasComponent(w, ParticleEmitter, eid)) {
+      components.particleEmitter = {
+        emitRate: ParticleEmitter.emitRate[eid],
+        maxParticles: ParticleEmitter.maxParticles[eid],
+        minLifetime: ParticleEmitter.minLifetime[eid],
+        maxLifetime: ParticleEmitter.maxLifetime[eid],
+        minSize: ParticleEmitter.minSize[eid],
+        maxSize: ParticleEmitter.maxSize[eid],
+        minSpeed: ParticleEmitter.minSpeed[eid],
+        maxSpeed: ParticleEmitter.maxSpeed[eid],
+        minAngle: ParticleEmitter.minAngle[eid],
+        maxAngle: ParticleEmitter.maxAngle[eid],
+        startColor: ParticleEmitter.startColor[eid],
+        endColor: ParticleEmitter.endColor[eid],
+        gravityX: ParticleEmitter.gravityX[eid],
+        gravityY: ParticleEmitter.gravityY[eid],
+        isEmitting: ParticleEmitter.isEmitting[eid] === 1,
+        burstCount: ParticleEmitter.burstCount[eid],
       };
     }
 
