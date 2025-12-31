@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fileSystem, type FileStat } from '../services/FileSystem';
-import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon } from './Icons';
+import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon, FileTextIcon, PlusIcon } from './Icons';
 
 interface AssetBrowserProps {
   projectPath: string | null;
-  onAssetSelect?: (assetPath: string, assetType: 'image' | 'sound') => void;
+  onAssetSelect?: (assetPath: string, assetType: 'image' | 'sound' | 'script') => void;
 }
 
 interface Asset {
   name: string;
   path: string;
-  type: 'image' | 'sound' | 'folder';
+  type: 'image' | 'sound' | 'folder' | 'script';
   size?: number;
 }
 
@@ -22,6 +22,7 @@ interface FileEntry {
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'];
 const SOUND_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
+const SCRIPT_EXTENSIONS = ['.js', '.ts', '.json'];
 
 export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowserProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -29,7 +30,7 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filter, setFilter] = useState<'all' | 'images' | 'sounds'>('all');
+  const [filter, setFilter] = useState<'all' | 'images' | 'sounds' | 'scripts'>('all');
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
 
   // Load assets from directory
@@ -47,17 +48,19 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
         .filter(entry => {
           if (entry.isDirectory) return true;
           const ext = entry.extension ? `.${entry.extension}` : '';
-          return IMAGE_EXTENSIONS.includes(ext) || SOUND_EXTENSIONS.includes(ext);
+          return IMAGE_EXTENSIONS.includes(ext) || SOUND_EXTENSIONS.includes(ext) || SCRIPT_EXTENSIONS.includes(ext);
         })
         .map(entry => {
           const ext = entry.extension ? `.${entry.extension}` : '';
-          let type: 'image' | 'sound' | 'folder' = 'folder';
+          let type: 'image' | 'sound' | 'folder' | 'script' = 'folder';
 
           if (!entry.isDirectory) {
             if (IMAGE_EXTENSIONS.includes(ext)) {
               type = 'image';
             } else if (SOUND_EXTENSIONS.includes(ext)) {
               type = 'sound';
+            } else if (SCRIPT_EXTENSIONS.includes(ext)) {
+              type = 'script';
             }
           }
 
@@ -93,6 +96,40 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
     }
   }, [projectPath, loadAssets]);
 
+  // Create new script
+  const handleCreateScript = async () => {
+    if (!projectPath) return;
+
+    // Simple prompt for now
+    const name = prompt('Enter script name:', 'NewScript.js');
+    if (!name) return;
+
+    const fileName = name.endsWith('.js') || name.endsWith('.ts') ? name : `${name}.js`;
+    // Ensure we write to the current directory
+    const fullPath = currentPath
+      ? `${projectPath}/${currentPath}/${fileName}`
+      : `${projectPath}/${fileName}`;
+
+    try {
+      setLoading(true);
+      const template = `/**
+ * ${fileName}
+ * Created with PromptPlay
+ */
+
+// Define your behavior here
+export default function update(entity, dt) {
+  // entity.transform.x += 10 * dt;
+}
+`;
+      await fileSystem.writeTextFile(fullPath, template);
+      await loadAssets(currentPath);
+    } catch (err) {
+      setError(`Failed to create script: ${err}`);
+      setLoading(false);
+    }
+  };
+
   const handleNavigateToFolder = (folderPath: string) => {
     const relativePath = folderPath.replace(projectPath + '/', '');
     setCurrentPath(relativePath);
@@ -101,70 +138,14 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
 
   // Handle Drag & Drop Import
   useEffect(() => {
-    // Listen for file drops anywhere on the window
-    // In a real app we might scopes this, but for now global drop is fine
-    const unlistenPromise = (window as any).__TAURI_INTERNALS__?.invoke?.('tauri', {
-      cmd: 'listen',
-      event: 'tauri://file-drop',
-      handler: async (event: any) => {
-        const files = event.payload as string[];
-        if (!files || files.length === 0 || !projectPath) return;
-
-        setLoading(true);
-        try {
-          // Copy dropped files to current directory
-          for (const srcPath of files) {
-            const fileName = srcPath.split(/[/\\]/).pop();
-            if (fileName) {
-              const destPath = currentPath
-                ? `${projectPath}/${currentPath}/${fileName}`
-                : `${projectPath}/${fileName}`;
-
-              await fileSystem.copyFile(srcPath, destPath);
-            }
-          }
-
-          // Refresh assets
-          await loadAssets(currentPath);
-        } catch (err) {
-          setError(`Failed to import assets: ${err}`);
-        } finally {
-          setLoading(false);
-        }
-      }
-    });
-
-    // Fallback: Use standard HTML5 drag/drop if Tauri listener is tricky to setup directly via React 
-    // actually, tauri v2 usually exposes a cleaner API. 
-    // Let's use the standard window 'drop' event which Tauri patches for webview
-
-    const handleDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      // Check if we have files
-      // Note: In Tauri, standard DragEvent might not have absolute paths unless configured.
-      // But usually tauri://file-drop is the way. 
-    }
-
-    return () => {
-      // Cleanup listener
-    }
-  }, [projectPath, currentPath, loadAssets]);
-
-  // Actually, let's use the official @tauri-apps/api/event if possible, but I didn't see it in imports.
-  // Using a simpler approach: standard event listener for 'drop' usually works if 'tauri://file-drop' is not used.
-  // But strictly speaking, the robust way in Tauri is to listen for the event.
-
-  // Implementation using window event listener for tauri://file-drop payload if the plugin is active
-  // Re-writing to use the standard getCurrentWindow().listen if available, or just the custom hook pattern.
-
-  useEffect(() => {
     if (!projectPath) return;
+
+    let unlisten: (() => void) | undefined;
 
     const setupListener = async () => {
       try {
-        // Dynamic import to avoid breaking if package version differs
         const { listen } = await import('@tauri-apps/api/event');
-        const unlisten = await listen<string[]>('tauri://file-drop', async (event) => {
+        unlisten = await listen<string[]>('tauri://file-drop', async (event) => {
           const files = event.payload;
           if (!files || files.length === 0) return;
 
@@ -177,11 +158,10 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
                   ? `${projectPath}/${currentPath}/${fileName}`
                   : `${projectPath}/${fileName}`;
 
-                // Prevent overwriting if possible or just overwrite
                 await fileSystem.copyFile(srcPath, destPath);
               }
             }
-            loadAssets(currentPath);
+            await loadAssets(currentPath);
           } catch (e) {
             console.error('Import failed', e);
             setError('Failed to import dropped files');
@@ -189,17 +169,15 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
             setLoading(false);
           }
         });
-
-        return unlisten;
       } catch (e) {
-        console.warn('Tauri event API not available', e);
+        console.warn('Tauri event API not available, falling back to window event', e);
       }
     };
 
-    const unlistenFnPromise = setupListener();
+    setupListener();
 
     return () => {
-      unlistenFnPromise.then(unlisten => unlisten && unlisten());
+      if (unlisten) unlisten();
     };
   }, [projectPath, currentPath, loadAssets]);
 
@@ -257,11 +235,19 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
       {/* Header */}
       <div className="px-3 py-2 bg-subtle border-b border-subtle">
         {/* ... header content ... */}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-text-primary">Assets</h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCreateScript}
+            className="flex items-center gap-1.5 px-2 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors shadow-sm"
+            title="Create new script"
+          >
+            <PlusIcon size={12} />
+            <span>New Script</span>
+          </button>
+          <div className="w-px h-4 bg-subtle mx-1" />
           <button
             onClick={() => loadAssets(currentPath)}
-            className="p-1 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
+            className="p-1 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded transition-colors"
             title="Refresh"
           >
             <RefreshIcon size={14} />

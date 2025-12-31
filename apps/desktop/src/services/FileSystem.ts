@@ -16,6 +16,7 @@ export interface FileSystemProvider {
     delete(path: string): Promise<void>;
     exists(path: string): Promise<boolean>;
     copyFile(source: string, destination: string): Promise<void>;
+    writeTextFile(path: string, content: string): Promise<void>;
 }
 
 import { invoke } from '@tauri-apps/api/core';
@@ -50,8 +51,12 @@ export class TauriFileSystem implements FileSystemProvider {
         // This would wrap tauri fs.write
     }
 
+    async writeTextFile(path: string, content: string): Promise<void> {
+        await invoke('write_file', { path, content });
+    }
+
     async createDirectory(path: string): Promise<void> {
-        // Wrapper
+        await invoke('create_directory', { path });
     }
 
     async delete(path: string): Promise<void> {
@@ -71,6 +76,7 @@ export class TauriFileSystem implements FileSystemProvider {
 // Memory backend for Web/Testing
 export class MemoryFileSystem implements FileSystemProvider {
     private files: Record<string, Uint8Array> = {};
+    private textFiles: Record<string, string> = {};
 
     async readDirectory(path: string): Promise<FileStat[]> {
         return [];
@@ -84,14 +90,19 @@ export class MemoryFileSystem implements FileSystemProvider {
         this.files[path] = content;
     }
 
+    async writeTextFile(path: string, content: string): Promise<void> {
+        this.textFiles[path] = content;
+    }
+
     async createDirectory(path: string): Promise<void> { }
     async delete(path: string): Promise<void> { }
-    async exists(path: string): Promise<boolean> { return !!this.files[path]; }
+    async exists(path: string): Promise<boolean> { return !!this.files[path] || !!this.textFiles[path]; }
     async copyFile(source: string, destination: string): Promise<void> {
         // Mock copy in memory
-        const content = this.files[source];
-        if (content) {
-            this.files[destination] = content;
+        if (this.files[source]) {
+            this.files[destination] = this.files[source];
+        } else if (this.textFiles[source]) {
+            this.textFiles[destination] = this.textFiles[source];
         }
     }
 }

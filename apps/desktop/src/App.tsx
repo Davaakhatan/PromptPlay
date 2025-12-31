@@ -893,8 +893,12 @@ function App() {
             <AssetBrowser
               projectPath={projectPath}
               onAssetSelect={(path, type) => {
-                console.log('Selected asset:', path, type);
-                // Could be used to set texture on selected entity
+                if (type === 'script') {
+                  setSelectedFile(path);
+                  setViewMode('code');
+                } else {
+                  console.log('Selected asset:', path, type);
+                }
               }}
             />
           )}
