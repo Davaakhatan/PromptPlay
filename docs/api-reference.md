@@ -244,6 +244,20 @@ interface ParticleEmitterData {
 }
 ```
 
+#### AudioData
+
+```typescript
+interface AudioData {
+  source: string;             // Audio file name
+  volume?: number;            // 0.0 to 1.0
+  pitch?: number;             // Playback rate multiplier
+  isPlaying?: boolean;
+  loop?: boolean;
+  spatial?: boolean;          // 3D positioned audio
+  maxDistance?: number;       // Max hearing distance
+}
+```
+
 ---
 
 ### ISystem
@@ -431,7 +445,8 @@ import {
   AIBehavior,
   Animation,
   Camera,
-  ParticleEmitter
+  ParticleEmitter,
+  Audio
 } from '@promptplay/ecs-core';
 
 // Get transform data for an entity

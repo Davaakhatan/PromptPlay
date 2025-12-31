@@ -197,6 +197,7 @@ Games are defined in JSON format:
 | **Animation** | frameCount, frameDuration, loop, isPlaying | Sprite animations |
 | **Camera** | zoom, followTarget, followSmoothing, shake | Camera control |
 | **ParticleEmitter** | emitRate, lifetime, size, speed, colors | Particle effects |
+| **Audio** | source, volume, pitch, loop, spatial | Sound playback |
 
 ---
 
