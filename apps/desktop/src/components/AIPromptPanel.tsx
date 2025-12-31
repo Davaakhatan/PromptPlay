@@ -70,12 +70,12 @@ export default function AIPromptPanel({
   const examplePrompts = [
     'Add a coin at (200, 400)',
     'Make the player faster',
-    'Add 3 platforms in staircase',
-    'Add an enemy at (300, 200)',
-    'Create a health pickup',
-    'Make player red',
-    'Make player bigger',
-    'Boost the jump',
+    'Add 5 coins',
+    'Moon gravity',
+    'Add moving platform',
+    'List entities',
+    'Clone player',
+    'Rename game to My Epic Game',
   ];
 
   // Parse JSON from AI response
@@ -723,27 +723,298 @@ async function simulateAIResponse(
     }
   }
 
+  // Parse "change gravity" or "set gravity" pattern
+  const gravityMatch = lowerPrompt.match(/(?:change|set|make)\s+(?:the\s+)?gravity\s+(?:to\s+)?(\d+(?:\.\d+)?)|(?:gravity)\s+(\d+(?:\.\d+)?)|(?:lower|less|reduce)\s+gravity|(?:higher|more|increase)\s+gravity|(?:zero|no|disable)\s+gravity|(?:moon|low)\s+gravity/i);
+  if (gravityMatch || lowerPrompt.includes('gravity')) {
+    let newGravity = 800; // default
+
+    if (gravityMatch?.[1]) {
+      newGravity = parseFloat(gravityMatch[1]);
+    } else if (gravityMatch?.[2]) {
+      newGravity = parseFloat(gravityMatch[2]);
+    } else if (lowerPrompt.includes('zero') || lowerPrompt.includes('no ') || lowerPrompt.includes('disable')) {
+      newGravity = 0;
+    } else if (lowerPrompt.includes('moon') || lowerPrompt.includes('low')) {
+      newGravity = 200;
+    } else if (lowerPrompt.includes('lower') || lowerPrompt.includes('less') || lowerPrompt.includes('reduce')) {
+      newGravity = (gameSpec.settings?.physics?.gravity || 800) * 0.5;
+    } else if (lowerPrompt.includes('higher') || lowerPrompt.includes('more') || lowerPrompt.includes('increase')) {
+      newGravity = (gameSpec.settings?.physics?.gravity || 800) * 1.5;
+    }
+
+    const gravityLabel = newGravity === 0 ? 'zero (space mode!)' : newGravity < 300 ? `${newGravity} (moon-like)` : `${newGravity}`;
+
+    return {
+      message: `I'll set gravity to **${gravityLabel}**.`,
+      updatedSpec: {
+        ...gameSpec,
+        settings: {
+          ...gameSpec.settings,
+          physics: {
+            ...gameSpec.settings?.physics,
+            gravity: newGravity,
+          },
+        },
+      },
+    };
+  }
+
+  // Parse "add moving platform" pattern
+  const movingPlatformMatch = lowerPrompt.match(/add\s+(?:a\s+)?moving\s+platform\s*(?:at\s+)?(?:\()?(\d+)?\s*,?\s*(\d+)?(?:\))?/i);
+  if (movingPlatformMatch || (lowerPrompt.includes('moving') && lowerPrompt.includes('platform'))) {
+    const x = movingPlatformMatch?.[1] ? parseInt(movingPlatformMatch[1]) : 300;
+    const y = movingPlatformMatch?.[2] ? parseInt(movingPlatformMatch[2]) : 350;
+
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    while (existingNames.has(`movingPlatform${counter}`)) counter++;
+
+    const newEntity = {
+      name: `movingPlatform${counter}`,
+      components: {
+        transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+        sprite: { texture: 'platform', width: 120, height: 20, tint: 0x44aaff },
+        collider: { type: 'box' as const, width: 120, height: 20 },
+        velocity: { vx: 50, vy: 0 },
+        aiBehavior: { type: 'patrol' as const, speed: 50, patrolRange: 150 },
+      },
+      tags: ['platform', 'moving'],
+    };
+
+    return {
+      message: `I'll add a **moving platform** at (${x}, ${y}). It will patrol horizontally.`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, newEntity],
+      },
+    };
+  }
+
+  // Parse "duplicate/clone entity" pattern
+  const duplicateMatch = lowerPrompt.match(/(?:duplicate|clone|copy)\s+(?:the\s+)?(?:entity\s+)?["']?(\w+)["']?\s*(?:(?:at|to)\s+)?(?:\()?(\d+)?\s*,?\s*(\d+)?(?:\))?/i);
+  if (duplicateMatch) {
+    const entityName = duplicateMatch[1].toLowerCase();
+    const entityToCopy = gameSpec.entities.find(e => e.name.toLowerCase() === entityName);
+
+    if (entityToCopy) {
+      let counter = 1;
+      const baseName = entityToCopy.name.replace(/\d+$/, '');
+      const existingNames = new Set(gameSpec.entities.map(e => e.name));
+      while (existingNames.has(`${baseName}${counter}`)) counter++;
+
+      const offsetX = duplicateMatch[2] ? parseInt(duplicateMatch[2]) : (entityToCopy.components.transform?.x || 0) + 50;
+      const offsetY = duplicateMatch[3] ? parseInt(duplicateMatch[3]) : entityToCopy.components.transform?.y || 0;
+
+      const newEntity = {
+        ...JSON.parse(JSON.stringify(entityToCopy)),
+        name: `${baseName}${counter}`,
+        components: {
+          ...JSON.parse(JSON.stringify(entityToCopy.components)),
+          transform: {
+            ...entityToCopy.components.transform,
+            x: offsetX,
+            y: offsetY,
+          },
+        },
+      };
+
+      return {
+        message: `I'll duplicate **${entityToCopy.name}** as **${newEntity.name}** at (${offsetX}, ${offsetY}).`,
+        updatedSpec: {
+          ...gameSpec,
+          entities: [...gameSpec.entities, newEntity],
+        },
+      };
+    }
+    return { message: `I couldn't find an entity named "${entityName}" to duplicate.` };
+  }
+
+  // Parse "add X coins/enemies" pattern (multiple entities)
+  const multipleMatch = lowerPrompt.match(/add\s+(\d+)\s+(coins?|enemies|platforms?|health\s*pickups?)/i);
+  if (multipleMatch && !lowerPrompt.includes('staircase')) {
+    const count = Math.min(parseInt(multipleMatch[1]), 10); // limit to 10
+    const entityType = multipleMatch[2].toLowerCase().replace(/s$/, '');
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    const newEntities = [];
+
+    for (let i = 0; i < count; i++) {
+      let counter = 1;
+      const baseName = entityType.replace(/\s+/g, '');
+      while (existingNames.has(`${baseName}${counter}`)) counter++;
+      existingNames.add(`${baseName}${counter}`);
+
+      const x = 100 + Math.random() * 600;
+      const y = 100 + Math.random() * 400;
+
+      let entity;
+      if (entityType === 'coin') {
+        entity = {
+          name: `coin${counter}`,
+          components: {
+            transform: { x: Math.round(x), y: Math.round(y), rotation: 0, scaleX: 1, scaleY: 1 },
+            sprite: { texture: 'coin', width: 24, height: 24, tint: 0xffd700 },
+            collider: { type: 'circle' as const, radius: 12 },
+          },
+          tags: ['collectible', 'coin'],
+        };
+      } else if (entityType === 'enem' || entityType === 'enemy') {
+        entity = {
+          name: `enemy${counter}`,
+          components: {
+            transform: { x: Math.round(x), y: Math.round(y), rotation: 0, scaleX: 1, scaleY: 1 },
+            sprite: { texture: 'enemy', width: 32, height: 32, tint: 0xff4444 },
+            velocity: { vx: 0, vy: 0 },
+            collider: { type: 'box' as const, width: 32, height: 32 },
+            aiBehavior: { type: 'patrol' as const, speed: 50, detectionRadius: 100 },
+            health: { current: 3, max: 3 },
+          },
+          tags: ['enemy'],
+        };
+      } else if (entityType === 'platform') {
+        entity = {
+          name: `platform${counter}`,
+          components: {
+            transform: { x: Math.round(x), y: Math.round(y), rotation: 0, scaleX: 1, scaleY: 1 },
+            sprite: { texture: 'platform', width: 100, height: 20, tint: 0x8b4513 },
+            collider: { type: 'box' as const, width: 100, height: 20 },
+          },
+          tags: ['platform'],
+        };
+      } else {
+        entity = {
+          name: `health${counter}`,
+          components: {
+            transform: { x: Math.round(x), y: Math.round(y), rotation: 0, scaleX: 1, scaleY: 1 },
+            sprite: { texture: 'health', width: 24, height: 24, tint: 0xff4488 },
+            collider: { type: 'box' as const, width: 24, height: 24 },
+          },
+          tags: ['collectible', 'health', 'pickup'],
+        };
+      }
+      if (entity) newEntities.push(entity);
+    }
+
+    return {
+      message: `I'll add **${count} ${entityType}${count > 1 ? 's' : ''}** at random positions.`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, ...newEntities],
+      },
+    };
+  }
+
+  // Parse "list entities" or "show entities" pattern
+  if (lowerPrompt.includes('list') && lowerPrompt.includes('entities') || lowerPrompt.includes('show') && lowerPrompt.includes('entities') || lowerPrompt === 'entities') {
+    const entityList = gameSpec.entities.map(e => {
+      const pos = e.components.transform ? `(${e.components.transform.x}, ${e.components.transform.y})` : '(no position)';
+      const tags = e.tags?.join(', ') || 'no tags';
+      return `- **${e.name}** at ${pos} [${tags}]`;
+    }).join('\n');
+
+    return {
+      message: `**Current Entities (${gameSpec.entities.length}):**\n\n${entityList || 'No entities in the game.'}`,
+    };
+  }
+
+  // Parse "add spawn point" pattern
+  const spawnMatch = lowerPrompt.match(/add\s+(?:a\s+)?spawn\s*(?:point)?\s*(?:at\s+)?(?:\()?(\d+)?\s*,?\s*(\d+)?(?:\))?/i);
+  if (spawnMatch || lowerPrompt.includes('spawn')) {
+    const x = spawnMatch?.[1] ? parseInt(spawnMatch[1]) : 100;
+    const y = spawnMatch?.[2] ? parseInt(spawnMatch[2]) : 400;
+
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    while (existingNames.has(`spawn${counter}`)) counter++;
+
+    const newEntity = {
+      name: `spawn${counter}`,
+      components: {
+        transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+        sprite: { texture: 'spawn', width: 32, height: 32, tint: 0x44ff44 },
+      },
+      tags: ['spawn', 'checkpoint'],
+    };
+
+    return {
+      message: `I'll add a **spawn point** at (${x}, ${y}). Players will respawn here.`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, newEntity],
+      },
+    };
+  }
+
+  // Parse "add checkpoint" pattern
+  const checkpointMatch = lowerPrompt.match(/add\s+(?:a\s+)?checkpoint\s*(?:at\s+)?(?:\()?(\d+)?\s*,?\s*(\d+)?(?:\))?/i);
+  if (checkpointMatch || lowerPrompt.includes('checkpoint')) {
+    const x = checkpointMatch?.[1] ? parseInt(checkpointMatch[1]) : 400;
+    const y = checkpointMatch?.[2] ? parseInt(checkpointMatch[2]) : 350;
+
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities.map(e => e.name));
+    while (existingNames.has(`checkpoint${counter}`)) counter++;
+
+    const newEntity = {
+      name: `checkpoint${counter}`,
+      components: {
+        transform: { x, y, rotation: 0, scaleX: 1, scaleY: 1 },
+        sprite: { texture: 'checkpoint', width: 20, height: 48, tint: 0xffff00 },
+        collider: { type: 'box' as const, width: 20, height: 48 },
+      },
+      tags: ['checkpoint', 'flag'],
+    };
+
+    return {
+      message: `I'll add a **checkpoint flag** at (${x}, ${y}).`,
+      updatedSpec: {
+        ...gameSpec,
+        entities: [...gameSpec.entities, newEntity],
+      },
+    };
+  }
+
+  // Parse "rename game" pattern
+  const renameMatch = lowerPrompt.match(/(?:rename|change|set)\s+(?:the\s+)?(?:game\s+)?(?:name|title)\s+(?:to\s+)?["']?(.+?)["']?$/i);
+  if (renameMatch) {
+    const newName = renameMatch[1].trim();
+    return {
+      message: `I'll rename the game to **"${newName}"**.`,
+      updatedSpec: {
+        ...gameSpec,
+        metadata: {
+          ...gameSpec.metadata,
+          name: newName,
+        },
+      },
+    };
+  }
+
   // Default response
   return {
     message: `I understand you want to: *"${prompt}"*
 
-I'm running in **demo mode** without an API key. In demo mode, I can handle these requests:
+I'm running in **demo mode** without an API key. Here's what I can do:
 
 **Add Entities:**
-- \`Add a coin at (x, y)\`
-- \`Add a platform at (x, y)\`
-- \`Add an enemy at (x, y)\`
-- \`Add 3 platforms in staircase\`
-- \`Create a health pickup\`
+- \`Add a coin at (x, y)\` / \`Add 5 coins\`
+- \`Add a platform at (x, y)\` / \`Add 3 platforms in staircase\`
+- \`Add an enemy at (x, y)\` / \`Add 3 enemies\`
+- \`Add moving platform\`
+- \`Create health pickup\` / \`Add spawn point\` / \`Add checkpoint\`
 
 **Modify Player:**
-- \`Make player faster\`
-- \`Boost the jump\`
-- \`Make player red/blue/green/yellow\`
+- \`Make player faster\` / \`Boost the jump\`
+- \`Make player red/blue/green/yellow/purple/orange\`
 - \`Make player bigger/smaller/huge/tiny\`
 
-**Delete Entities:**
-- \`Delete coin1\` or \`Remove enemy1\`
+**Physics & Settings:**
+- \`Moon gravity\` / \`Zero gravity\` / \`Set gravity to 500\`
+- \`Rename game to My Adventure\`
+
+**Utilities:**
+- \`List entities\` - Show all game objects
+- \`Clone player\` / \`Duplicate coin1 at (300, 200)\`
+- \`Delete coin1\` / \`Remove enemy1\`
 
 To enable full AI capabilities, click ⚙️ and enter your Anthropic API key.`,
   };
