@@ -1,11 +1,11 @@
-import { NewProjectIcon, AIIcon } from './Icons';
+import { NewProjectIcon, AIIcon, GamepadIcon, CrosshairIcon, PuzzleIcon, FileTextIcon, RocketIcon } from './Icons';
 
 // Project template definition
 interface ProjectTemplate {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
   color: string;
 }
 
@@ -14,28 +14,28 @@ const TEMPLATES: ProjectTemplate[] = [
     id: 'platformer',
     name: 'Platformer',
     description: 'Classic side-scrolling platformer with player, platforms, and collectibles',
-    icon: '🎮',
+    icon: <GamepadIcon className="w-8 h-8 text-primary" />,
     color: 'bg-blue-500',
   },
   {
     id: 'shooter',
     name: 'Top-Down Shooter',
     description: 'Top-down action game with enemies and projectiles',
-    icon: '🔫',
+    icon: <CrosshairIcon className="w-8 h-8 text-rose-500" />,
     color: 'bg-red-500',
   },
   {
     id: 'puzzle',
     name: 'Puzzle Game',
     description: 'Grid-based puzzle with movable blocks and goals',
-    icon: '🧩',
+    icon: <PuzzleIcon className="w-8 h-8 text-amber-500" />,
     color: 'bg-purple-500',
   },
   {
     id: 'empty',
     name: 'Empty Project',
     description: 'Start from scratch with just a player entity',
-    icon: '📝',
+    icon: <FileTextIcon className="w-8 h-8 text-text-tertiary" />,
     color: 'bg-subtle',
   },
 ];
@@ -58,7 +58,9 @@ export function WelcomeScreen({ onOpenProject, onNewProject, onCreateFromTemplat
       <div className="relative z-10 max-w-2xl w-full text-center">
         <div className="mb-8 animate-fade-in">
           <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/30 mb-6 transform rotate-3">
-            <span className="text-4xl">🚀</span>
+            <div className="p-3 bg-primary/10 rounded-2xl mb-4 shadow-lg shadow-primary/20 ring-1 ring-primary/20">
+              <RocketIcon className="w-10 h-10 text-primary" />
+            </div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">PromptPlay</h1>
           <p className="text-lg text-text-secondary max-w-md mx-auto">

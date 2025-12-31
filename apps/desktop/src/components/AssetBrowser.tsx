@@ -246,10 +246,17 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
     );
   }
 
+  // Handle starting a drag operation
+  const handleDragStart = (e: React.DragEvent, asset: Asset) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(asset));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
     <div className="h-full flex flex-col bg-panel">
       {/* Header */}
       <div className="px-3 py-2 bg-subtle border-b border-subtle">
+        {/* ... header content ... */}
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-text-primary">Assets</h3>
           <button
@@ -381,6 +388,8 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
               <button
                 key={asset.path}
                 onClick={() => handleAssetClick(asset)}
+                draggable={asset.type !== 'folder'}
+                onDragStart={(e) => handleDragStart(e, asset)}
                 className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${selectedAsset === asset.path
                   ? 'border-primary bg-primary/20 shadow-lg shadow-primary/10'
                   : 'border-subtle hover:border-text-tertiary hover:bg-white/5'
@@ -419,6 +428,8 @@ export default function AssetBrowser({ projectPath, onAssetSelect }: AssetBrowse
               <button
                 key={asset.path}
                 onClick={() => handleAssetClick(asset)}
+                draggable={asset.type !== 'folder'}
+                onDragStart={(e) => handleDragStart(e, asset)}
                 className={`flex items-center gap-2 w-full p-2 text-left rounded transition-colors ${selectedAsset === asset.path
                   ? 'bg-primary/20 text-white'
                   : 'hover:bg-white/5 text-text-secondary hover:text-text-primary'

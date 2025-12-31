@@ -270,8 +270,8 @@ export default function JSONEditorPanel({
             <button
               onClick={() => setShowEntityOnly(!showEntityOnly)}
               className={`px-2 py-1 text-xs rounded transition-colors ${showEntityOnly
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10'
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10'
                 }`}
             >
               {showEntityOnly ? 'Full Spec' : 'Entity Only'}
@@ -330,7 +330,7 @@ export default function JSONEditorPanel({
       <div className="px-3 py-2 bg-subtle border-t border-subtle flex items-center justify-between">
         <div className="text-xs text-text-tertiary">
           {showEntityOnly ? 'Editing entity' : `${gameSpec.entities?.length || 0} entities`}
-          {' • Cmd+Enter to apply'}
+          {' \u00B7 Cmd+Enter to apply'}
         </div>
         <div className="flex items-center gap-2">
           <button

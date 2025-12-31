@@ -627,14 +627,54 @@ export default function GameCanvas({
       );
     }
 
+    // Draw physics debug overlay (colliders)
+    const renderPhysicsDebug = () => {
+      if (!debugEnabled || !gameSpec?.entities) return null;
+
+      return gameSpec.entities.map(entity => {
+        // Check for collider or physics components
+        const collider = entity.components?.collider;
+        const physics = entity.components?.physics;
+        const transform = entity.components?.transform;
+
+        if (!transform) return null;
+        if (!collider && !physics) return null;
+
+        // Determine size (collider overrides transform if specified)
+        const width = (collider?.width || transform.width || 100);
+        const height = (collider?.height || transform.height || 100);
+        const x = transform.x;
+        const y = transform.y;
+
+        return (
+          <g key={`debug-${entity.name}`} transform={`translate(${x}, ${y}) rotate(${transform.rotation || 0})`}>
+            {/* Collider Box */}
+            <rect
+              x={-width / 2}
+              y={-height / 2}
+              width={width}
+              height={height}
+              fill="rgba(0, 255, 0, 0.1)"
+              stroke="#00ff00"
+              strokeWidth="1"
+              className="pointer-events-none"
+            />
+            {/* Center Point */}
+            <circle r="2" fill="#00ff00" />
+          </g>
+        );
+      });
+    };
+
     return (
       <svg
-        className="absolute top-0 left-0 pointer-events-none"
+        className="absolute top-0 left-0 pointer-events-none z-10"
         width={800}
         height={600}
         style={{ display: gameSpec && !error ? 'block' : 'none' }}
       >
         {lines}
+        {renderPhysicsDebug()}
       </svg>
     );
   };
@@ -697,8 +737,8 @@ export default function GameCanvas({
                 <button
                   onClick={() => setTransformMode('move')}
                   className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'move'
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                     }`}
                   title="Move Tool (W)"
                 >
@@ -707,8 +747,8 @@ export default function GameCanvas({
                 <button
                   onClick={() => setTransformMode('rotate')}
                   className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'rotate'
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                     }`}
                   title="Rotate Tool (E)"
                 >
@@ -717,8 +757,8 @@ export default function GameCanvas({
                 <button
                   onClick={() => setTransformMode('scale')}
                   className={`p-2 rounded backdrop-blur-md transition-all ${transformMode === 'scale'
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                      : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                     }`}
                   title="Scale Tool (R)"
                 >
@@ -730,8 +770,8 @@ export default function GameCanvas({
             <button
               onClick={() => setShowGrid(prev => !prev)}
               className={`p-2 rounded backdrop-blur-md transition-all ${showGrid
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                 }`}
               title="Toggle Grid (G)"
             >
@@ -745,8 +785,8 @@ export default function GameCanvas({
                 }
               }}
               className={`p-2 rounded backdrop-blur-md transition-all ${debugEnabled
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                 }`}
               title="Toggle Debug (D)"
             >
@@ -831,8 +871,8 @@ export default function GameCanvas({
         {selectedBounds && gameSpec && !error && (
           <div
             className={`absolute pointer-events-none border-2 rounded-sm ${dragState.isDragging
-                ? 'border-green-500 bg-green-500 bg-opacity-10'
-                : 'border-blue-500 bg-blue-500 bg-opacity-10'
+              ? 'border-green-500 bg-green-500 bg-opacity-10'
+              : 'border-blue-500 bg-blue-500 bg-opacity-10'
               }`}
             style={{
               left: `${selectedBounds.x}px`,

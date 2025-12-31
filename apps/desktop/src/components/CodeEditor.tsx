@@ -122,7 +122,10 @@ export default function CodeEditor({ filePath, onSave }: CodeEditorProps) {
             {filePath.split('/').pop()}
           </span>
           {isDirty && (
-            <span className="text-xs text-yellow-500 font-medium">● Modified</span>
+            <>
+              <div className="w-2 h-2 rounded-full bg-yellow-500 mr-1.5" />
+              <span className="text-xs text-yellow-500 font-medium">Modified</span>
+            </>
           )}
         </div>
         <button
