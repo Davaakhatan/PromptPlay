@@ -1,6 +1,7 @@
 # PromptPlay - System Architecture
 
 ## Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Architecture Principles](#architecture-principles)
 3. [Monorepo Structure](#monorepo-structure)
@@ -16,46 +17,44 @@
 
 ## System Overview
 
-PromptPlay is a modular, web-based game engine built on modern JavaScript/TypeScript architecture. The system transforms natural language prompts into playable 2D games through AI-powered specification generation and a custom Entity Component System (ECS) runtime.
+PromptPlay is a modular, AI-powered 2D game engine with a native desktop editor built on Tauri 2.0. The system enables game creation through natural language prompts or a visual scene editor, using an Entity Component System (ECS) runtime.
 
 ### High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Browser                              │
+│                    Tauri Desktop App                         │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │              Next.js Application (Editor)               │ │
+│  │              React Application (Editor)                 │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │ │
-│  │  │ Prompt Input │  │ Game Canvas  │  │ Spec Editor  │ │ │
+│  │  │  Scene Tree  │  │ Game Canvas  │  │  Inspector   │ │ │
 │  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │ │
 │  │         │                 │                 │          │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │ │
+│  │  │  File Tree   │  │ Code Editor  │  │   Toolbar    │ │ │
+│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │ │
 │  │         └─────────────────┴─────────────────┘          │ │
 │  │                           │                             │ │
 │  │         ┌─────────────────┴─────────────────┐          │ │
 │  │         │        State Management            │          │ │
-│  │         │     (GameSpec, isPlaying)          │          │ │
+│  │         │  (GameSpec, selectedEntity, etc.)  │          │ │
 │  │         └─────────┬──────────────────────────┘          │ │
 │  └───────────────────┼─────────────────────────────────────┘ │
 │                      │                                        │
 │  ┌───────────────────┴────────────┐  ┌────────────────────┐ │
-│  │      Runtime2D                 │  │   OpenAI Client    │ │
-│  │  ┌──────────┐  ┌────────────┐ │  │   (AI Prompt)      │ │
-│  │  │  PixiJS  │  │ Matter.js  │ │  └──────────┬─────────┘ │
-│  │  │ Renderer │  │  Physics   │ │             │            │
-│  │  └────┬─────┘  └─────┬──────┘ │             │            │
-│  │       └──────────────┬────────┘              │            │
-│  │                      │                       │            │
-│  │         ┌────────────┴────────────┐          │            │
-│  │         │    ECS World            │          │            │
-│  │         │  (Components, Systems)  │          │            │
-│  │         └─────────────────────────┘          │            │
-│  └──────────────────────────────────────────────┘            │
-└────────────────────────┬─────────────────────────────────────┘
-                         │
-                    ┌────┴────┐
-                    │  API    │
-                    │ OpenAI  │
-                    └─────────┘
+│  │      Runtime2D                 │  │   Tauri Backend    │ │
+│  │  ┌──────────┐  ┌────────────┐ │  │   (Rust)           │ │
+│  │  │ Canvas2D │  │ Matter.js  │ │  │  ┌──────────────┐  │ │
+│  │  │ Renderer │  │  Physics   │ │  │  │ File System  │  │ │
+│  │  └────┬─────┘  └─────┬──────┘ │  │  │ File Watcher │  │ │
+│  │       └──────────────┬────────┘   │  └──────────────┘  │ │
+│  │                      │            └────────────────────┘ │
+│  │         ┌────────────┴────────────┐                      │
+│  │         │    ECS World (bitecs)   │                      │
+│  │         │  (Components, Systems)  │                      │
+│  │         └─────────────────────────┘                      │
+│  └──────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -95,7 +94,7 @@ PromptPlay is a modular, web-based game engine built on modern JavaScript/TypeSc
 ### Directory Tree
 
 ```
-GameDev/
+PromptPlay/
 ├── pnpm-workspace.yaml           # pnpm workspace configuration
 ├── package.json                  # Root package scripts
 ├── tsconfig.base.json            # Shared TypeScript config
@@ -106,6 +105,8 @@ GameDev/
 ├── docs/                         # Documentation
 │   ├── prd.md                    # Product requirements
 │   ├── architecture.md           # This file
+│   ├── user-guide.md             # User documentation
+│   ├── api-reference.md          # API documentation
 │   └── tasks.md                  # Task breakdown
 │
 ├── packages/                     # Shared packages
@@ -121,7 +122,6 @@ GameDev/
 │   ├── ecs-core/                 # Entity Component System
 │   │   ├── src/
 │   │   │   ├── components/       # Component definitions
-│   │   │   ├── systems/          # System implementations
 │   │   │   ├── world/            # World management
 │   │   │   ├── serialization/    # JSON serialization
 │   │   │   └── index.ts
@@ -131,9 +131,10 @@ GameDev/
 │   │
 │   ├── runtime-2d/               # 2D game runtime
 │   │   ├── src/
-│   │   │   ├── renderers/        # PixiJS integration
+│   │   │   ├── renderers/        # Canvas2D renderer
 │   │   │   ├── physics/          # Matter.js integration
 │   │   │   ├── input/            # Input handling
+│   │   │   ├── gameloop/         # Fixed timestep game loop
 │   │   │   ├── systems/          # Runtime systems
 │   │   │   ├── Runtime2D.ts      # Main runtime class
 │   │   │   └── index.ts
@@ -150,21 +151,34 @@ GameDev/
 │       └── tsconfig.json
 │
 └── apps/                         # Applications
-    └── editor/                   # Next.js editor app
+    ├── desktop/                  # Tauri 2.0 native desktop app
+    │   ├── src/                  # React frontend
+    │   │   ├── components/       # UI components
+    │   │   │   ├── GameCanvas.tsx
+    │   │   │   ├── SceneTree.tsx
+    │   │   │   ├── Inspector.tsx
+    │   │   │   ├── FileTree.tsx
+    │   │   │   ├── CodeEditor.tsx
+    │   │   │   └── Icons.tsx
+    │   │   └── App.tsx
+    │   ├── src-tauri/            # Rust backend
+    │   │   └── src/
+    │   │       ├── main.rs
+    │   │       ├── lib.rs
+    │   │       ├── commands.rs   # Tauri commands
+    │   │       └── file_watcher.rs
+    │   ├── package.json
+    │   └── tauri.conf.json
+    │
+    └── editor/                   # Next.js web editor
         ├── src/
         │   ├── app/              # App Router pages
         │   │   ├── api/
         │   │   │   └── generate/
         │   │   │       └── route.ts
         │   │   ├── globals.css
-        │   │   ├── page.tsx
-        │   │   └── page.module.css
+        │   │   └── page.tsx
         │   └── components/       # React components
-        │       ├── PromptInput.tsx
-        │       ├── GameCanvas.tsx
-        │       ├── ControlPanel.tsx
-        │       ├── SpecEditor.tsx
-        │       └── SaveLoadPanel.tsx
         ├── public/
         │   └── demos/            # Demo game specs
         ├── .env.local            # Environment variables
@@ -310,13 +324,13 @@ class Serializer {
 
 ```typescript
 class Runtime2D {
-  private world: World;
-  private pixiApp: Application;
-  private pixiRenderer: PixiRenderer;
+  private world: GameWorld;
+  private canvas: HTMLCanvasElement;
+  private renderer: Canvas2DRenderer;
   private physics: MatterPhysics;
   private gameLoop: GameLoop;
-  private inputManager: InputManager;
-  private systems: ISystem[];
+  private input: InputManager;
+  private inputSystem: InputSystem;
 
   constructor(canvas: HTMLCanvasElement, options: RuntimeOptions);
 
@@ -324,27 +338,32 @@ class Runtime2D {
     // 1. Clear existing game
     // 2. Deserialize spec into world
     // 3. Initialize physics bodies
-    // 4. Create PixiJS sprites
+    // 4. Initialize Canvas2D renderer
     // 5. Register systems
   }
 
   start(): void;
   pause(): void;
+  resume(): void;
   destroy(): void;
+
+  // Entity interaction (for editor)
+  getEntityAtPoint(x: number, y: number): string | null;
+  getEntityBounds(entityName: string): { x, y, width, height } | null;
 }
 ```
 
-#### PixiRenderer
+#### Canvas2DRenderer
 
 ```typescript
-class PixiRenderer {
-  private app: Application;
-  private sprites: Map<number, PixiSprite>;
+class Canvas2DRenderer {
+  private ctx: CanvasRenderingContext2D;
+  private world: GameWorld;
+  private backgroundColor: number;
 
   initialize(): void;
-  createSprite(eid: number, sprite: SpriteData, transform: TransformData): void;
-  updateSprites(world: World): void; // Sync ECS → PixiJS
-  destroySprite(eid: number): void;
+  render(): void; // Reads from ECS Transform/Sprite components
+  cleanup(): void;
 }
 ```
 
@@ -747,11 +766,11 @@ Matter.Engine.update()
         ↓
   Transform Component
         ↓
-    [Sync to Renderer]
+    [Canvas2D reads directly from ECS]
         ↓
-  PixiJS Sprite.position
+  ctx.fillRect / drawImage
         ↓
-      Render
+      Screen
 ```
 
 ---
@@ -767,12 +786,23 @@ Matter.Engine.update()
 | Language | TypeScript | 5.3.x | Type safety |
 | Runtime | Node.js | 18.x | Development environment |
 
+### Desktop App
+
+| Component | Technology | Version | Purpose |
+|-----------|-----------|---------|---------|
+| Framework | Tauri | 2.0 | Native desktop app |
+| Backend | Rust | - | File system, native APIs |
+| Frontend | React | 18.x | UI framework |
+| Build | Vite | 5.x | Frontend bundling |
+| Styling | Tailwind CSS | 3.x | Utility-first CSS |
+| Code Editor | Monaco | - | File editing |
+
 ### ECS & Runtime
 
 | Component | Technology | Version | Purpose |
 |-----------|-----------|---------|---------|
 | ECS | bitecs | 0.3.x | Memory-efficient ECS |
-| Rendering | PixiJS | 7.3.x | 2D sprite rendering |
+| Rendering | Canvas2D | Native | 2D graphics |
 | Physics | Matter.js | 0.19.x | 2D physics simulation |
 | Input | Native Events | - | Keyboard/mouse handling |
 
@@ -783,14 +813,13 @@ Matter.Engine.update()
 | AI | OpenAI SDK | 4.x | ChatGPT API integration |
 | Validation | Zod | 3.22.x | Schema validation |
 
-### Frontend
+### Web Editor (Alternative)
 
 | Component | Technology | Version | Purpose |
 |-----------|-----------|---------|---------|
 | Framework | Next.js | 14.x | React framework |
 | UI Library | React | 18.x | Component library |
 | Styling | CSS Modules | - | Scoped CSS |
-| Fonts | Google Fonts | - | Inter, JetBrains Mono |
 
 ### Testing
 

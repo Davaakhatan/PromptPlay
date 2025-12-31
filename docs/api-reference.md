@@ -510,25 +510,75 @@ runtime.pause();
 Destroys the runtime and cleans up resources.
 
 **Example:**
+
 ```typescript
 runtime.destroy();
 ```
 
 ---
 
-### PixiRenderer
+##### `getEntityAtPoint(x: number, y: number): string | null`
 
-PixiJS rendering integration (internal use).
+Finds the entity at canvas coordinates (for click-to-select).
 
-#### `createSprite(eid: number, sprite: SpriteData, transform: TransformData): void`
+**Parameters:**
 
-Creates a PixiJS sprite for an entity.
+- `x` - X coordinate on canvas
+- `y` - Y coordinate on canvas
+
+**Returns:** `string | null` - Entity name or null if no entity found
+
+**Example:**
+
+```typescript
+const entityName = runtime.getEntityAtPoint(mouseX, mouseY);
+if (entityName) {
+  console.log('Clicked on:', entityName);
+}
+```
 
 ---
 
-#### `updateSprites(world: World): void`
+##### `getEntityBounds(entityName: string): { x, y, width, height } | null`
 
-Syncs ECS transform data to PixiJS sprites.
+Gets the bounds of an entity from ECS state (for selection overlay).
+
+**Parameters:**
+
+- `entityName` - Name of the entity
+
+**Returns:** `{ x, y, width, height } | null` - Entity bounds or null
+
+**Example:**
+
+```typescript
+const bounds = runtime.getEntityBounds('player');
+if (bounds) {
+  // Draw selection box at bounds.x, bounds.y
+}
+```
+
+---
+
+### Canvas2DRenderer
+
+Canvas2D rendering integration.
+
+#### `initialize(): void`
+
+Sets up the Canvas2D context and prepares for rendering.
+
+---
+
+#### `render(): void`
+
+Renders all entities by reading directly from ECS Transform and Sprite components.
+
+---
+
+#### `cleanup(): void`
+
+Cleans up rendering resources.
 
 ---
 
@@ -1034,8 +1084,9 @@ try {
 |---------|---------|-----------------|
 | `shared-types` | 1.0.0 | All packages |
 | `ecs-core` | 1.0.0 | bitecs ^0.3.40 |
-| `runtime-2d` | 1.0.0 | PixiJS ^7.3.x, Matter.js ^0.19.x |
+| `runtime-2d` | 1.0.0 | Canvas2D (native), Matter.js ^0.19.x |
 | `ai-prompt` | 1.0.0 | OpenAI SDK ^4.x |
+| `desktop` | 1.0.0 | Tauri ^2.0, React ^18.x |
 | `editor` | 1.0.0 | Next.js ^14.x |
 
 ---

@@ -1,20 +1,20 @@
 # PromptPlay - User Guide
 
-## Welcome to PromptPlay! 🎮
+## Welcome to PromptPlay
 
-PromptPlay is an AI-powered game engine that transforms your ideas into playable 2D games. Simply describe what you want, and watch your game come to life in seconds.
+PromptPlay is an AI-powered 2D game engine with a native desktop editor. Create playable games by describing them in plain English, or use the visual scene editor to build games interactively.
 
 ---
 
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
-2. [Creating Your First Game](#creating-your-first-game)
-3. [Understanding the Interface](#understanding-the-interface)
-4. [Game Controls](#game-controls)
-5. [Editing Game Specs](#editing-game-specs)
-6. [Saving and Loading Games](#saving-and-loading-games)
-7. [Writing Effective Prompts](#writing-effective-prompts)
+2. [Desktop App Overview](#desktop-app-overview)
+3. [Creating Your First Game](#creating-your-first-game)
+4. [Visual Scene Editor](#visual-scene-editor)
+5. [Game Controls](#game-controls)
+6. [Editing Game Specs](#editing-game-specs)
+7. [File System Integration](#file-system-integration)
 8. [Supported Game Genres](#supported-game-genres)
 9. [Troubleshooting](#troubleshooting)
 10. [Tips and Best Practices](#tips-and-best-practices)
@@ -25,36 +25,92 @@ PromptPlay is an AI-powered game engine that transforms your ideas into playable
 
 ### Prerequisites
 
-- Modern web browser (Chrome, Firefox, Safari, or Edge)
-- OpenAI API key (for game generation)
-- Internet connection
+- Node.js 18+
+- pnpm 8+
+- Rust (for Tauri desktop app)
+- OpenAI API key (optional, for AI game generation)
 
 ### Setup
 
 1. **Clone the repository:**
+
    ```bash
-   git clone <repository-url>
-   cd GameDev
+   git clone https://github.com/Davaakhatan/PromptPlay.git
+   cd PromptPlay
    ```
 
 2. **Install dependencies:**
+
    ```bash
    pnpm install
    ```
 
-3. **Configure your API key:**
-   Create a `.env.local` file in `apps/editor/`:
+3. **Build all packages:**
+
    ```bash
-   OPENAI_API_KEY=your_openai_api_key_here
+   pnpm build
    ```
 
-4. **Start the development server:**
+4. **Run the desktop app:**
+
    ```bash
-   pnpm --filter editor dev
+   pnpm --filter promptplay-desktop dev
    ```
 
-5. **Open your browser:**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   Or from the apps/desktop directory:
+
+   ```bash
+   cd apps/desktop && pnpm dev
+   ```
+
+### Alternative: Web Editor
+
+If you prefer a browser-based experience:
+
+```bash
+pnpm --filter editor dev
+# Open http://localhost:3000
+```
+
+---
+
+## Desktop App Overview
+
+The PromptPlay desktop app provides a professional game development environment:
+
+### Main Interface
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  PromptPlay    [Open Project] [Save]   [▶ Play] [⏸ Pause] [↺]  │
+├────────────┬──────────────────────────────────┬─────────────────┤
+│ SCENE TREE │         GAME CANVAS              │   INSPECTOR     │
+│            │                                   │                 │
+│ ▼ player   │    ┌─────────────────────┐       │ Transform       │
+│ ▼ ground   │    │                     │       │ x: 100  y: 400  │
+│ ▼ platform1│    │    Live Game        │       │ rotation: 0     │
+│ ▼ platform2│    │    Preview          │       │                 │
+│ ▼ coin1    │    │                     │       │ Sprite          │
+│ ▼ coin2    │    └─────────────────────┘       │ width: 32       │
+│            │                                   │ height: 32      │
+├────────────┼───────────────────────────────────┴─────────────────┤
+│ FILE TREE  │              CODE EDITOR                            │
+│            │                                                      │
+│ ▶ project/ │  {                                                  │
+│   game.json│    "version": "1.0",                                │
+│            │    "entities": [...],                               │
+│            │    ...                                              │
+└────────────┴─────────────────────────────────────────────────────┘
+```
+
+### Key Features
+
+- **Scene Tree** - Hierarchical view of all entities with tags
+- **Game Canvas** - Live preview with click-to-select entities
+- **Inspector** - Edit entity properties (transform, sprite, collider)
+- **File Tree** - Browse project files on disk
+- **Code Editor** - Edit game.json with Monaco editor
+- **Toolbar** - Play/Pause/Reset controls
 
 ---
 
@@ -85,67 +141,95 @@ Not sure what to create? Click one of the **Quick examples** below the generate 
 
 ---
 
-## Understanding the Interface
+## Visual Scene Editor
 
-### Layout Overview
+The desktop app includes a professional visual scene editor for game development.
 
+### Scene Tree Panel
+
+The Scene Tree shows all entities in your game:
+
+- Click an entity to select it
+- View entity tags as colored badges
+- Entities are listed in creation order
+
+### Inspector Panel
+
+When an entity is selected, the Inspector shows its components:
+
+**Transform Component:**
+
+- Position (x, y)
+- Rotation (degrees)
+- Scale (scaleX, scaleY)
+
+**Sprite Component:**
+
+- Texture name
+- Width and height
+- Tint color
+
+**Collider Component:**
+
+- Type (box or circle)
+- Dimensions
+- Sensor flag
+
+**Input Component (player entities):**
+
+- Move speed
+- Jump force
+
+### Game Canvas
+
+The central canvas displays your game:
+
+- **800x600 pixels** default resolution
+- **Click to select** entities directly on canvas
+- **Blue selection box** shows selected entity bounds
+- **Corner handles** indicate selection
+- **Entity name label** appears above selection
+
+### Entity Management
+
+- Create new entities from the toolbar
+- Delete entities with the delete button
+- Duplicate entities for quick level building
+
+---
+
+## File System Integration
+
+The desktop app provides full file system access:
+
+### Opening Projects
+
+1. Click **Open Project** in the toolbar
+2. Select a folder containing a `game.json` file
+3. The project loads automatically
+
+### Project Structure
+
+```text
+my-game/
+├── game.json      # Main game specification
+├── assets/        # (Future) sprites, sounds
+└── scripts/       # (Future) custom behaviors
 ```
-┌─────────────────────────────────────────────────────┐
-│  PromptPlay Logo                    [Save] [Load]   │
-├──────────────┬──────────────────────────────────────┤
-│              │  [Game Tab] [Spec Tab]               │
-│  Create Your │  ┌────────────────────────────────┐  │
-│  Game        │  │                                │  │
-│              │  │     Game Canvas Area           │  │
-│  Genre:      │  │     800x600 pixels             │  │
-│  [Select]    │  │                                │  │
-│              │  └────────────────────────────────┘  │
-│  Describe:   │  Genre: platformer | Title: Fox...   │
-│  [Textarea]  │  Controls: WASD/Arrows, Space...     │
-│              │                                       │
-│  [Generate]  │                                       │
-│              │                                       │
-│ Quick        │                                       │
-│ Examples...  │                                       │
-│              │                                       │
-│ Game         │                                       │
-│ Controls     │                                       │
-│ [Play/Pause] │                                       │
-│ [Reset]      │                                       │
-└──────────────┴───────────────────────────────────────┘
-```
 
-### Left Panel
+### Hot Reload
 
-**Create Your Game Section:**
-- **Genre Dropdown:** Select game type or auto-detect
-- **Description Textarea:** Describe your game idea
-- **Generate Button:** Create your game (with wand icon)
-- **Quick Examples:** Pre-made prompts to try
+The app watches for file changes:
 
-**Game Controls Section:**
-- **Play/Pause Button:** Start or pause the game
-- **Reset Button:** Restart the current game
+- Edit `game.json` in any external editor
+- Changes reload automatically
+- No need to restart the app
 
-### Center Panel
+### Saving Changes
 
-**Tab Bar:**
-- **Game Tab:** View and play your game
-- **Spec Tab:** View/edit the JSON specification
-
-**Game Canvas:**
-- 800x600 pixel game area
-- Real-time rendering at 60 FPS
-- Displays active game
-
-**Info Bar:**
-- Shows genre, title, and controls
-
-### Header
-
-**Logo:** PromptPlay branding with sparkle icon
-**Save Button:** Save current game to browser storage
-**Load Button:** Load previously saved games
+- Click **Save** to write changes to disk
+- The Inspector edits update the JSON file
+- Code Editor changes save on blur
 
 ---
 
