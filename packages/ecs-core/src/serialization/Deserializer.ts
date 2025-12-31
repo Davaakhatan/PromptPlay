@@ -57,9 +57,15 @@ export class Deserializer {
       Sprite.height[eid] = components.sprite.height;
 
       // Parse tint color (default to white if not specified)
-      const tint = components.sprite.tint
-        ? parseInt(components.sprite.tint.replace('#', ''), 16)
-        : 0xffffffff;
+      // Handle both number (4886754) and string ("#4A90E2") formats
+      let tint = 0xffffffff;
+      if (components.sprite.tint !== undefined) {
+        if (typeof components.sprite.tint === 'number') {
+          tint = components.sprite.tint;
+        } else if (typeof components.sprite.tint === 'string') {
+          tint = parseInt(components.sprite.tint.replace('#', ''), 16);
+        }
+      }
       Sprite.tint[eid] = tint;
       Sprite.visible[eid] = 1;
     }

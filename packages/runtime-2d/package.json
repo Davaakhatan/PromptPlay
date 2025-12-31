@@ -18,6 +18,7 @@
   "dependencies": {
     "@promptplay/ecs-core": "workspace:*",
     "@promptplay/shared-types": "workspace:*",
+    "bitecs": "^0.3.40",
     "pixi.js": "^7.3.2",
     "matter-js": "^0.19.0"
   },

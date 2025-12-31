@@ -1,8 +1,8 @@
-import { Application } from 'pixi.js';
 import { Engine as MatterEngine } from 'matter-js';
-import { GameWorld, Deserializer } from '@promptplay/ecs-core';
+import { hasComponent } from 'bitecs';
+import { GameWorld, Deserializer, Transform, Sprite } from '@promptplay/ecs-core';
 import { GameSpec } from '@promptplay/shared-types';
-import { PixiRenderer } from './renderers/PixiRenderer';
+import { Canvas2DRenderer } from './renderers/Canvas2DRenderer';
 import { MatterPhysics } from './physics/MatterPhysics';
 import { InputManager } from './input/InputManager';
 import { GameLoop } from './gameloop/GameLoop';
@@ -15,10 +15,10 @@ export interface Runtime2DConfig {
 }
 
 export class Runtime2D {
-  private pixiApp: Application;
+  private canvas: HTMLCanvasElement;
   private matterEngine: MatterEngine;
   private world: GameWorld;
-  private renderer: PixiRenderer;
+  private renderer: Canvas2DRenderer;
   private physics: MatterPhysics;
   private input: InputManager;
   private gameLoop: GameLoop;
@@ -32,14 +32,7 @@ export class Runtime2D {
     const height = config.height ?? 600;
     const backgroundColor = config.backgroundColor ?? 0x1a1a2e;
 
-    // Initialize PixiJS
-    this.pixiApp = new Application({
-      view: canvasElement,
-      width,
-      height,
-      backgroundColor,
-      antialias: true,
-    });
+    this.canvas = canvasElement;
 
     // Initialize Matter.js
     this.matterEngine = MatterEngine.create({
@@ -49,8 +42,14 @@ export class Runtime2D {
     // Initialize ECS world
     this.world = new GameWorld();
 
+    // Initialize Canvas2D renderer (no WebGL required)
+    this.renderer = new Canvas2DRenderer(canvasElement, this.world, {
+      width,
+      height,
+      backgroundColor,
+    });
+
     // Initialize subsystems
-    this.renderer = new PixiRenderer(this.pixiApp, this.world);
     this.physics = new MatterPhysics(this.matterEngine, this.world);
     this.input = new InputManager(canvasElement);
     this.gameLoop = new GameLoop();
@@ -79,6 +78,9 @@ export class Runtime2D {
     // Initialize renderer and physics
     await this.renderer.initialize();
     this.physics.initialize();
+
+    // Do initial render so entities are visible at their gameSpec positions
+    this.render();
 
     this.isInitialized = true;
   }
@@ -142,6 +144,59 @@ export class Runtime2D {
     return this.input;
   }
 
+  // Get entity at point using actual ECS Transform positions (same as renderer)
+  getEntityAtPoint(x: number, y: number): string | null {
+    const w = this.world.getWorld();
+    const entities = this.world.getEntities();
+
+    // Check entities in reverse order (top-most first)
+    for (let i = entities.length - 1; i >= 0; i--) {
+      const eid = entities[i];
+
+      if (!hasComponent(w, Transform, eid) || !hasComponent(w, Sprite, eid)) {
+        continue;
+      }
+
+      // Read from actual ECS components (same source as renderer)
+      const entityX = Transform.x[eid];
+      const entityY = Transform.y[eid];
+      const width = Sprite.width[eid];
+      const height = Sprite.height[eid];
+
+      const halfWidth = width / 2;
+      const halfHeight = height / 2;
+
+      if (
+        x >= entityX - halfWidth &&
+        x <= entityX + halfWidth &&
+        y >= entityY - halfHeight &&
+        y <= entityY + halfHeight
+      ) {
+        return this.world.getEntityName(eid) || null;
+      }
+    }
+
+    return null;
+  }
+
+  // Get entity bounds from actual ECS state (for selection overlay)
+  getEntityBounds(entityName: string): { x: number; y: number; width: number; height: number } | null {
+    const eid = this.world.getEntityIdByName(entityName);
+    if (eid === undefined) return null;
+
+    const w = this.world.getWorld();
+    if (!hasComponent(w, Transform, eid) || !hasComponent(w, Sprite, eid)) {
+      return null;
+    }
+
+    return {
+      x: Transform.x[eid],
+      y: Transform.y[eid],
+      width: Sprite.width[eid],
+      height: Sprite.height[eid],
+    };
+  }
+
   private cleanup(): void {
     this.stop();
     this.renderer.cleanup();
@@ -153,6 +208,5 @@ export class Runtime2D {
   destroy(): void {
     this.cleanup();
     this.input.cleanup();
-    this.pixiApp.destroy(true, { children: true, texture: true });
   }
 }

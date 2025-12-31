@@ -52,7 +52,7 @@ export interface SpriteComponent {
   texture: string;
   width: number;
   height: number;
-  tint?: string;
+  tint?: string | number;
 }
 
 export interface ColliderComponent {

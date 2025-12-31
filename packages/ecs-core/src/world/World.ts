@@ -87,6 +87,13 @@ export class GameWorld {
     return this.entityMap.get(eid);
   }
 
+  getEntityIdByName(name: string): number | undefined {
+    for (const [eid, entityName] of this.entityMap) {
+      if (entityName === name) return eid;
+    }
+    return undefined;
+  }
+
   getEntities(): number[] {
     const entities: number[] = [];
     for (const [eid] of this.entityMap) {
