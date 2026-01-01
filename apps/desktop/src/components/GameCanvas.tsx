@@ -632,17 +632,17 @@ export default function GameCanvas({
       if (!debugEnabled || !gameSpec?.entities) return null;
 
       return gameSpec.entities.map(entity => {
-        // Check for collider or physics components
+        // Check for collider component
         const collider = entity.components?.collider;
-        const physics = entity.components?.physics;
+        const sprite = entity.components?.sprite;
         const transform = entity.components?.transform;
 
         if (!transform) return null;
-        if (!collider && !physics) return null;
+        if (!collider) return null;
 
-        // Determine size (collider overrides transform if specified)
-        const width = (collider?.width || transform.width || 100);
-        const height = (collider?.height || transform.height || 100);
+        // Determine size from collider or sprite
+        const width = (collider?.width || sprite?.width || 32);
+        const height = (collider?.height || sprite?.height || 32);
         const x = transform.x;
         const y = transform.y;
 

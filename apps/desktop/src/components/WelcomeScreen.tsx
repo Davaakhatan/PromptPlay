@@ -1,4 +1,4 @@
-import { NewProjectIcon, AIIcon, GamepadIcon, CrosshairIcon, PuzzleIcon, FileTextIcon, RocketIcon } from './Icons';
+import { NewProjectIcon, GamepadIcon, CrosshairIcon, PuzzleIcon, FileTextIcon, RocketIcon } from './Icons';
 
 // Project template definition
 interface ProjectTemplate {
@@ -47,7 +47,7 @@ interface WelcomeScreenProps {
   loading?: boolean;
 }
 
-export function WelcomeScreen({ onOpenProject, onNewProject, onCreateFromTemplate, loading }: WelcomeScreenProps) {
+export function WelcomeScreen({ onOpenProject, onNewProject, onCreateFromTemplate, loading: _loading }: WelcomeScreenProps) {
   return (
     <div className="h-full flex flex-col items-center justify-center bg-canvas p-8 relative overflow-hidden">
       {/* Background decoration */}

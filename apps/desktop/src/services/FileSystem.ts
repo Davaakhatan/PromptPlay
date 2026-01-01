@@ -42,12 +42,12 @@ export class TauriFileSystem implements FileSystemProvider {
         }));
     }
 
-    async readFile(path: string): Promise<Uint8Array> {
+    async readFile(_path: string): Promise<Uint8Array> {
         // This would wrap tauri fs.read
         return new Uint8Array();
     }
 
-    async writeFile(path: string, content: Uint8Array): Promise<void> {
+    async writeFile(_path: string, _content: Uint8Array): Promise<void> {
         // This would wrap tauri fs.write
     }
 
@@ -59,11 +59,11 @@ export class TauriFileSystem implements FileSystemProvider {
         await invoke('create_directory', { path });
     }
 
-    async delete(path: string): Promise<void> {
+    async delete(_path: string): Promise<void> {
         // Wrapper
     }
 
-    async exists(path: string): Promise<boolean> {
+    async exists(_path: string): Promise<boolean> {
         // Wrapper
         return true;
     }
@@ -78,7 +78,7 @@ export class MemoryFileSystem implements FileSystemProvider {
     private files: Record<string, Uint8Array> = {};
     private textFiles: Record<string, string> = {};
 
-    async readDirectory(path: string): Promise<FileStat[]> {
+    async readDirectory(_path: string): Promise<FileStat[]> {
         return [];
     }
 
@@ -94,8 +94,8 @@ export class MemoryFileSystem implements FileSystemProvider {
         this.textFiles[path] = content;
     }
 
-    async createDirectory(path: string): Promise<void> { }
-    async delete(path: string): Promise<void> { }
+    async createDirectory(_path: string): Promise<void> { }
+    async delete(_path: string): Promise<void> { }
     async exists(path: string): Promise<boolean> { return !!this.files[path] || !!this.textFiles[path]; }
     async copyFile(source: string, destination: string): Promise<void> {
         // Mock copy in memory

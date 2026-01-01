@@ -776,7 +776,7 @@ async function simulateAIResponse(
         sprite: { texture: 'platform', width: 120, height: 20, tint: 0x44aaff },
         collider: { type: 'box' as const, width: 120, height: 20 },
         velocity: { vx: 50, vy: 0 },
-        aiBehavior: { type: 'patrol' as const, speed: 50, patrolRange: 150 },
+        aiBehavior: { type: 'patrol' as const, speed: 50, detectionRadius: 100, patrolRange: 150 },
       },
       tags: ['platform', 'moving'],
     };
@@ -1049,26 +1049,24 @@ async function simulateAIResponse(
     const existingSystems = gameSpec.systems || [];
 
     // Check if system already exists
-    if (existingSystems.some(s => s.name.toLowerCase() === systemName)) {
+    if (existingSystems.some(s => s.toLowerCase() === systemName.toLowerCase())) {
       return { message: `A system named "${systemName}" already exists.` };
     }
 
-    const systemTemplates: Record<string, { name: string; enabled: boolean; priority: number; description: string }> = {
-      movement: { name: 'MovementSystem', enabled: true, priority: 1, description: 'Handles entity movement based on velocity' },
-      collision: { name: 'CollisionSystem', enabled: true, priority: 2, description: 'Detects and resolves collisions' },
-      render: { name: 'RenderSystem', enabled: true, priority: 10, description: 'Renders sprites to canvas' },
-      input: { name: 'InputSystem', enabled: true, priority: 0, description: 'Handles player input' },
-      physics: { name: 'PhysicsSystem', enabled: true, priority: 1, description: 'Applies physics simulation' },
-      ai: { name: 'AISystem', enabled: true, priority: 3, description: 'Runs AI behaviors for entities' },
-      animation: { name: 'AnimationSystem', enabled: true, priority: 5, description: 'Updates sprite animations' },
-      score: { name: 'ScoreSystem', enabled: true, priority: 4, description: 'Tracks and updates score' },
-      health: { name: 'HealthSystem', enabled: true, priority: 4, description: 'Manages entity health' },
+    const systemTemplates: Record<string, { name: string; description: string }> = {
+      movement: { name: 'MovementSystem', description: 'Handles entity movement based on velocity' },
+      collision: { name: 'CollisionSystem', description: 'Detects and resolves collisions' },
+      render: { name: 'RenderSystem', description: 'Renders sprites to canvas' },
+      input: { name: 'InputSystem', description: 'Handles player input' },
+      physics: { name: 'PhysicsSystem', description: 'Applies physics simulation' },
+      ai: { name: 'AISystem', description: 'Runs AI behaviors for entities' },
+      animation: { name: 'AnimationSystem', description: 'Updates sprite animations' },
+      score: { name: 'ScoreSystem', description: 'Tracks and updates score' },
+      health: { name: 'HealthSystem', description: 'Manages entity health' },
     };
 
     const template = systemTemplates[systemName] || {
       name: `${systemName.charAt(0).toUpperCase() + systemName.slice(1)}System`,
-      enabled: true,
-      priority: 5,
       description: `Custom ${systemName} system`,
     };
 
@@ -1076,7 +1074,7 @@ async function simulateAIResponse(
       message: `I'll create a new **${template.name}** system.\n\n*${template.description}*`,
       updatedSpec: {
         ...gameSpec,
-        systems: [...existingSystems, template],
+        systems: [...existingSystems, template.name],
       },
     };
   }

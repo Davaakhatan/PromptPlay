@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fileSystem, type FileStat } from '../services/FileSystem';
-import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon, FileTextIcon, PlusIcon } from './Icons';
+import { fileSystem } from '../services/FileSystem';
+import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon, PlusIcon } from './Icons';
 
 interface AssetBrowserProps {
   projectPath: string | null;
@@ -12,12 +12,6 @@ interface Asset {
   path: string;
   type: 'image' | 'sound' | 'folder' | 'script';
   size?: number;
-}
-
-interface FileEntry {
-  name: string;
-  is_dir: boolean;
-  path: string;
 }
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'];
