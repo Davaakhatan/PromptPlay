@@ -775,6 +775,17 @@ function App() {
     setTimeout(() => setNotification(null), 2000);
   };
 
+  const handleCopyEntity = useCallback((entityName: string) => {
+    if (!gameSpec) return;
+
+    const entity = gameSpec.entities?.find((e) => e.name === entityName);
+    if (entity) {
+      setClipboardEntity(JSON.parse(JSON.stringify(entity)));
+      setNotification('Entity copied');
+      setTimeout(() => setNotification(null), 1500);
+    }
+  }, [gameSpec]);
+
   // Handle AI-generated changes
   const handleAIChanges = useCallback((updatedSpec: GameSpec) => {
     if (!gameSpec) return;
@@ -991,6 +1002,9 @@ function App() {
               onSelectEntity={setSelectedEntity}
               onCreateEntity={handleCreateEntity}
               onRenameEntity={handleRenameEntity}
+              onDeleteEntity={handleDeleteEntity}
+              onDuplicateEntity={handleDuplicateEntity}
+              onCopyEntity={handleCopyEntity}
             />
           )}
           {leftPanelMode === 'assets' && (

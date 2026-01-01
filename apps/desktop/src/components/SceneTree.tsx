@@ -18,7 +18,16 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   PlusIcon,
+  TrashIcon,
+  CopyIcon,
+  EditIcon,
 } from './Icons';
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  entityName: string;
+}
 
 interface SceneTreeProps {
   gameSpec: GameSpec | null;
@@ -26,6 +35,9 @@ interface SceneTreeProps {
   onSelectEntity: (entityName: string) => void;
   onCreateEntity?: () => void;
   onRenameEntity?: (oldName: string, newName: string) => void;
+  onDeleteEntity?: (entityName: string) => void;
+  onDuplicateEntity?: (entityName: string) => void;
+  onCopyEntity?: (entityName: string) => void;
 }
 
 export default function SceneTree({
@@ -34,11 +46,16 @@ export default function SceneTree({
   onSelectEntity,
   onCreateEntity,
   onRenameEntity,
+  onDeleteEntity,
+  onDuplicateEntity,
+  onCopyEntity,
 }: SceneTreeProps) {
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
   const [editingEntity, setEditingEntity] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -97,11 +114,64 @@ export default function SceneTree({
         e.preventDefault();
         startEditing(selectedEntity);
       }
+      // Close context menu on Escape
+      if (e.key === 'Escape' && contextMenu) {
+        setContextMenu(null);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedEntity, editingEntity, onRenameEntity, startEditing]);
+  }, [selectedEntity, editingEntity, onRenameEntity, startEditing, contextMenu]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenu && contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [contextMenu]);
+
+  // Handle right-click context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent, entityName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelectEntity(entityName);
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      entityName,
+    });
+  }, [onSelectEntity]);
+
+  // Context menu actions
+  const handleContextMenuAction = useCallback((action: string) => {
+    if (!contextMenu) return;
+
+    const entityName = contextMenu.entityName;
+    setContextMenu(null);
+
+    switch (action) {
+      case 'rename':
+        startEditing(entityName);
+        break;
+      case 'duplicate':
+        onDuplicateEntity?.(entityName);
+        break;
+      case 'copy':
+        onCopyEntity?.(entityName);
+        break;
+      case 'delete':
+        onDeleteEntity?.(entityName);
+        break;
+    }
+  }, [contextMenu, startEditing, onDuplicateEntity, onCopyEntity, onDeleteEntity]);
 
   if (!gameSpec || !gameSpec.entities) {
     return (
@@ -188,6 +258,7 @@ export default function SceneTree({
                   e.stopPropagation();
                   startEditing(entity.name);
                 }}
+                onContextMenu={(e) => handleContextMenu(e, entity.name)}
               >
                 {hasComponents && (
                   <button
@@ -249,6 +320,62 @@ export default function SceneTree({
       <div className="px-4 py-3 text-[10px] uppercase font-bold text-text-tertiary/50 text-center tracking-widest">
         {gameSpec?.entities?.length || 0} Entities
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed bg-panel border border-subtle rounded-lg shadow-2xl py-1 z-50 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+        >
+          {onRenameEntity && (
+            <button
+              onClick={() => handleContextMenuAction('rename')}
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <EditIcon size={14} className="text-text-tertiary" />
+              <span>Rename</span>
+              <span className="ml-auto text-[10px] text-text-tertiary">F2</span>
+            </button>
+          )}
+          {onDuplicateEntity && (
+            <button
+              onClick={() => handleContextMenuAction('duplicate')}
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <CopyIcon size={14} className="text-text-tertiary" />
+              <span>Duplicate</span>
+              <span className="ml-auto text-[10px] text-text-tertiary">Ctrl+D</span>
+            </button>
+          )}
+          {onCopyEntity && (
+            <button
+              onClick={() => handleContextMenuAction('copy')}
+              className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-white/10 transition-colors flex items-center gap-2"
+            >
+              <CopyIcon size={14} className="text-text-tertiary" />
+              <span>Copy</span>
+              <span className="ml-auto text-[10px] text-text-tertiary">Ctrl+C</span>
+            </button>
+          )}
+          {(onRenameEntity || onDuplicateEntity || onCopyEntity) && onDeleteEntity && (
+            <div className="my-1 border-t border-subtle" />
+          )}
+          {onDeleteEntity && (
+            <button
+              onClick={() => handleContextMenuAction('delete')}
+              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+            >
+              <TrashIcon size={14} />
+              <span>Delete</span>
+              <span className="ml-auto text-[10px] text-red-400/70">Del</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

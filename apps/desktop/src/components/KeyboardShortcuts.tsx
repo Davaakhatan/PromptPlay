@@ -52,6 +52,7 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Scene Tree',
     shortcuts: [
       { keys: ['Double-click'], description: 'Rename entity' },
+      { keys: ['Right-click'], description: 'Context menu' },
     ],
   },
   {
