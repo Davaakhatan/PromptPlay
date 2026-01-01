@@ -12,6 +12,7 @@ import AIPromptPanel from './components/AIPromptPanel';
 import AssetBrowser from './components/AssetBrowser';
 import WelcomeScreen from './components/WelcomeScreen';
 import ErrorDisplay from './components/ErrorDisplay';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ImageIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
 
@@ -42,6 +43,7 @@ function App() {
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('inspector');
   const [isExporting, setIsExporting] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Undo/Redo history
   const historyRef = useRef<HistoryEntry[]>([]);
@@ -800,11 +802,22 @@ function App() {
           exportGame();
         }
       }
+      // Keyboard shortcuts help: ?
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+      }
+      // Close modals: Escape
+      if (e.key === 'Escape') {
+        if (showKeyboardShortcuts) {
+          setShowKeyboardShortcuts(false);
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame]);
+  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
@@ -1232,6 +1245,12 @@ function App() {
         onApplyChanges={handleAIChanges}
         isVisible={showAIPanel}
         onClose={() => setShowAIPanel(false)}
+      />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcuts
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { GameSpec } from '@promptplay/shared-types';
 import { ChevronRightIcon, TrashIcon, CopyIcon, PlusIcon, TagIcon } from './Icons';
-import { componentRegistry, type FieldSchema } from '../services/ComponentRegistry';
+import { componentRegistry } from '../services/ComponentRegistry';
 
 interface InspectorProps {
   gameSpec: GameSpec | null;
@@ -32,13 +32,20 @@ export default function Inspector({
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
   const [newTag, setNewTag] = useState('');
   const [showAddTag, setShowAddTag] = useState(false);
+  const [showAddComponent, setShowAddComponent] = useState(false);
 
   const entity = gameSpec?.entities?.find((e) => e.name === selectedEntity);
+
+  // Get available components that aren't already on this entity
+  const availableComponents = componentRegistry.getAll().filter(
+    (schema) => !entity?.components || !(schema.name in entity.components)
+  );
 
   // Reset edited values when entity changes
   useEffect(() => {
     setEditedValues({});
     setShowAddTag(false);
+    setShowAddComponent(false);
     setNewTag('');
   }, [selectedEntity]);
 
@@ -94,6 +101,59 @@ export default function Inspector({
     onUpdateEntity(entity.name, {
       tags: currentTags.filter(t => t !== tagToRemove),
     });
+  }, [entity, onUpdateEntity]);
+
+  const handleAddComponent = useCallback((componentName: string) => {
+    if (!entity) return;
+
+    const schema = componentRegistry.get(componentName);
+    if (!schema) return;
+
+    // Build default component data from schema
+    const newComponentData: Record<string, any> = {};
+    Object.entries(schema.fields).forEach(([fieldName, fieldSchema]) => {
+      if (fieldSchema.defaultValue !== undefined) {
+        newComponentData[fieldName] = fieldSchema.defaultValue;
+      } else {
+        // Set sensible defaults based on type
+        switch (fieldSchema.type) {
+          case 'number':
+            newComponentData[fieldName] = 0;
+            break;
+          case 'boolean':
+            newComponentData[fieldName] = false;
+            break;
+          case 'string':
+            newComponentData[fieldName] = '';
+            break;
+          case 'color':
+            newComponentData[fieldName] = 0xFFFFFF;
+            break;
+          case 'select':
+            newComponentData[fieldName] = fieldSchema.options?.[0]?.value || '';
+            break;
+          default:
+            newComponentData[fieldName] = null;
+        }
+      }
+    });
+
+    const updatedComponents = {
+      ...entity.components,
+      [componentName]: newComponentData,
+    };
+
+    onUpdateEntity(entity.name, { components: updatedComponents });
+    setShowAddComponent(false);
+  }, [entity, onUpdateEntity]);
+
+  const handleRemoveComponent = useCallback((componentName: string) => {
+    if (!entity) return;
+
+    const updatedComponents = { ...entity.components } as Record<string, any>;
+    delete updatedComponents[componentName];
+
+    onUpdateEntity(entity.name, { components: updatedComponents });
   }, [entity, onUpdateEntity]);
 
   if (!gameSpec) {
@@ -351,10 +411,17 @@ export default function Inspector({
         {entity.components && Object.entries(entity.components).map(([componentName, component]) => (
           <div key={componentName} className="relative group">
             {/* Component Header with floating badge style */}
-            <div className="absolute -top-2.5 left-3 px-2 bg-panel z-10 flex items-center gap-2">
+            <div className="absolute -top-2.5 left-3 right-3 px-2 bg-panel z-10 flex items-center justify-between">
               <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-primary/20 border border-primary/30 px-2 py-0.5 rounded shadow-sm shadow-black/50">
                 {componentName}
               </span>
+              <button
+                onClick={() => handleRemoveComponent(componentName)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-text-tertiary hover:text-red-400 transition-all"
+                title={`Remove ${componentName}`}
+              >
+                <TrashIcon size={12} />
+              </button>
             </div>
 
             <div className="border border-subtle rounded-xl bg-white/5 p-4 pt-5 transition-all hover:border-white/10 hover:bg-white/[0.07]">
@@ -371,11 +438,43 @@ export default function Inspector({
             </div>
           </div>
         ))}
-        {/* Add Component Button Placeholder */}
-        <button className="w-full py-2 rounded-xl border border-dashed border-subtle text-text-tertiary text-xs hover:border-text-secondary hover:text-text-secondary transition-all flex items-center justify-center gap-2 group">
-          <PlusIcon size={14} className="group-hover:scale-110 transition-transform" />
-          <span>Add Component</span>
-        </button>
+
+        {/* Add Component Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowAddComponent(!showAddComponent)}
+            disabled={availableComponents.length === 0}
+            className={`
+              w-full py-2 rounded-xl border border-dashed text-xs transition-all flex items-center justify-center gap-2 group
+              ${availableComponents.length === 0
+                ? 'border-subtle/50 text-text-tertiary/50 cursor-not-allowed'
+                : 'border-subtle text-text-tertiary hover:border-text-secondary hover:text-text-secondary'
+              }
+            `}
+          >
+            <PlusIcon size={14} className="group-hover:scale-110 transition-transform" />
+            <span>{availableComponents.length === 0 ? 'All Components Added' : 'Add Component'}</span>
+          </button>
+
+          {showAddComponent && availableComponents.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-panel border border-subtle rounded-xl shadow-xl z-20 overflow-hidden">
+              <div className="max-h-64 overflow-y-auto">
+                {availableComponents.map((schema) => (
+                  <button
+                    key={schema.name}
+                    onClick={() => handleAddComponent(schema.name)}
+                    className="w-full px-4 py-2.5 text-left hover:bg-white/10 transition-colors border-b border-subtle/50 last:border-0"
+                  >
+                    <div className="text-sm font-medium text-text-primary capitalize">{schema.name}</div>
+                    {schema.description && (
+                      <div className="text-xs text-text-tertiary mt-0.5">{schema.description}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
