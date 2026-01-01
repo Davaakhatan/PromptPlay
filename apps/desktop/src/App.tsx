@@ -743,6 +743,38 @@ function App() {
     setTimeout(() => setNotification(null), 2000);
   };
 
+  const handleRenameEntity = async (oldName: string, newName: string) => {
+    if (!gameSpec) return;
+
+    // Validate name
+    if (!newName || newName === oldName) return;
+
+    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
+    if (existingNames.has(newName)) return;
+
+    // Update entity name
+    const updatedEntities = gameSpec.entities?.map((entity) =>
+      entity.name === oldName ? { ...entity, name: newName } : entity
+    );
+
+    const updatedSpec = {
+      ...gameSpec,
+      entities: updatedEntities,
+    };
+
+    // Push to history
+    pushHistory(updatedSpec, `Rename ${oldName} to ${newName}`);
+
+    setGameSpec(updatedSpec);
+    // Update selection if the renamed entity was selected
+    if (selectedEntity === oldName) {
+      setSelectedEntity(newName);
+    }
+    setHasUnsavedChanges(true);
+    setNotification(`Renamed to "${newName}"`);
+    setTimeout(() => setNotification(null), 2000);
+  };
+
   // Handle AI-generated changes
   const handleAIChanges = useCallback((updatedSpec: GameSpec) => {
     if (!gameSpec) return;
@@ -958,6 +990,7 @@ function App() {
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               onCreateEntity={handleCreateEntity}
+              onRenameEntity={handleRenameEntity}
             />
           )}
           {leftPanelMode === 'assets' && (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { GameSpec } from '@promptplay/shared-types';
 import {
   PlayerIcon,
@@ -25,6 +25,7 @@ interface SceneTreeProps {
   selectedEntity: string | null;
   onSelectEntity: (entityName: string) => void;
   onCreateEntity?: () => void;
+  onRenameEntity?: (oldName: string, newName: string) => void;
 }
 
 export default function SceneTree({
@@ -32,8 +33,75 @@ export default function SceneTree({
   selectedEntity,
   onSelectEntity,
   onCreateEntity,
+  onRenameEntity,
 }: SceneTreeProps) {
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+  const [editingEntity, setEditingEntity] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (editingEntity && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingEntity]);
+
+  // Start editing an entity
+  const startEditing = useCallback((entityName: string) => {
+    if (!onRenameEntity) return;
+    setEditingEntity(entityName);
+    setEditValue(entityName);
+  }, [onRenameEntity]);
+
+  // Save the edited name
+  const saveEdit = useCallback(() => {
+    if (!editingEntity || !onRenameEntity) return;
+
+    const newName = editValue.trim();
+
+    // Validate: non-empty and unique
+    if (newName && newName !== editingEntity) {
+      const existingNames = new Set(gameSpec?.entities?.map(e => e.name) || []);
+      if (!existingNames.has(newName)) {
+        onRenameEntity(editingEntity, newName);
+      }
+    }
+
+    setEditingEntity(null);
+    setEditValue('');
+  }, [editingEntity, editValue, gameSpec, onRenameEntity]);
+
+  // Cancel editing
+  const cancelEdit = useCallback(() => {
+    setEditingEntity(null);
+    setEditValue('');
+  }, []);
+
+  // Handle keyboard events for the input
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }, [saveEdit, cancelEdit]);
+
+  // Handle F2 key for selected entity
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2' && selectedEntity && !editingEntity && onRenameEntity) {
+        e.preventDefault();
+        startEditing(selectedEntity);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEntity, editingEntity, onRenameEntity, startEditing]);
 
   if (!gameSpec || !gameSpec.entities) {
     return (
@@ -116,6 +184,10 @@ export default function SceneTree({
                     : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'}
                 `}
                 onClick={() => onSelectEntity(entity.name)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  startEditing(entity.name);
+                }}
               >
                 {hasComponents && (
                   <button
@@ -130,10 +202,26 @@ export default function SceneTree({
                 )}
                 {!hasComponents && <span className="w-4 mr-1" />}
                 <span className="mr-2 opacity-80 group-hover:opacity-100 transition-opacity">{getEntityIcon(entity)}</span>
-                <span className="text-sm font-medium tracking-tight">
-                  {entity.name}
-                </span>
-                {entity.tags && entity.tags.length > 0 && (
+
+                {/* Entity name - editable or display */}
+                {editingEntity === entity.name ? (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    onBlur={saveEdit}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 text-sm font-medium tracking-tight bg-canvas border border-white/20 rounded px-2 py-0.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                ) : (
+                  <span className="text-sm font-medium tracking-tight">
+                    {entity.name}
+                  </span>
+                )}
+
+                {entity.tags && entity.tags.length > 0 && editingEntity !== entity.name && (
                   <span className={`ml-auto text-[10px] ${isSelected ? 'text-white/60' : 'text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity'}`}>
                     {entity.tags[0]}
                   </span>

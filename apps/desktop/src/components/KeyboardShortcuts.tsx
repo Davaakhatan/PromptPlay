@@ -34,6 +34,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Ctrl', 'S'], description: 'Save project' },
+      { keys: ['F2'], description: 'Rename selected entity' },
       { keys: ['Ctrl', 'C'], description: 'Copy entity' },
       { keys: ['Ctrl', 'V'], description: 'Paste entity' },
       { keys: ['Ctrl', 'D'], description: 'Duplicate entity' },
@@ -45,6 +46,12 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Playback',
     shortcuts: [
       { keys: ['Space'], description: 'Play / Pause game' },
+    ],
+  },
+  {
+    title: 'Scene Tree',
+    shortcuts: [
+      { keys: ['Double-click'], description: 'Rename entity' },
     ],
   },
   {
