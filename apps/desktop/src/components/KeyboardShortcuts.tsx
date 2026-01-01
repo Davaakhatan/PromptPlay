@@ -33,7 +33,10 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
-      { keys: ['Ctrl', 'S'], description: 'Save file' },
+      { keys: ['Ctrl', 'S'], description: 'Save project' },
+      { keys: ['Ctrl', 'C'], description: 'Copy entity' },
+      { keys: ['Ctrl', 'V'], description: 'Paste entity' },
+      { keys: ['Ctrl', 'D'], description: 'Duplicate entity' },
       { keys: ['Delete'], description: 'Delete selected entity' },
       { keys: ['Escape'], description: 'Deselect / Cancel' },
     ],

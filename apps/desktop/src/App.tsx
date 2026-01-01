@@ -44,6 +44,7 @@ function App() {
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('inspector');
   const [isExporting, setIsExporting] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [clipboardEntity, setClipboardEntity] = useState<any>(null);
 
   // Undo/Redo history
   const historyRef = useRef<HistoryEntry[]>([]);
@@ -813,11 +814,68 @@ function App() {
           setShowKeyboardShortcuts(false);
         }
       }
+      // Delete selected entity: Delete or Backspace
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEntity && viewMode === 'game') {
+        // Don't delete if we're in an input field
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        handleDeleteEntity(selectedEntity);
+      }
+      // Duplicate: Cmd/Ctrl + D
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedEntity && viewMode === 'game') {
+        e.preventDefault();
+        handleDuplicateEntity(selectedEntity);
+      }
+      // Copy: Cmd/Ctrl + C
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedEntity && gameSpec && viewMode === 'game') {
+        const entity = gameSpec.entities?.find((e) => e.name === selectedEntity);
+        if (entity) {
+          setClipboardEntity(JSON.parse(JSON.stringify(entity)));
+          setNotification('Entity copied');
+          setTimeout(() => setNotification(null), 1500);
+        }
+      }
+      // Paste: Cmd/Ctrl + V
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && clipboardEntity && gameSpec && viewMode === 'game') {
+        e.preventDefault();
+        // Generate unique name
+        let counter = 1;
+        const baseName = clipboardEntity.name.replace(/_copy\d+$/, '');
+        const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
+        let newName = `${baseName}_paste${counter}`;
+        while (existingNames.has(newName)) {
+          counter++;
+          newName = `${baseName}_paste${counter}`;
+        }
+
+        // Deep clone and offset position
+        const newEntity = JSON.parse(JSON.stringify(clipboardEntity));
+        newEntity.name = newName;
+        if (newEntity.components?.transform) {
+          newEntity.components.transform.x += 30;
+          newEntity.components.transform.y += 30;
+        }
+
+        const updatedSpec = {
+          ...gameSpec,
+          entities: [...(gameSpec.entities || []), newEntity],
+        };
+
+        pushHistory(updatedSpec, `Paste ${newName}`);
+        setGameSpec(updatedSpec);
+        setSelectedEntity(newName);
+        setHasUnsavedChanges(true);
+        setNotification('Entity pasted');
+        setTimeout(() => setNotification(null), 1500);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts]);
+  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, pushHistory]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
