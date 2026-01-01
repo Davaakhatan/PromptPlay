@@ -53,6 +53,7 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Double-click'], description: 'Rename entity' },
       { keys: ['Right-click'], description: 'Context menu' },
+      { keys: ['Escape'], description: 'Clear search' },
     ],
   },
   {

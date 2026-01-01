@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { GameSpec } from '@promptplay/shared-types';
 import {
   PlayerIcon,
@@ -21,6 +21,8 @@ import {
   TrashIcon,
   CopyIcon,
   EditIcon,
+  SearchIcon,
+  CloseIcon,
 } from './Icons';
 
 interface ContextMenuState {
@@ -54,8 +56,28 @@ export default function SceneTree({
   const [editingEntity, setEditingEntity] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Filter entities based on search query
+  const filteredEntities = useMemo(() => {
+    if (!gameSpec?.entities || !searchQuery.trim()) {
+      return gameSpec?.entities || [];
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return gameSpec.entities.filter((entity) => {
+      // Match entity name
+      if (entity.name.toLowerCase().includes(query)) return true;
+      // Match tags
+      if (entity.tags?.some(tag => tag.toLowerCase().includes(query))) return true;
+      // Match component names
+      if (entity.components && Object.keys(entity.components).some(comp => comp.toLowerCase().includes(query))) return true;
+      return false;
+    });
+  }, [gameSpec?.entities, searchQuery]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -107,7 +129,7 @@ export default function SceneTree({
     }
   }, [saveEdit, cancelEdit]);
 
-  // Handle F2 key for selected entity
+  // Handle F2 key for selected entity and search shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2' && selectedEntity && !editingEntity && onRenameEntity) {
@@ -118,11 +140,16 @@ export default function SceneTree({
       if (e.key === 'Escape' && contextMenu) {
         setContextMenu(null);
       }
+      // Clear search on Escape when search has focus or has content
+      if (e.key === 'Escape' && searchQuery && !contextMenu && !editingEntity) {
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedEntity, editingEntity, onRenameEntity, startEditing, contextMenu]);
+  }, [selectedEntity, editingEntity, onRenameEntity, startEditing, contextMenu, searchQuery]);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -236,10 +263,41 @@ export default function SceneTree({
 
   return (
     <div className="h-full overflow-y-auto bg-panel flex flex-col">
-      {/* Header removed as it's now in the floating panel tab */}
+      {/* Search Input */}
+      <div className="px-2 py-2 border-b border-subtle">
+        <div className="relative">
+          <SearchIcon size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search entities..."
+            className="w-full pl-8 pr-8 py-1.5 text-sm bg-canvas border border-subtle rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/10 text-text-tertiary hover:text-text-primary transition-colors"
+              title="Clear search (Escape)"
+            >
+              <CloseIcon size={12} />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="flex-1 overflow-y-auto py-2 px-2">
-        {gameSpec?.entities?.map((entity) => {
+        {filteredEntities.length === 0 && searchQuery ? (
+          <div className="flex flex-col items-center justify-center py-8 text-text-tertiary">
+            <SearchIcon size={24} className="mb-2 opacity-50" />
+            <p className="text-sm">No entities found</p>
+            <p className="text-xs mt-1">Try a different search term</p>
+          </div>
+        ) : filteredEntities.map((entity) => {
           const isSelected = selectedEntity === entity.name;
           const isExpanded = expandedEntities.has(entity.name);
           const hasComponents = entity.components && Object.keys(entity.components).length > 0;
@@ -318,7 +376,11 @@ export default function SceneTree({
       </div>
 
       <div className="px-4 py-3 text-[10px] uppercase font-bold text-text-tertiary/50 text-center tracking-widest">
-        {gameSpec?.entities?.length || 0} Entities
+        {searchQuery ? (
+          <span>{filteredEntities.length} of {gameSpec?.entities?.length || 0} Entities</span>
+        ) : (
+          <span>{gameSpec?.entities?.length || 0} Entities</span>
+        )}
       </div>
 
       {/* Context Menu */}
