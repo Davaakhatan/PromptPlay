@@ -38,6 +38,7 @@ function App() {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [showAIPanel, setShowAIPanel] = useState(false);
@@ -50,6 +51,15 @@ function App() {
   const historyRef = useRef<HistoryEntry[]>([]);
   const historyIndexRef = useRef<number>(-1);
   const isUndoRedoRef = useRef(false);
+  const [historyState, setHistoryState] = useState({ undoCount: 0, redoCount: 0, lastAction: '' });
+
+  // Update history state for UI
+  const updateHistoryState = useCallback(() => {
+    const undoCount = historyIndexRef.current;
+    const redoCount = historyRef.current.length - 1 - historyIndexRef.current;
+    const lastAction = historyRef.current[historyIndexRef.current]?.description || '';
+    setHistoryState({ undoCount, redoCount, lastAction });
+  }, []);
 
   // Push to history
   const pushHistory = useCallback((spec: GameSpec, description: string) => {
@@ -73,7 +83,9 @@ function App() {
     } else {
       historyIndexRef.current++;
     }
-  }, []);
+
+    updateHistoryState();
+  }, [updateHistoryState]);
 
   // Undo
   const handleUndo = useCallback(() => {
@@ -87,7 +99,8 @@ function App() {
     setHasUnsavedChanges(true);
     setNotification(`Undo: ${entry.description}`);
     setTimeout(() => setNotification(null), 2000);
-  }, []);
+    updateHistoryState();
+  }, [updateHistoryState]);
 
   // Redo
   const handleRedo = useCallback(() => {
@@ -101,11 +114,27 @@ function App() {
     setHasUnsavedChanges(true);
     setNotification(`Redo: ${entry.description}`);
     setTimeout(() => setNotification(null), 2000);
-  }, []);
+    updateHistoryState();
+  }, [updateHistoryState]);
 
-  // Check if undo/redo available
-  const canUndo = historyIndexRef.current > 0;
-  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+  // Derived from reactive state
+  const canUndo = historyState.undoCount > 0;
+  const canRedo = historyState.redoCount > 0;
+
+  // Format last save time for display
+  const formatSaveTime = (date: Date | null): string => {
+    if (!date) return '';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 min ago';
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    if (diffHours === 1) return '1 hour ago';
+    return `${diffHours} hours ago`;
+  };
 
   // Handle entity selection - auto switch to Scene tab
   const handleEntitySelect = useCallback((entityName: string | null) => {
@@ -217,6 +246,7 @@ function App() {
       });
 
       setHasUnsavedChanges(false);
+      setLastSaveTime(new Date());
       setNotification('Project saved');
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
@@ -800,6 +830,14 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      // Quick Create Entity: Cmd/Ctrl + Shift + N
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'n') {
+        e.preventDefault();
+        if (gameSpec) {
+          handleCreateEntity();
+        }
+        return;
+      }
       // New Project: Cmd/Ctrl + N
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
@@ -822,6 +860,7 @@ function App() {
               content: gameJsonContent,
             });
             setHasUnsavedChanges(false);
+            setLastSaveTime(new Date());
             setNotification('Project saved');
             setTimeout(() => setNotification(null), 2000);
           } catch (err) {
@@ -918,7 +957,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, pushHistory]);
+  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, handleCreateEntity, pushHistory]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
@@ -1096,40 +1135,60 @@ function App() {
             {/* Divider */}
             {projectPath && <div className="w-px h-6 bg-subtle" />}
 
-            {/* Save */}
+            {/* Save with Status */}
             {projectPath && (
-              <button
-                onClick={saveProject}
-                className={`p-2 rounded-md ${hasUnsavedChanges
-                  ? 'text-blue-600 hover:bg-blue-50'
-                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                  }`}
-                title="Save Project (Cmd+S)"
-              >
-                <SaveIcon size={18} />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={saveProject}
+                  className={`relative p-2 rounded-md transition-all ${hasUnsavedChanges
+                    ? 'text-amber-400 hover:bg-amber-500/10'
+                    : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
+                    }`}
+                  title={hasUnsavedChanges ? 'Save Project (Cmd+S) - Unsaved changes' : `Save Project (Cmd+S)${lastSaveTime ? ` - Saved ${formatSaveTime(lastSaveTime)}` : ''}`}
+                >
+                  <SaveIcon size={18} />
+                  {hasUnsavedChanges && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                  )}
+                </button>
+                {lastSaveTime && !hasUnsavedChanges && (
+                  <span className="text-[10px] text-text-tertiary font-medium hidden sm:block">
+                    {formatSaveTime(lastSaveTime)}
+                  </span>
+                )}
+              </div>
             )}
 
-            {/* Undo/Redo */}
+            {/* Undo/Redo with History Indicator */}
             {projectPath && (
-              <>
+              <div className="flex items-center gap-0.5 bg-white/5 rounded-lg px-1">
                 <button
                   onClick={handleUndo}
                   disabled={!canUndo}
-                  className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="Undo (Cmd+Z)"
+                  className="relative p-2 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                  title={canUndo ? `Undo: ${historyState.lastAction} (Cmd+Z)` : 'Nothing to undo (Cmd+Z)'}
                 >
                   <UndoIcon size={18} />
+                  {historyState.undoCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-[10px] font-bold bg-primary text-white rounded-full flex items-center justify-center shadow-sm">
+                      {historyState.undoCount > 9 ? '9+' : historyState.undoCount}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={handleRedo}
                   disabled={!canRedo}
-                  className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="Redo (Cmd+Shift+Z)"
+                  className="relative p-2 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
+                  title={canRedo ? `Redo (Cmd+Shift+Z)` : 'Nothing to redo (Cmd+Shift+Z)'}
                 >
                   <RedoIcon size={18} />
+                  {historyState.redoCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-[10px] font-bold bg-amber-500 text-white rounded-full flex items-center justify-center shadow-sm">
+                      {historyState.redoCount > 9 ? '9+' : historyState.redoCount}
+                    </span>
+                  )}
                 </button>
-              </>
+              </div>
             )}
 
             {/* Divider */}

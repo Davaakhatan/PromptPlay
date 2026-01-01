@@ -34,6 +34,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Ctrl', 'S'], description: 'Save project' },
+      { keys: ['Ctrl', 'Shift', 'N'], description: 'Quick create entity' },
       { keys: ['F2'], description: 'Rename selected entity' },
       { keys: ['Ctrl', 'C'], description: 'Copy entity' },
       { keys: ['Ctrl', 'V'], description: 'Paste entity' },
