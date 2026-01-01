@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import type { GameSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
@@ -38,7 +39,6 @@ function App() {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [showAIPanel, setShowAIPanel] = useState(false);
@@ -120,21 +120,6 @@ function App() {
   // Derived from reactive state
   const canUndo = historyState.undoCount > 0;
   const canRedo = historyState.redoCount > 0;
-
-  // Format last save time for display
-  const formatSaveTime = (date: Date | null): string => {
-    if (!date) return '';
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins === 1) return '1 min ago';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    if (diffHours === 1) return '1 hour ago';
-    return `${diffHours} hours ago`;
-  };
 
   // Handle entity selection - auto switch to Scene tab
   const handleEntitySelect = useCallback((entityName: string | null) => {
@@ -246,8 +231,7 @@ function App() {
       });
 
       setHasUnsavedChanges(false);
-      setLastSaveTime(new Date());
-      setNotification('Project saved');
+      setNotification('Saved');
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
       console.error('Failed to save project:', err);
@@ -860,8 +844,7 @@ function App() {
               content: gameJsonContent,
             });
             setHasUnsavedChanges(false);
-            setLastSaveTime(new Date());
-            setNotification('Project saved');
+            setNotification('Saved');
             setTimeout(() => setNotification(null), 2000);
           } catch (err) {
             console.error('Failed to save project:', err);
@@ -958,6 +941,71 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, handleCreateEntity, pushHistory]);
+
+  // Listen for native menu events from Rust
+  useEffect(() => {
+    const unlisten = listen<string>('menu-event', (event) => {
+      const action = event.payload;
+      switch (action) {
+        case 'new_project':
+          setShowNewProjectModal(true);
+          break;
+        case 'open_project':
+          openProject();
+          break;
+        case 'save':
+          if (gameSpec && projectPath) {
+            saveProject();
+          }
+          break;
+        case 'export':
+          if (gameSpec) {
+            exportGame();
+          }
+          break;
+        case 'undo':
+          handleUndo();
+          break;
+        case 'redo':
+          handleRedo();
+          break;
+        case 'duplicate':
+          if (selectedEntity) {
+            handleDuplicateEntity(selectedEntity);
+          }
+          break;
+        case 'delete':
+          if (selectedEntity) {
+            handleDeleteEntity(selectedEntity);
+          }
+          break;
+        case 'keyboard_shortcuts':
+          setShowKeyboardShortcuts(true);
+          break;
+        case 'about':
+          setNotification('PromptPlay - AI-First 2D Game Engine');
+          setTimeout(() => setNotification(null), 3000);
+          break;
+        // Grid, debug, and zoom controls can be added when those features are implemented
+        case 'toggle_grid':
+        case 'toggle_debug':
+        case 'zoom_in':
+        case 'zoom_out':
+        case 'zoom_reset':
+        case 'fit_view':
+          // TODO: Implement these view controls
+          setNotification(`${action.replace('_', ' ')} - Coming soon`);
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        default:
+          console.log('Unknown menu event:', action);
+      }
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, [openProject, saveProject, exportGame, handleUndo, handleRedo, selectedEntity, handleDuplicateEntity, handleDeleteEntity, gameSpec, projectPath]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
@@ -1076,29 +1124,26 @@ function App() {
 
       {/* Center Panel - Game Canvas / Code Editor */}
       <main className="flex-1 flex flex-col">
-        {/* Toolbar */}
-        {/* Toolbar */}
-        <div className="bg-panel border-b border-subtle p-3 flex items-center justify-between backdrop-blur-md sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-text-primary">PromptPlay Desktop</h1>
-
-            {/* View Mode Tabs */}
+        {/* Toolbar - Minimalist Design */}
+        <div className="bg-panel border-b border-subtle h-10 flex items-center justify-between px-2 backdrop-blur-md sticky top-0 z-10">
+          {/* Left: View Mode Tabs */}
+          <div className="flex items-center gap-1">
             {projectPath && (
-              <div className="flex gap-1 bg-subtle rounded-lg p-1">
+              <div className="flex bg-subtle/50 rounded p-0.5">
                 <button
                   onClick={() => setViewMode('game')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'game'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${viewMode === 'game'
+                    ? 'bg-white/10 text-white'
+                    : 'text-text-tertiary hover:text-text-secondary'
                     }`}
                 >
                   Game
                 </button>
                 <button
                   onClick={() => setViewMode('code')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'code'
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${viewMode === 'code'
+                    ? 'bg-white/10 text-white'
+                    : 'text-text-tertiary hover:text-text-secondary'
                     }`}
                 >
                   Code
@@ -1107,151 +1152,126 @@ function App() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* New Project */}
+          {/* Center: Play Controls */}
+          {gameSpec && viewMode === 'game' && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={togglePlayPause}
+                className={`w-7 h-7 rounded flex items-center justify-center transition-all ${isPlaying
+                  ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                  : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                  }`}
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={resetGame}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
+                title="Reset"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-0.5">
+            {/* File operations */}
             <button
               onClick={() => setShowNewProjectModal(true)}
-              className="p-2 text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-md transition-all"
-              title="New Project"
+              className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
+              title="New Project (Cmd+N)"
             >
-              <NewProjectIcon size={18} />
+              <NewProjectIcon size={14} />
             </button>
-
             <button
               onClick={openProject}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+              className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
+              title="Open Project (Cmd+O)"
             >
-              {loading ? (
-                <>
-                  <LoadingSpinner size={16} />
-                  <span>Loading...</span>
-                </>
-              ) : (
-                projectPath ? 'Change Project' : 'Open Project'
+              {loading ? <LoadingSpinner size={14} /> : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
               )}
             </button>
 
-            {/* Divider */}
-            {projectPath && <div className="w-px h-6 bg-subtle" />}
-
-            {/* Save with Status */}
             {projectPath && (
-              <div className="flex items-center gap-1.5">
+              <>
+                <div className="w-px h-4 bg-subtle mx-1" />
+
+                {/* Save */}
                 <button
                   onClick={saveProject}
-                  className={`relative p-2 rounded-md transition-all ${hasUnsavedChanges
+                  className={`relative w-7 h-7 rounded flex items-center justify-center transition-all ${hasUnsavedChanges
                     ? 'text-amber-400 hover:bg-amber-500/10'
                     : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
                     }`}
-                  title={hasUnsavedChanges ? 'Save Project (Cmd+S) - Unsaved changes' : `Save Project (Cmd+S)${lastSaveTime ? ` - Saved ${formatSaveTime(lastSaveTime)}` : ''}`}
+                  title={hasUnsavedChanges ? 'Save (Cmd+S) - Unsaved' : 'Save (Cmd+S)'}
                 >
-                  <SaveIcon size={18} />
+                  <SaveIcon size={14} />
                   {hasUnsavedChanges && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
                   )}
                 </button>
-                {lastSaveTime && !hasUnsavedChanges && (
-                  <span className="text-[10px] text-text-tertiary font-medium hidden sm:block">
-                    {formatSaveTime(lastSaveTime)}
-                  </span>
-                )}
-              </div>
-            )}
 
-            {/* Undo/Redo with History Indicator */}
-            {projectPath && (
-              <div className="flex items-center gap-0.5 bg-white/5 rounded-lg px-1">
+                {/* Undo/Redo */}
                 <button
                   onClick={handleUndo}
                   disabled={!canUndo}
-                  className="relative p-2 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
-                  title={canUndo ? `Undo: ${historyState.lastAction} (Cmd+Z)` : 'Nothing to undo (Cmd+Z)'}
+                  className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title={canUndo ? `Undo (Cmd+Z)` : 'Nothing to undo'}
                 >
-                  <UndoIcon size={18} />
-                  {historyState.undoCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-[10px] font-bold bg-primary text-white rounded-full flex items-center justify-center shadow-sm">
-                      {historyState.undoCount > 9 ? '9+' : historyState.undoCount}
-                    </span>
-                  )}
+                  <UndoIcon size={14} />
                 </button>
                 <button
                   onClick={handleRedo}
                   disabled={!canRedo}
-                  className="relative p-2 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-all group"
-                  title={canRedo ? `Redo (Cmd+Shift+Z)` : 'Nothing to redo (Cmd+Shift+Z)'}
+                  className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title={canRedo ? `Redo (Cmd+Shift+Z)` : 'Nothing to redo'}
                 >
-                  <RedoIcon size={18} />
-                  {historyState.redoCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-[10px] font-bold bg-amber-500 text-white rounded-full flex items-center justify-center shadow-sm">
-                      {historyState.redoCount > 9 ? '9+' : historyState.redoCount}
-                    </span>
-                  )}
+                  <RedoIcon size={14} />
                 </button>
-              </div>
-            )}
 
-            {/* Divider */}
-            {gameSpec && viewMode === 'game' && <div className="w-px h-6 bg-gray-300" />}
+                <div className="w-px h-4 bg-subtle mx-1" />
 
-            {gameSpec && viewMode === 'game' && (
-              <>
+                {/* AI */}
                 <button
-                  onClick={togglePlayPause}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${isPlaying
-                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                    : 'bg-green-600 text-white hover:bg-green-700'
+                  onClick={() => setShowAIPanel(prev => !prev)}
+                  className={`w-7 h-7 rounded flex items-center justify-center transition-all ${showAIPanel
+                    ? 'bg-purple-500/20 text-purple-400'
+                    : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
                     }`}
+                  title="AI Assistant"
                 >
-                  {isPlaying ? 'Pause' : 'Play'}
+                  <AIIcon size={14} />
                 </button>
-                <button
-                  onClick={resetGame}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
-                >
-                  Reset
-                </button>
-              </>
-            )}
 
-            {/* Divider */}
-            {projectPath && <div className="w-px h-6 bg-gray-300" />}
-
-            {/* AI Assistant */}
-            {projectPath && (
-              <button
-                onClick={() => setShowAIPanel(prev => !prev)}
-                className={`p-2 rounded-md flex items-center gap-1 ${showAIPanel
-                  ? 'bg-purple-600 text-white'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                title="AI Assistant"
-              >
-                <AIIcon size={18} />
-                <span className="text-sm font-medium">AI</span>
-              </button>
-            )}
-
-            {/* Export */}
-            {gameSpec && (
-              <button
-                onClick={exportGame}
-                disabled={isExporting}
-                className="px-3 py-2 rounded-md flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-50 transition-colors"
-                title="Export as HTML (Ctrl+E)"
-              >
-                {isExporting ? (
-                  <LoadingSpinner size={16} />
-                ) : (
-                  <ExportIcon size={16} />
+                {/* Export */}
+                {gameSpec && (
+                  <button
+                    onClick={exportGame}
+                    disabled={isExporting}
+                    className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
+                    title="Export as HTML (Cmd+E)"
+                  >
+                    {isExporting ? <LoadingSpinner size={14} /> : <ExportIcon size={14} />}
+                  </button>
                 )}
-                <span className="text-sm font-medium">{isExporting ? 'Exporting...' : 'Export'}</span>
-              </button>
-            )}
-
-            {/* Unsaved indicator */}
-            {hasUnsavedChanges && (
-              <span className="text-xs text-orange-500 font-medium">Unsaved</span>
+              </>
             )}
           </div>
         </div>

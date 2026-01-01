@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -100,6 +101,79 @@ pub async fn export_game_html(
     let html_content = generate_standalone_html(&game_spec_json, &game_title);
     fs::write(&output_path, html_content)
         .map_err(|e| format!("Failed to write export file {}: {}", output_path, e))
+}
+
+/// Read a binary file and return as base64
+#[tauri::command]
+pub async fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    let mut file = fs::File::open(&path)
+        .map_err(|e| format!("Failed to open file {}: {}", path, e))?;
+
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)
+        .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
+
+    Ok(buffer)
+}
+
+/// Write binary data to a file
+#[tauri::command]
+pub async fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    // Ensure parent directory exists
+    if let Some(parent) = PathBuf::from(&path).parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent directories: {}", e))?;
+    }
+
+    let mut file = fs::File::create(&path)
+        .map_err(|e| format!("Failed to create file {}: {}", path, e))?;
+
+    file.write_all(&data)
+        .map_err(|e| format!("Failed to write file {}: {}", path, e))?;
+
+    Ok(())
+}
+
+/// Delete a file or empty directory
+#[tauri::command]
+pub async fn delete_path(path: String) -> Result<(), String> {
+    let path_buf = PathBuf::from(&path);
+
+    if !path_buf.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
+    if path_buf.is_dir() {
+        fs::remove_dir_all(&path)
+            .map_err(|e| format!("Failed to delete directory {}: {}", path, e))?;
+    } else {
+        fs::remove_file(&path)
+            .map_err(|e| format!("Failed to delete file {}: {}", path, e))?;
+    }
+
+    Ok(())
+}
+
+/// Get file metadata (size, modification time, etc.)
+#[tauri::command]
+pub async fn get_file_info(path: String) -> Result<FileMetadata, String> {
+    let metadata = fs::metadata(&path)
+        .map_err(|e| format!("Failed to get metadata for {}: {}", path, e))?;
+
+    Ok(FileMetadata {
+        size: metadata.len(),
+        is_file: metadata.is_file(),
+        is_directory: metadata.is_dir(),
+        readonly: metadata.permissions().readonly(),
+    })
+}
+
+#[derive(Debug, Serialize)]
+pub struct FileMetadata {
+    pub size: u64,
+    pub is_file: bool,
+    pub is_directory: bool,
+    pub readonly: bool,
 }
 
 fn generate_standalone_html(game_spec_json: &str, title: &str) -> String {
