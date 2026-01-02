@@ -8,7 +8,7 @@ interface UseEntityOperationsOptions {
   onSelectedEntityChange: (name: string | null) => void;
   onUnsavedChange: (hasChanges: boolean) => void;
   onNotification: (message: string | null) => void;
-  onLeftPanelModeChange: (mode: 'files' | 'scenes' | 'entities' | 'assets') => void;
+  onLeftPanelModeChange: (mode: 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets') => void;
   pushHistory: (spec: GameSpec, description: string) => void;
 }
 

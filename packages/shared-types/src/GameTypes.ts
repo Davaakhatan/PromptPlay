@@ -182,3 +182,16 @@ export interface AudioComponent {
   spatial?: boolean;
   maxDistance?: number;
 }
+
+// Prefab system types
+export type PrefabCategory = 'player' | 'enemy' | 'platform' | 'collectible' | 'projectile' | 'effect' | 'ui' | 'custom';
+
+export interface Prefab {
+  id: string;
+  name: string;
+  description?: string;
+  category: PrefabCategory;
+  icon?: string; // Icon identifier or emoji
+  entity: Omit<EntitySpec, 'name'>; // Entity template without name
+  isBuiltIn?: boolean;
+}

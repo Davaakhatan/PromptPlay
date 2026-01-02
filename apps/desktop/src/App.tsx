@@ -2,12 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import type { GameSpec, SceneSpec } from '@promptplay/shared-types';
+import type { GameSpec, SceneSpec, EntitySpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
 import CodeEditor from './components/CodeEditor';
 import FileTree from './components/FileTree';
 import SceneTree from './components/SceneTree';
 import SceneManager from './components/SceneManager';
+import PrefabLibrary from './components/PrefabLibrary';
 import Inspector from './components/Inspector';
 import JSONEditorPanel from './components/JSONEditorPanel';
 import AIPromptPanel from './components/AIPromptPanel';
@@ -21,7 +22,7 @@ import { useEntityOperations } from './hooks/useEntityOperations';
 import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
-type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'assets';
+type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets';
 type RightPanelMode = 'inspector' | 'json';
 
 function App() {
@@ -312,6 +313,39 @@ function App() {
     setGameSpec(updatedSpec);
     setHasUnsavedChanges(true);
     setNotification(`Duplicated scene`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, pushHistory]);
+
+  // Prefab instantiation handler
+  const handleInstantiatePrefab = useCallback((entity: EntitySpec) => {
+    if (!gameSpec) return;
+
+    // Generate unique name
+    const baseName = entity.name;
+    let counter = 1;
+    const existingNames = new Set(gameSpec.entities?.map(e => e.name) || []);
+    let newName = baseName;
+    while (existingNames.has(newName)) {
+      newName = `${baseName}${counter}`;
+      counter++;
+    }
+
+    const newEntity: EntitySpec = {
+      ...entity,
+      name: newName,
+    };
+
+    const updatedSpec = {
+      ...gameSpec,
+      entities: [...(gameSpec.entities || []), newEntity],
+    };
+
+    pushHistory(updatedSpec, `Instantiate prefab "${newName}"`);
+    setGameSpec(updatedSpec);
+    setSelectedEntities(new Set([newName]));
+    setHasUnsavedChanges(true);
+    setLeftPanelMode('entities');
+    setNotification(`Created "${newName}" from prefab`);
     setTimeout(() => setNotification(null), 2000);
   }, [gameSpec, pushHistory]);
 
@@ -1099,6 +1133,15 @@ function App() {
               Entities
             </button>
             <button
+              onClick={() => setLeftPanelMode('prefabs')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'prefabs'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+            >
+              Prefabs
+            </button>
+            <button
               onClick={() => setLeftPanelMode('assets')}
               className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'assets'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
@@ -1154,6 +1197,12 @@ function App() {
               onDeleteEntity={selectedEntities.size > 1 ? handleDeleteSelected : handleDeleteEntity}
               onDuplicateEntity={selectedEntities.size > 1 ? handleDuplicateSelected : handleDuplicateEntity}
               onCopyEntity={handleCopyEntity}
+            />
+          )}
+          {leftPanelMode === 'prefabs' && (
+            <PrefabLibrary
+              onInstantiate={handleInstantiatePrefab}
+              selectedEntity={selectedEntity ? gameSpec?.entities?.find(e => e.name === selectedEntity) : null}
             />
           )}
           {leftPanelMode === 'assets' && (
