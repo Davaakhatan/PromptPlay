@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -15,17 +15,13 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ErrorDisplay from './components/ErrorDisplay';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
+import { useHistoryState } from './hooks/useHistoryState';
+import { useEntityOperations } from './hooks/useEntityOperations';
 import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ImageIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
 type LeftPanelMode = 'files' | 'scene' | 'assets';
 type RightPanelMode = 'inspector' | 'json';
-
-// History entry for undo/redo
-interface HistoryEntry {
-  gameSpec: GameSpec;
-  description: string;
-}
 
 function App() {
   const [gameSpec, setGameSpec] = useState<GameSpec | null>(null);
@@ -47,79 +43,38 @@ function App() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [clipboardEntity, setClipboardEntity] = useState<any>(null);
 
-  // Undo/Redo history
-  const historyRef = useRef<HistoryEntry[]>([]);
-  const historyIndexRef = useRef<number>(-1);
-  const isUndoRedoRef = useRef(false);
-  const [historyState, setHistoryState] = useState({ undoCount: 0, redoCount: 0, lastAction: '' });
+  // History management
+  const {
+    canUndo,
+    canRedo,
+    pushHistory,
+    handleUndo,
+    handleRedo,
+    initializeHistory,
+  } = useHistoryState({
+    onGameSpecChange: setGameSpec,
+    onUnsavedChange: setHasUnsavedChanges,
+    onNotification: setNotification,
+  });
 
-  // Update history state for UI
-  const updateHistoryState = useCallback(() => {
-    const undoCount = historyIndexRef.current;
-    const redoCount = historyRef.current.length - 1 - historyIndexRef.current;
-    const lastAction = historyRef.current[historyIndexRef.current]?.description || '';
-    setHistoryState({ undoCount, redoCount, lastAction });
-  }, []);
-
-  // Push to history
-  const pushHistory = useCallback((spec: GameSpec, description: string) => {
-    if (isUndoRedoRef.current) {
-      isUndoRedoRef.current = false;
-      return;
-    }
-
-    // Remove any future history if we're in the middle
-    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-
-    // Add new entry
-    historyRef.current.push({
-      gameSpec: JSON.parse(JSON.stringify(spec)),
-      description,
-    });
-
-    // Limit history size
-    if (historyRef.current.length > 50) {
-      historyRef.current.shift();
-    } else {
-      historyIndexRef.current++;
-    }
-
-    updateHistoryState();
-  }, [updateHistoryState]);
-
-  // Undo
-  const handleUndo = useCallback(() => {
-    if (historyIndexRef.current <= 0) return;
-
-    historyIndexRef.current--;
-    isUndoRedoRef.current = true;
-
-    const entry = historyRef.current[historyIndexRef.current];
-    setGameSpec(JSON.parse(JSON.stringify(entry.gameSpec)));
-    setHasUnsavedChanges(true);
-    setNotification(`Undo: ${entry.description}`);
-    setTimeout(() => setNotification(null), 2000);
-    updateHistoryState();
-  }, [updateHistoryState]);
-
-  // Redo
-  const handleRedo = useCallback(() => {
-    if (historyIndexRef.current >= historyRef.current.length - 1) return;
-
-    historyIndexRef.current++;
-    isUndoRedoRef.current = true;
-
-    const entry = historyRef.current[historyIndexRef.current];
-    setGameSpec(JSON.parse(JSON.stringify(entry.gameSpec)));
-    setHasUnsavedChanges(true);
-    setNotification(`Redo: ${entry.description}`);
-    setTimeout(() => setNotification(null), 2000);
-    updateHistoryState();
-  }, [updateHistoryState]);
-
-  // Derived from reactive state
-  const canUndo = historyState.undoCount > 0;
-  const canRedo = historyState.redoCount > 0;
+  // Entity operations
+  const {
+    handleUpdateEntity,
+    handleCreateEntity,
+    handleDeleteEntity,
+    handleDuplicateEntity,
+    handleRenameEntity,
+    handleApplyAIChanges,
+  } = useEntityOperations({
+    gameSpec,
+    selectedEntity,
+    onGameSpecChange: setGameSpec,
+    onSelectedEntityChange: setSelectedEntity,
+    onUnsavedChange: setHasUnsavedChanges,
+    onNotification: setNotification,
+    onLeftPanelModeChange: setLeftPanelMode,
+    pushHistory,
+  });
 
   // Handle entity selection - auto switch to Scene tab
   const handleEntitySelect = useCallback((entityName: string | null) => {
@@ -165,7 +120,6 @@ function App() {
       setLoading(true);
       setError(null);
 
-      // Open directory picker
       const selected = await open({
         directory: true,
         multiple: false,
@@ -178,32 +132,21 @@ function App() {
       }
 
       setProjectPath(selected);
-
-      // Load game.json from the selected directory
-      gameJsonStr = await invoke<string>('load_game_spec', {
-        projectPath: selected,
-      });
-
-      console.log('Raw game.json string:', gameJsonStr);
-      console.log('String length:', gameJsonStr.length);
+      gameJsonStr = await invoke<string>('load_game_spec', { projectPath: selected });
       const spec = JSON.parse(gameJsonStr) as GameSpec;
-      console.log('Parsed game spec:', spec);
+
       setGameSpec(spec);
-      setIsPlaying(false); // Start in editing mode
+      setIsPlaying(false);
       setLoading(false);
       setHasUnsavedChanges(false);
-
-      // Initialize history
-      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(spec)), description: 'Initial state' }];
-      historyIndexRef.current = 0;
+      initializeHistory(spec);
     } catch (err) {
-      console.error('Full error:', err);
-      console.error('Game JSON string:', gameJsonStr);
+      console.error('Failed to open project:', err);
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
       setIsPlaying(false);
     }
-  }, []);
+  }, [initializeHistory]);
 
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -305,10 +248,7 @@ function App() {
       setHasUnsavedChanges(false);
       setShowNewProjectModal(false);
       setNewProjectName('');
-
-      // Initialize history
-      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(defaultSpec)), description: 'Initial state' }];
-      historyIndexRef.current = 0;
+      initializeHistory(defaultSpec);
 
       setNotification('Project created');
       setTimeout(() => setNotification(null), 2000);
@@ -574,10 +514,7 @@ function App() {
       setGameSpec(templateSpec);
       setIsPlaying(false);
       setHasUnsavedChanges(false);
-
-      // Initialize history
-      historyRef.current = [{ gameSpec: JSON.parse(JSON.stringify(templateSpec)), description: 'Initial state' }];
-      historyIndexRef.current = 0;
+      initializeHistory(templateSpec);
 
       setNotification(`${templateId} project created`);
       setTimeout(() => setNotification(null), 2000);
@@ -639,156 +576,6 @@ function App() {
     }
   };
 
-  const handleUpdateEntity = async (entityName: string, updates: any) => {
-    if (!gameSpec) return;
-
-    // Update the game spec with modified entity
-    const updatedEntities = gameSpec.entities?.map((entity) =>
-      entity.name === entityName ? { ...entity, ...updates } : entity
-    );
-
-    const updatedSpec = {
-      ...gameSpec,
-      entities: updatedEntities,
-    };
-
-    // Push to history
-    pushHistory(updatedSpec, `Update ${entityName}`);
-
-    // Update state (don't auto-save, mark as unsaved)
-    setGameSpec(updatedSpec);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleCreateEntity = async () => {
-    if (!gameSpec) return;
-
-    // Generate unique name
-    const baseName = 'entity';
-    let counter = 1;
-    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-    while (existingNames.has(`${baseName}${counter}`)) {
-      counter++;
-    }
-    const newName = `${baseName}${counter}`;
-
-    // Create new entity with default components
-    const newEntity = {
-      name: newName,
-      components: {
-        transform: { x: 400, y: 300, rotation: 0, scaleX: 1, scaleY: 1 },
-        sprite: { texture: 'default', width: 32, height: 32, tint: 8421504 },
-      },
-      tags: [],
-    };
-
-    const updatedSpec = {
-      ...gameSpec,
-      entities: [...(gameSpec.entities || []), newEntity],
-    };
-
-    // Push to history
-    pushHistory(updatedSpec, `Create ${newName}`);
-
-    setGameSpec(updatedSpec);
-    setSelectedEntity(newName);
-    setLeftPanelMode('scene');
-    setHasUnsavedChanges(true);
-    setNotification('Entity created');
-    setTimeout(() => setNotification(null), 2000);
-  };
-
-  const handleDeleteEntity = async (entityName: string) => {
-    if (!gameSpec) return;
-
-    const updatedEntities = gameSpec.entities?.filter((e) => e.name !== entityName) || [];
-
-    const updatedSpec = {
-      ...gameSpec,
-      entities: updatedEntities,
-    };
-
-    // Push to history
-    pushHistory(updatedSpec, `Delete ${entityName}`);
-
-    setGameSpec(updatedSpec);
-    if (selectedEntity === entityName) {
-      setSelectedEntity(null);
-    }
-    setHasUnsavedChanges(true);
-    setNotification('Entity deleted');
-    setTimeout(() => setNotification(null), 2000);
-  };
-
-  const handleDuplicateEntity = async (entityName: string) => {
-    if (!gameSpec) return;
-
-    const entity = gameSpec.entities?.find((e) => e.name === entityName);
-    if (!entity) return;
-
-    // Generate unique name
-    let counter = 1;
-    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-    while (existingNames.has(`${entityName}_copy${counter}`)) {
-      counter++;
-    }
-    const newName = `${entityName}_copy${counter}`;
-
-    // Deep clone and offset position
-    const newEntity = JSON.parse(JSON.stringify(entity));
-    newEntity.name = newName;
-    if (newEntity.components?.transform) {
-      newEntity.components.transform.x += 50;
-      newEntity.components.transform.y += 50;
-    }
-
-    const updatedSpec = {
-      ...gameSpec,
-      entities: [...(gameSpec.entities || []), newEntity],
-    };
-
-    // Push to history
-    pushHistory(updatedSpec, `Duplicate ${entityName}`);
-
-    setGameSpec(updatedSpec);
-    setSelectedEntity(newName);
-    setHasUnsavedChanges(true);
-    setNotification('Entity duplicated');
-    setTimeout(() => setNotification(null), 2000);
-  };
-
-  const handleRenameEntity = async (oldName: string, newName: string) => {
-    if (!gameSpec) return;
-
-    // Validate name
-    if (!newName || newName === oldName) return;
-
-    const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-    if (existingNames.has(newName)) return;
-
-    // Update entity name
-    const updatedEntities = gameSpec.entities?.map((entity) =>
-      entity.name === oldName ? { ...entity, name: newName } : entity
-    );
-
-    const updatedSpec = {
-      ...gameSpec,
-      entities: updatedEntities,
-    };
-
-    // Push to history
-    pushHistory(updatedSpec, `Rename ${oldName} to ${newName}`);
-
-    setGameSpec(updatedSpec);
-    // Update selection if the renamed entity was selected
-    if (selectedEntity === oldName) {
-      setSelectedEntity(newName);
-    }
-    setHasUnsavedChanges(true);
-    setNotification(`Renamed to "${newName}"`);
-    setTimeout(() => setNotification(null), 2000);
-  };
-
   const handleCopyEntity = useCallback((entityName: string) => {
     if (!gameSpec) return;
 
@@ -799,17 +586,6 @@ function App() {
       setTimeout(() => setNotification(null), 1500);
     }
   }, [gameSpec]);
-
-  // Handle AI-generated changes
-  const handleAIChanges = useCallback((updatedSpec: GameSpec) => {
-    if (!gameSpec) return;
-
-    pushHistory(updatedSpec, 'AI modification');
-    setGameSpec(updatedSpec);
-    setHasUnsavedChanges(true);
-    setNotification('AI changes applied');
-    setTimeout(() => setNotification(null), 2000);
-  }, [gameSpec, pushHistory]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1353,7 +1129,7 @@ function App() {
           ) : viewMode === 'game' && gameSpec && rightPanelMode === 'json' ? (
             <JSONEditorPanel
               gameSpec={gameSpec}
-              onApplyChanges={handleAIChanges}
+              onApplyChanges={handleApplyAIChanges}
               selectedEntity={selectedEntity}
             />
           ) : viewMode === 'code' && selectedFile ? (
@@ -1426,7 +1202,7 @@ function App() {
       {/* AI Prompt Panel */}
       <AIPromptPanel
         gameSpec={gameSpec}
-        onApplyChanges={handleAIChanges}
+        onApplyChanges={handleApplyAIChanges}
         isVisible={showAIPanel}
         onClose={() => setShowAIPanel(false)}
       />
