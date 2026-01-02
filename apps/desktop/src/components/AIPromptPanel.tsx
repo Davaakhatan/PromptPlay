@@ -3,15 +3,17 @@ import { invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { GameSpec } from '@promptplay/shared-types';
-import { AIIcon, SettingsIcon } from './Icons';
+import { AIIcon, SettingsIcon, TrashIcon, ChevronDownIcon } from './Icons';
 import DiffPreview from './DiffPreview';
 import { simulateAIResponse } from '../services/aiDemoSimulator';
+import { chatHistoryService, ChatSession } from '../services/ChatHistoryService';
 
 interface AIPromptPanelProps {
   gameSpec: GameSpec | null;
   onApplyChanges: (updatedSpec: GameSpec) => void;
   isVisible: boolean;
   onClose: () => void;
+  projectPath: string | null;
 }
 
 interface Message {
@@ -31,14 +33,18 @@ export default function AIPromptPanel({
   onApplyChanges,
   isVisible,
   onClose,
+  projectPath,
 }: AIPromptPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<GameSpec | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,6 +60,43 @@ export default function AIPromptPanel({
     };
     checkApiKey();
   }, []);
+
+  // Load chat history when project changes
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!projectPath) return;
+
+      const loadedSessions = await chatHistoryService.loadSessionsForProject(projectPath);
+      setSessions(loadedSessions);
+
+      // Create new session if none exists
+      if (loadedSessions.length === 0) {
+        const newSession = chatHistoryService.createSession(projectPath);
+        setSessions([newSession]);
+        setCurrentSessionId(newSession.id);
+      } else {
+        // Use most recent session
+        const current = chatHistoryService.setCurrentSession(loadedSessions[0].id);
+        if (current) {
+          setCurrentSessionId(current.id);
+          setMessages(current.messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: new Date(m.timestamp),
+          })));
+        }
+      }
+    };
+
+    loadHistory();
+  }, [projectPath]);
+
+  // Save history when messages change
+  useEffect(() => {
+    if (projectPath && messages.length > 0) {
+      chatHistoryService.saveSessionsForProject(projectPath);
+    }
+  }, [messages, projectPath]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -118,6 +161,7 @@ export default function AIPromptPanel({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    chatHistoryService.addMessage('user', prompt);
     setPrompt('');
     setIsLoading(true);
 
@@ -144,6 +188,9 @@ export default function AIPromptPanel({
             timestamp: new Date(),
           };
           setMessages(prev => [...prev, assistantMessage]);
+          chatHistoryService.addMessage('assistant', simResponse.message, {
+            appliedChanges: !!simResponse.updatedSpec,
+          });
           if (simResponse.updatedSpec) {
             setPendingChanges(simResponse.updatedSpec);
           }
@@ -160,6 +207,10 @@ export default function AIPromptPanel({
 
         // Try to parse GameSpec from response
         const parsedSpec = parseGameSpecFromResponse(response.content);
+        chatHistoryService.addMessage('assistant', response.content, {
+          appliedChanges: !!parsedSpec,
+          codeGenerated: response.content.includes('```'),
+        });
         if (parsedSpec) {
           setPendingChanges(parsedSpec);
         }
@@ -171,6 +222,7 @@ export default function AIPromptPanel({
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      chatHistoryService.addMessage('system', errorMessage.content);
     } finally {
       setIsLoading(false);
     }
@@ -232,34 +284,126 @@ export default function AIPromptPanel({
   const handleClearChat = useCallback(() => {
     setMessages([]);
     setPendingChanges(null);
+    chatHistoryService.clearCurrentSession();
   }, []);
+
+  const handleNewSession = useCallback(() => {
+    if (!projectPath) return;
+
+    const newSession = chatHistoryService.createSession(projectPath);
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+    setMessages([]);
+    setPendingChanges(null);
+    setShowHistory(false);
+  }, [projectPath]);
+
+  const handleSelectSession = useCallback((sessionId: string) => {
+    const session = chatHistoryService.setCurrentSession(sessionId);
+    if (session) {
+      setCurrentSessionId(session.id);
+      setMessages(session.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp),
+      })));
+      setPendingChanges(null);
+      setShowHistory(false);
+    }
+  }, []);
+
+  const handleDeleteSession = useCallback((sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    chatHistoryService.deleteSession(sessionId);
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+
+    if (currentSessionId === sessionId && projectPath) {
+      const newSession = chatHistoryService.createSession(projectPath);
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      setMessages([]);
+    }
+  }, [currentSessionId, projectPath]);
 
   if (!isVisible) return null;
 
   return (
     <div className="fixed bottom-4 right-4 w-[450px] bg-panel-solid rounded-xl shadow-2xl border border-subtle flex flex-col z-50 max-h-[700px] animate-scale-in overflow-hidden backdrop-blur-xl">
       {/* Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-between shadow-lg">
+      <div className="px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2">
-          <AIIcon size={20} />
-          <span className="font-semibold tracking-wide">AI Assistant</span>
+          <AIIcon size={18} />
+          <span className="font-semibold text-sm">AI Assistant</span>
           {!hasApiKey && (
-            <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+            <span className="text-[9px] bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded-full font-bold uppercase">
               Demo
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* History dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors flex items-center gap-1 text-xs"
+              title="Chat History"
+            >
+              <ChevronDownIcon size={12} />
+              <span className="hidden sm:inline">History</span>
+            </button>
+            {showHistory && (
+              <div className="absolute right-0 top-full mt-1 w-64 bg-panel-solid rounded-lg shadow-xl border border-subtle z-50 overflow-hidden">
+                <div className="px-3 py-2 border-b border-subtle flex items-center justify-between">
+                  <span className="text-xs font-medium text-text-secondary">Chat Sessions</span>
+                  <button
+                    onClick={handleNewSession}
+                    className="text-[10px] px-2 py-0.5 bg-primary text-white rounded hover:bg-primary-hover transition-colors"
+                  >
+                    + New
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {sessions.length === 0 ? (
+                    <p className="text-xs text-text-tertiary p-3 text-center">No sessions yet</p>
+                  ) : (
+                    sessions.map(session => (
+                      <div
+                        key={session.id}
+                        onClick={() => handleSelectSession(session.id)}
+                        className={`px-3 py-2 cursor-pointer hover:bg-white/5 flex items-center justify-between group ${
+                          currentSessionId === session.id ? 'bg-primary/10 border-l-2 border-primary' : ''
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-text-primary truncate">{session.title}</p>
+                          <p className="text-[10px] text-text-tertiary">
+                            {session.messages.length} messages · {new Date(session.updatedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteSession(session.id, e)}
+                          className="p-1 text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete session"
+                        >
+                          <TrashIcon size={12} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+            className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
             title="Settings"
           >
-            <SettingsIcon size={16} />
+            <SettingsIcon size={14} />
           </button>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white text-xl leading-none w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+            className="text-white/80 hover:text-white text-lg leading-none w-6 h-6 flex items-center justify-center rounded hover:bg-white/10 transition-colors"
           >
             &times;
           </button>

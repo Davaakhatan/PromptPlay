@@ -1597,6 +1597,7 @@ function App() {
         onApplyChanges={handleApplyAIChanges}
         isVisible={showAIPanel}
         onClose={() => setShowAIPanel(false)}
+        projectPath={projectPath}
       />
 
       {/* Keyboard Shortcuts Modal */}
