@@ -1440,45 +1440,50 @@ function App() {
       <aside className="w-80 bg-panel border-l border-subtle flex flex-col backdrop-blur-md">
         {/* Panel Mode Tabs */}
         {projectPath && gameSpec && viewMode === 'game' && (
-          <div className="flex gap-1 bg-panel border-b border-subtle p-2">
+          <div className="flex gap-1 bg-panel border-b border-subtle p-1.5">
             <button
               onClick={() => setRightPanelMode('inspector')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors ${rightPanelMode === 'inspector'
+              title="Inspector"
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'inspector'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              Inspector
+              <EntityIcon size={12} />
+              <span className="hidden sm:inline">Props</span>
             </button>
             <button
               onClick={() => setRightPanelMode('json')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'json'
+              title="JSON Editor"
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'json'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              <CodeIcon size={14} />
-              JSON
+              <CodeIcon size={12} />
+              <span className="hidden sm:inline">JSON</span>
             </button>
             <button
               onClick={() => setRightPanelMode('physics')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'physics'
+              title="Physics Settings"
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'physics'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              <PhysicsIcon size={14} />
-              Physics
+              <PhysicsIcon size={12} />
+              <span className="hidden sm:inline">Phys</span>
             </button>
             <button
               onClick={() => setRightPanelMode('scripts')}
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'scripts'
+              title="Script Runner"
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'scripts'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              <CodeIcon size={14} />
-              Scripts
+              <CodeIcon size={12} />
+              <span className="hidden sm:inline">Code</span>
             </button>
           </div>
         )}
