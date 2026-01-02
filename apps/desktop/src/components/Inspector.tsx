@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { GameSpec } from '@promptplay/shared-types';
-import { ChevronRightIcon, TrashIcon, CopyIcon, PlusIcon, TagIcon } from './Icons';
+import type { GameSpec, AnimationComponent } from '@promptplay/shared-types';
+import { ChevronRightIcon, TrashIcon, CopyIcon, PlusIcon, TagIcon, EditIcon } from './Icons';
 import { componentRegistry } from '../services/ComponentRegistry';
+import AnimationEditor from './AnimationEditor';
 
 interface InspectorProps {
   gameSpec: GameSpec | null;
@@ -11,6 +12,7 @@ interface InspectorProps {
   onDuplicateEntity?: (entityName: string) => void;
   onDeleteSelected?: () => void;
   onDuplicateSelected?: () => void;
+  projectPath?: string | null;
 }
 
 // Convert number to hex color string
@@ -32,11 +34,13 @@ export default function Inspector({
   onDuplicateEntity,
   onDeleteSelected,
   onDuplicateSelected,
+  projectPath,
 }: InspectorProps) {
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
   const [newTag, setNewTag] = useState('');
   const [showAddTag, setShowAddTag] = useState(false);
   const [showAddComponent, setShowAddComponent] = useState(false);
+  const [showAnimationEditor, setShowAnimationEditor] = useState(false);
 
   // Get primary selected entity (first in set)
   const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
@@ -161,6 +165,17 @@ export default function Inspector({
     delete updatedComponents[componentName];
 
     onUpdateEntity(entity.name, { components: updatedComponents });
+  }, [entity, onUpdateEntity]);
+
+  const handleAnimationChange = useCallback((animation: AnimationComponent) => {
+    if (!entity) return;
+
+    onUpdateEntity(entity.name, {
+      components: {
+        ...entity.components,
+        animation,
+      },
+    });
   }, [entity, onUpdateEntity]);
 
   if (!gameSpec) {
@@ -499,13 +514,25 @@ export default function Inspector({
               <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-primary/20 border border-primary/30 px-2 py-0.5 rounded shadow-sm shadow-black/50">
                 {componentName}
               </span>
-              <button
-                onClick={() => handleRemoveComponent(componentName)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-text-tertiary hover:text-red-400 transition-all"
-                title={`Remove ${componentName}`}
-              >
-                <TrashIcon size={12} />
-              </button>
+              <div className="flex items-center gap-1">
+                {componentName === 'animation' && (
+                  <button
+                    onClick={() => setShowAnimationEditor(true)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/20 text-text-tertiary hover:text-primary transition-all flex items-center gap-1"
+                    title="Edit Animation"
+                  >
+                    <EditIcon size={12} />
+                    <span className="text-[10px]">Edit</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => handleRemoveComponent(componentName)}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-text-tertiary hover:text-red-400 transition-all"
+                  title={`Remove ${componentName}`}
+                >
+                  <TrashIcon size={12} />
+                </button>
+              </div>
             </div>
 
             <div className="border border-subtle rounded-xl bg-white/5 p-4 pt-5 transition-all hover:border-white/10 hover:bg-white/[0.07]">
@@ -575,6 +602,17 @@ export default function Inspector({
           </button>
         )}
       </div>
+
+      {/* Animation Editor Modal */}
+      {showAnimationEditor && entity.components?.animation && (
+        <AnimationEditor
+          entity={entity}
+          animation={entity.components.animation as AnimationComponent}
+          onAnimationChange={handleAnimationChange}
+          onClose={() => setShowAnimationEditor(false)}
+          projectPath={projectPath || null}
+        />
+      )}
     </div>
   );
 }

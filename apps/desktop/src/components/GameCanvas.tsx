@@ -638,40 +638,123 @@ export default function GameCanvas({
       );
     }
 
-    // Draw physics debug overlay (colliders)
+    // Draw physics debug overlay (colliders, velocity vectors, sensors)
     const renderPhysicsDebug = () => {
       if (!debugEnabled || !gameSpec?.entities) return null;
 
       return gameSpec.entities.map(entity => {
-        // Check for collider component
         const collider = entity.components?.collider;
         const sprite = entity.components?.sprite;
         const transform = entity.components?.transform;
+        const velocity = entity.components?.velocity;
+        const input = entity.components?.input;
 
         if (!transform) return null;
-        if (!collider) return null;
 
-        // Determine size from collider or sprite
-        const width = (collider?.width || sprite?.width || 32);
-        const height = (collider?.height || sprite?.height || 32);
         const x = transform.x;
         const y = transform.y;
+        const rotation = transform.rotation || 0;
+
+        // Collider properties
+        const isCircle = collider?.type === 'circle';
+        const isSensor = collider?.isSensor;
+        const width = collider?.width || sprite?.width || 32;
+        const height = collider?.height || sprite?.height || 32;
+        const radius = collider?.radius || (Math.min(width, height) / 2);
+
+        // Colors based on type
+        const colliderColor = isSensor ? '#ffaa00' : (isCircle ? '#00ffff' : '#00ff00');
+        const colliderFill = isSensor ? 'rgba(255, 170, 0, 0.1)' : (isCircle ? 'rgba(0, 255, 255, 0.1)' : 'rgba(0, 255, 0, 0.1)');
+
+        // Velocity vector scale
+        const vx = velocity?.vx || 0;
+        const vy = velocity?.vy || 0;
+        const velocityScale = 0.1;
+        const hasVelocity = Math.abs(vx) > 0.1 || Math.abs(vy) > 0.1;
 
         return (
-          <g key={`debug-${entity.name}`} transform={`translate(${x}, ${y}) rotate(${transform.rotation || 0})`}>
-            {/* Collider Box */}
-            <rect
-              x={-width / 2}
-              y={-height / 2}
-              width={width}
-              height={height}
-              fill="rgba(0, 255, 0, 0.1)"
-              stroke="#00ff00"
-              strokeWidth="1"
+          <g key={`debug-${entity.name}`}>
+            {/* Entity group with transform */}
+            <g transform={`translate(${x}, ${y}) rotate(${rotation})`}>
+              {/* Collider shape */}
+              {collider && (
+                isCircle ? (
+                  <circle
+                    r={radius}
+                    fill={colliderFill}
+                    stroke={colliderColor}
+                    strokeWidth="1.5"
+                    strokeDasharray={isSensor ? '4,2' : 'none'}
+                    className="pointer-events-none"
+                  />
+                ) : (
+                  <rect
+                    x={-width / 2}
+                    y={-height / 2}
+                    width={width}
+                    height={height}
+                    fill={colliderFill}
+                    stroke={colliderColor}
+                    strokeWidth="1.5"
+                    strokeDasharray={isSensor ? '4,2' : 'none'}
+                    className="pointer-events-none"
+                  />
+                )
+              )}
+
+              {/* Center crosshair */}
+              <line x1="-4" y1="0" x2="4" y2="0" stroke={colliderColor} strokeWidth="1" />
+              <line x1="0" y1="-4" x2="0" y2="4" stroke={colliderColor} strokeWidth="1" />
+
+              {/* Rotation indicator */}
+              <line x1="0" y1="0" x2="0" y2={-(isCircle ? radius : height/2) - 8} stroke="#ff00ff" strokeWidth="1" />
+              <circle cx="0" cy={-(isCircle ? radius : height/2) - 8} r="3" fill="#ff00ff" />
+            </g>
+
+            {/* Velocity vector (in world space, not rotated) */}
+            {hasVelocity && (
+              <g transform={`translate(${x}, ${y})`}>
+                <line
+                  x1="0"
+                  y1="0"
+                  x2={vx * velocityScale}
+                  y2={vy * velocityScale}
+                  stroke="#ff4444"
+                  strokeWidth="2"
+                  markerEnd="url(#arrowhead)"
+                />
+              </g>
+            )}
+
+            {/* Entity label */}
+            <text
+              x={x}
+              y={y - (isCircle ? radius : height/2) - 14}
+              textAnchor="middle"
+              fill="#ffffff"
+              fontSize="10"
+              fontFamily="monospace"
               className="pointer-events-none"
-            />
-            {/* Center Point */}
-            <circle r="2" fill="#00ff00" />
+            >
+              {entity.name}
+              {input && ' [P]'}
+              {isSensor && ' [S]'}
+            </text>
+
+            {/* Velocity label */}
+            {hasVelocity && (
+              <text
+                x={x}
+                y={y + (isCircle ? radius : height/2) + 16}
+                textAnchor="middle"
+                fill="#ff4444"
+                fontSize="9"
+                fontFamily="monospace"
+                className="pointer-events-none"
+              >
+                v({Math.round(vx)}, {Math.round(vy)})
+              </text>
+            )}
           </g>
         );
       });
@@ -684,6 +767,19 @@ export default function GameCanvas({
         height={600}
         style={{ display: gameSpec && !error ? 'block' : 'none' }}
       >
+        {/* Arrow marker for velocity vectors */}
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="6"
+            markerHeight="4"
+            refX="5"
+            refY="2"
+            orient="auto"
+          >
+            <polygon points="0 0, 6 2, 0 4" fill="#ff4444" />
+          </marker>
+        </defs>
         {lines}
         {renderPhysicsDebug()}
       </svg>

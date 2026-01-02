@@ -16,14 +16,15 @@ import AssetBrowser from './components/AssetBrowser';
 import WelcomeScreen from './components/WelcomeScreen';
 import ErrorDisplay from './components/ErrorDisplay';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
+import PhysicsSettings from './components/PhysicsSettings';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useHistoryState } from './hooks/useHistoryState';
 import { useEntityOperations } from './hooks/useEntityOperations';
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportIcon, LoadingSpinner, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets';
-type RightPanelMode = 'inspector' | 'json';
+type RightPanelMode = 'inspector' | 'json' | 'physics';
 
 function App() {
   const [gameSpec, setGameSpec] = useState<GameSpec | null>(null);
@@ -1104,52 +1105,62 @@ function App() {
       <aside className="w-64 bg-panel border-r border-subtle flex flex-col backdrop-blur-md">
         {/* Panel Mode Tabs */}
         {projectPath && gameSpec && (
-          <div className="flex gap-0.5 bg-panel border-b border-subtle p-1.5">
-            <button
-              onClick={() => setLeftPanelMode('files')}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'files'
-                ? 'bg-subtle text-white shadow-sm border border-white/5'
-                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
-            >
-              Files
-            </button>
-            <button
-              onClick={() => setLeftPanelMode('scenes')}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'scenes'
-                ? 'bg-subtle text-white shadow-sm border border-white/5'
-                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
-            >
-              Scenes
-            </button>
-            <button
-              onClick={() => setLeftPanelMode('entities')}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'entities'
-                ? 'bg-subtle text-white shadow-sm border border-white/5'
-                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
-            >
-              Entities
-            </button>
-            <button
-              onClick={() => setLeftPanelMode('prefabs')}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'prefabs'
-                ? 'bg-subtle text-white shadow-sm border border-white/5'
-                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
-            >
-              Prefabs
-            </button>
-            <button
-              onClick={() => setLeftPanelMode('assets')}
-              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'assets'
-                ? 'bg-subtle text-white shadow-sm border border-white/5'
-                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                }`}
-            >
-              Assets
-            </button>
+          <div className="flex items-center justify-between bg-panel border-b border-subtle px-2 py-1.5">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setLeftPanelMode('files')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'files'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Files"
+              >
+                <FolderIcon size={16} />
+              </button>
+              <button
+                onClick={() => setLeftPanelMode('scenes')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'scenes'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Scenes"
+              >
+                <SceneIcon size={16} />
+              </button>
+              <button
+                onClick={() => setLeftPanelMode('entities')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'entities'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Entities"
+              >
+                <EntityIcon size={16} />
+              </button>
+              <button
+                onClick={() => setLeftPanelMode('prefabs')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'prefabs'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Prefabs"
+              >
+                <LayersIcon size={16} />
+              </button>
+              <button
+                onClick={() => setLeftPanelMode('assets')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'assets'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Assets"
+              >
+                <ImageIcon size={16} />
+              </button>
+            </div>
+            <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">
+              {leftPanelMode}
+            </span>
           </div>
         )}
 
@@ -1448,6 +1459,16 @@ function App() {
               <CodeIcon size={14} />
               JSON
             </button>
+            <button
+              onClick={() => setRightPanelMode('physics')}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'physics'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <PhysicsIcon size={14} />
+              Physics
+            </button>
           </div>
         )}
 
@@ -1462,12 +1483,23 @@ function App() {
               onDuplicateEntity={handleDuplicateEntity}
               onDeleteSelected={handleDeleteSelected}
               onDuplicateSelected={handleDuplicateSelected}
+              projectPath={projectPath}
             />
           ) : viewMode === 'game' && gameSpec && rightPanelMode === 'json' ? (
             <JSONEditorPanel
               gameSpec={gameSpec}
               onApplyChanges={handleApplyAIChanges}
               selectedEntity={selectedEntity}
+            />
+          ) : viewMode === 'game' && gameSpec && rightPanelMode === 'physics' ? (
+            <PhysicsSettings
+              gameSpec={gameSpec}
+              onConfigChange={(config) => {
+                const updatedSpec = { ...gameSpec, config };
+                pushHistory(updatedSpec, 'Update physics config');
+                setGameSpec(updatedSpec);
+                setHasUnsavedChanges(true);
+              }}
             />
           ) : viewMode === 'code' && selectedFile ? (
             <div className="p-4">

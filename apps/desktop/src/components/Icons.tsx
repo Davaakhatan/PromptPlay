@@ -1057,3 +1057,28 @@ export function LayersIcon({ size = 16, className = "" }: IconProps) {
     </svg>
   );
 }
+
+export function PhysicsIcon({ size = 16, className = "" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2a10 10 0 1 0 10 10" />
+      <path d="M12 2v4" />
+      <path d="M12 18v4" />
+      <path d="M4.93 4.93l2.83 2.83" />
+      <path d="M16.24 16.24l2.83 2.83" />
+      <path d="M2 12h4" />
+      <path d="M18 12h4" />
+    </svg>
+  );
+}

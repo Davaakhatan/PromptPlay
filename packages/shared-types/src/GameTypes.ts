@@ -139,6 +139,13 @@ export interface AnimationComponent {
   isPlaying?: boolean;
   loop?: boolean;
   animationId?: number;
+  // Sprite sheet support
+  spriteSheet?: string; // Path to sprite sheet image
+  frameWidth?: number;
+  frameHeight?: number;
+  // Animation state machine
+  currentState?: string;
+  states?: AnimationState[];
 }
 
 export interface CameraComponent {
@@ -181,6 +188,28 @@ export interface AudioComponent {
   loop?: boolean;
   spatial?: boolean;
   maxDistance?: number;
+}
+
+// Animation state machine types
+export interface AnimationState {
+  name: string;
+  frameStart: number; // Starting frame index in sprite sheet
+  frameEnd: number; // Ending frame index
+  frameDuration: number; // Duration per frame in ms
+  loop: boolean;
+  transitions?: AnimationTransition[];
+}
+
+export interface AnimationTransition {
+  to: string; // Target state name
+  condition: AnimationCondition;
+}
+
+export interface AnimationCondition {
+  type: 'immediate' | 'onComplete' | 'parameter';
+  parameter?: string; // Parameter name if type is 'parameter'
+  comparator?: '==' | '!=' | '>' | '<' | '>=' | '<=';
+  value?: string | number | boolean;
 }
 
 // Prefab system types

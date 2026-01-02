@@ -151,10 +151,13 @@ componentRegistry.register({
     name: 'animation',
     description: 'Sprite animations',
     fields: {
-        frameCount: { type: 'number', label: 'Frame Count', min: 1, defaultValue: 1 },
+        frameCount: { type: 'number', label: 'Frame Count', min: 1, defaultValue: 4 },
         frameDuration: { type: 'number', label: 'Frame Duration (ms)', min: 16, defaultValue: 100 },
         loop: { type: 'boolean', label: 'Loop', defaultValue: true },
         isPlaying: { type: 'boolean', label: 'Is Playing', defaultValue: true },
+        spriteSheet: { type: 'string', label: 'Sprite Sheet', defaultValue: '' },
+        frameWidth: { type: 'number', label: 'Frame Width', min: 1, defaultValue: 32 },
+        frameHeight: { type: 'number', label: 'Frame Height', min: 1, defaultValue: 32 },
     },
 });
 
