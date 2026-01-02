@@ -160,11 +160,19 @@ pub async fn get_file_info(path: String) -> Result<FileMetadata, String> {
     let metadata = fs::metadata(&path)
         .map_err(|e| format!("Failed to get metadata for {}: {}", path, e))?;
 
+    let modified = metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
     Ok(FileMetadata {
         size: metadata.len(),
         is_file: metadata.is_file(),
         is_directory: metadata.is_dir(),
         readonly: metadata.permissions().readonly(),
+        modified,
     })
 }
 
@@ -174,6 +182,7 @@ pub struct FileMetadata {
     pub is_file: bool,
     pub is_directory: bool,
     pub readonly: bool,
+    pub modified: u64,
 }
 
 fn generate_standalone_html(game_spec_json: &str, title: &str) -> String {

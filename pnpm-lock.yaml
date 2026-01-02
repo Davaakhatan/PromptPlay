@@ -53,6 +53,9 @@ importers:
       '@tauri-apps/plugin-shell':
         specifier: ^2.0.0
         version: 2.3.3
+      esbuild-wasm:
+        specifier: ^0.24.0
+        version: 0.24.2
       matter-js:
         specifier: ^0.19.0
         version: 0.19.0
@@ -2998,6 +3001,12 @@ packages:
       is-date-object: 1.1.0
       is-symbol: 1.1.1
     dev: true
+
+  /esbuild-wasm@0.24.2:
+    resolution: {integrity: sha512-03/7Z1gD+ohDnScFztvI4XddTAbKVmMEzCvvkBpQdWKEXJ+73dTyeNrmdxP1Q0zpDMFjzUJwtK4rLjqwiHbzkw==}
+    engines: {node: '>=18'}
+    hasBin: true
+    dev: false
 
   /esbuild@0.21.5:
     resolution: {integrity: sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw==}

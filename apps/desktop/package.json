@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "esbuild-wasm": "^0.24.0",
     "@monaco-editor/react": "^4.6.0",
     "@promptplay/ecs-core": "workspace:*",
     "@promptplay/runtime-2d": "workspace:*",

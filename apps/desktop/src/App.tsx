@@ -17,6 +17,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ErrorDisplay from './components/ErrorDisplay';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import PhysicsSettings from './components/PhysicsSettings';
+import ScriptRunner from './components/ScriptRunner';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useHistoryState } from './hooks/useHistoryState';
 import { useEntityOperations } from './hooks/useEntityOperations';
@@ -24,7 +25,7 @@ import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportI
 
 type ViewMode = 'game' | 'code';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets';
-type RightPanelMode = 'inspector' | 'json' | 'physics';
+type RightPanelMode = 'inspector' | 'json' | 'physics' | 'scripts';
 
 function App() {
   const [gameSpec, setGameSpec] = useState<GameSpec | null>(null);
@@ -1469,6 +1470,16 @@ function App() {
               <PhysicsIcon size={14} />
               Physics
             </button>
+            <button
+              onClick={() => setRightPanelMode('scripts')}
+              className={`flex-1 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${rightPanelMode === 'scripts'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <CodeIcon size={14} />
+              Scripts
+            </button>
           </div>
         )}
 
@@ -1499,6 +1510,13 @@ function App() {
                 pushHistory(updatedSpec, 'Update physics config');
                 setGameSpec(updatedSpec);
                 setHasUnsavedChanges(true);
+              }}
+            />
+          ) : viewMode === 'game' && gameSpec && rightPanelMode === 'scripts' ? (
+            <ScriptRunner
+              projectPath={projectPath}
+              onError={(errors) => {
+                console.log('Script compilation errors:', errors);
               }}
             />
           ) : viewMode === 'code' && selectedFile ? (
