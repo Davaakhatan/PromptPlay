@@ -6,8 +6,8 @@ import { GridIcon, DebugIcon, MoveIcon, RotateIcon, ScaleIcon, ZoomInIcon, ZoomO
 interface GameCanvasProps {
   gameSpec: GameSpec | null;
   isPlaying: boolean;
-  selectedEntity: string | null;
-  onEntitySelect?: (entityName: string | null) => void;
+  selectedEntities: Set<string>;
+  onEntitySelect?: (entityName: string | null, options?: { ctrlKey?: boolean; shiftKey?: boolean }) => void;
   onReset?: () => void;
   onUpdateEntity?: (entityName: string, updates: any) => void;
   gridEnabled?: boolean;
@@ -35,13 +35,15 @@ interface DragState {
 export default function GameCanvas({
   gameSpec,
   isPlaying,
-  selectedEntity,
+  selectedEntities,
   onEntitySelect,
   onReset,
   onUpdateEntity,
   gridEnabled = false,
   gridSize = 16,
 }: GameCanvasProps) {
+  // Get primary selected entity (first in set, for transform operations)
+  const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const runtimeRef = useRef<Runtime2D | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -540,54 +542,63 @@ export default function GameCanvas({
 
       const coords = getCanvasCoords(e);
       const entityName = runtimeRef.current.getEntityAtPoint(coords.x, coords.y);
-      onEntitySelect(entityName);
+      onEntitySelect(entityName, { ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey });
     },
     [onEntitySelect, getCanvasCoords, dragState.isDragging]
   );
 
-  // Get selected entity bounds from runtime's ECS state
-  const [selectedBounds, setSelectedBounds] = useState<{
+  // Get selected entities bounds from runtime's ECS state
+  const [allSelectedBounds, setAllSelectedBounds] = useState<Array<{
     x: number;
     y: number;
     width: number;
     height: number;
     entityName: string;
-  } | null>(null);
+    isPrimary: boolean;
+  }>>([]);
 
   useEffect(() => {
-    if (!selectedEntity || !runtimeRef.current) {
-      setSelectedBounds(null);
+    if (selectedEntities.size === 0 || !runtimeRef.current) {
+      setAllSelectedBounds([]);
       return;
     }
 
-    // If dragging, use drag position
-    if (dragState.isDragging && dragState.entityName === selectedEntity && dragPosition) {
-      const bounds = runtimeRef.current.getEntityBounds(selectedEntity);
-      if (bounds) {
-        setSelectedBounds({
-          x: dragPosition.x - bounds.width / 2,
-          y: dragPosition.y - bounds.height / 2,
-          width: bounds.width,
-          height: bounds.height,
-          entityName: selectedEntity,
-        });
+    const boundsArray: typeof allSelectedBounds = [];
+    const primaryEntity = selectedEntity;
+
+    selectedEntities.forEach(entityName => {
+      // If dragging the primary entity, use drag position
+      if (dragState.isDragging && dragState.entityName === entityName && dragPosition) {
+        const bounds = runtimeRef.current!.getEntityBounds(entityName);
+        if (bounds) {
+          boundsArray.push({
+            x: dragPosition.x - bounds.width / 2,
+            y: dragPosition.y - bounds.height / 2,
+            width: bounds.width,
+            height: bounds.height,
+            entityName,
+            isPrimary: entityName === primaryEntity,
+          });
+        }
+      } else {
+        const bounds = runtimeRef.current!.getEntityBounds(entityName);
+        if (bounds) {
+          boundsArray.push({
+            x: bounds.x - bounds.width / 2,
+            y: bounds.y - bounds.height / 2,
+            width: bounds.width,
+            height: bounds.height,
+            entityName,
+            isPrimary: entityName === primaryEntity,
+          });
+        }
       }
-      return;
-    }
+    });
 
-    const bounds = runtimeRef.current.getEntityBounds(selectedEntity);
-    if (bounds) {
-      setSelectedBounds({
-        x: bounds.x - bounds.width / 2,
-        y: bounds.y - bounds.height / 2,
-        width: bounds.width,
-        height: bounds.height,
-        entityName: selectedEntity,
-      });
-    } else {
-      setSelectedBounds(null);
-    }
-  }, [selectedEntity, gameSpec, dragState, dragPosition]);
+    setAllSelectedBounds(boundsArray);
+  }, [selectedEntities, selectedEntity, gameSpec, dragState, dragPosition]);
+
+  // Note: Primary bounds are identified within allSelectedBounds via isPrimary flag
 
   // Draw grid overlay
   const renderGrid = () => {
@@ -867,47 +878,54 @@ export default function GameCanvas({
           </div>
         )}
 
-        {/* Selection highlight overlay with gizmo handles */}
-        {selectedBounds && gameSpec && !error && (
+        {/* Selection highlight overlay for all selected entities */}
+        {allSelectedBounds.map((bounds) => (
           <div
-            className={`absolute pointer-events-none border-2 rounded-sm ${dragState.isDragging
-              ? 'border-green-500 bg-green-500 bg-opacity-10'
-              : 'border-blue-500 bg-blue-500 bg-opacity-10'
-              }`}
+            key={bounds.entityName}
+            className={`absolute pointer-events-none border-2 rounded-sm ${
+              bounds.isPrimary
+                ? dragState.isDragging
+                  ? 'border-green-500 bg-green-500 bg-opacity-10'
+                  : 'border-blue-500 bg-blue-500 bg-opacity-10'
+                : 'border-cyan-400 bg-cyan-400 bg-opacity-5'
+            }`}
             style={{
-              left: `${selectedBounds.x}px`,
-              top: `${selectedBounds.y}px`,
-              width: `${selectedBounds.width}px`,
-              height: `${selectedBounds.height}px`,
-              transform: dragRotation !== null && dragState.handleType === 'rotate'
+              left: `${bounds.x}px`,
+              top: `${bounds.y}px`,
+              width: `${bounds.width}px`,
+              height: `${bounds.height}px`,
+              transform: bounds.isPrimary && dragRotation !== null && dragState.handleType === 'rotate'
                 ? `rotate(${dragRotation}deg)`
                 : undefined,
               transformOrigin: 'center center',
             }}
           >
             {/* Entity name label */}
-            <div className={`absolute -top-6 left-0 text-xs font-medium whitespace-nowrap bg-gray-900 bg-opacity-75 px-1 rounded ${dragState.isDragging ? 'text-green-400' : 'text-blue-400'
-              }`}>
-              {selectedBounds.entityName}
-              {dragPosition && dragState.handleType === 'move' && (
+            <div className={`absolute -top-6 left-0 text-xs font-medium whitespace-nowrap bg-gray-900 bg-opacity-75 px-1 rounded ${
+              bounds.isPrimary
+                ? dragState.isDragging ? 'text-green-400' : 'text-blue-400'
+                : 'text-cyan-400'
+            }`}>
+              {bounds.entityName}
+              {bounds.isPrimary && dragPosition && dragState.handleType === 'move' && (
                 <span className="ml-2 text-gray-400">
                   ({Math.round(dragPosition.x)}, {Math.round(dragPosition.y)})
                 </span>
               )}
-              {dragRotation !== null && dragState.handleType === 'rotate' && (
+              {bounds.isPrimary && dragRotation !== null && dragState.handleType === 'rotate' && (
                 <span className="ml-2 text-gray-400">
                   {Math.round(dragRotation)}°
                 </span>
               )}
-              {dragScale && (dragState.handleType !== 'move' && dragState.handleType !== 'rotate') && (
+              {bounds.isPrimary && dragScale && (dragState.handleType !== 'move' && dragState.handleType !== 'rotate') && (
                 <span className="ml-2 text-gray-400">
                   {dragScale.scaleX.toFixed(1)}x{dragScale.scaleY.toFixed(1)}
                 </span>
               )}
             </div>
 
-            {/* Gizmo handles - only show when not playing */}
-            {!isPlaying && (
+            {/* Gizmo handles - only show for primary selection when not playing */}
+            {bounds.isPrimary && !isPlaying && (
               <>
                 {/* Move mode - center crosshair */}
                 {transformMode === 'move' && (
@@ -959,6 +977,13 @@ export default function GameCanvas({
                 )}
               </>
             )}
+          </div>
+        ))}
+
+        {/* Multi-selection count indicator */}
+        {allSelectedBounds.length > 1 && gameSpec && !error && (
+          <div className="absolute bottom-2 right-2 bg-cyan-600/80 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
+            {allSelectedBounds.length} selected
           </div>
         )}
       </div>

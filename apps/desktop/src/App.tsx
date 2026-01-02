@@ -32,7 +32,7 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('game');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('files');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [selectedEntities, setSelectedEntities] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -57,6 +57,18 @@ function App() {
     onNotification: setNotification,
   });
 
+  // Primary selected entity (first in set, for single-entity operations)
+  const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
+
+  // Helper to update single selected entity
+  const setSelectedEntity = useCallback((name: string | null) => {
+    if (name) {
+      setSelectedEntities(new Set([name]));
+    } else {
+      setSelectedEntities(new Set());
+    }
+  }, []);
+
   // Entity operations
   const {
     handleUpdateEntity,
@@ -76,13 +88,116 @@ function App() {
     pushHistory,
   });
 
-  // Handle entity selection - auto switch to Scene tab
-  const handleEntitySelect = useCallback((entityName: string | null) => {
-    setSelectedEntity(entityName);
+  // Multi-entity selection handlers
+  const handleEntitySelect = useCallback((entityName: string | null, options?: { ctrlKey?: boolean; shiftKey?: boolean }) => {
+    if (!entityName) {
+      setSelectedEntities(new Set());
+      return;
+    }
+
+    if (options?.ctrlKey) {
+      // Toggle selection
+      setSelectedEntities(prev => {
+        const next = new Set(prev);
+        if (next.has(entityName)) {
+          next.delete(entityName);
+        } else {
+          next.add(entityName);
+        }
+        return next;
+      });
+    } else if (options?.shiftKey && gameSpec?.entities) {
+      // Range selection
+      const entities = gameSpec.entities;
+      const entityNames = entities.map(e => e.name);
+      const lastSelected = selectedEntity;
+
+      if (lastSelected && entityNames.includes(lastSelected)) {
+        const startIdx = entityNames.indexOf(lastSelected);
+        const endIdx = entityNames.indexOf(entityName);
+        const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        const rangeNames = entityNames.slice(from, to + 1);
+        setSelectedEntities(prev => {
+          const next = new Set(prev);
+          rangeNames.forEach(name => next.add(name));
+          return next;
+        });
+      } else {
+        setSelectedEntities(new Set([entityName]));
+      }
+    } else {
+      // Single selection
+      setSelectedEntities(new Set([entityName]));
+    }
+
     if (entityName) {
       setLeftPanelMode('scene');
     }
-  }, []);
+  }, [gameSpec, selectedEntity]);
+
+  // Select all entities
+  const handleSelectAll = useCallback(() => {
+    if (gameSpec?.entities) {
+      setSelectedEntities(new Set(gameSpec.entities.map(e => e.name)));
+    }
+  }, [gameSpec]);
+
+  // Delete all selected entities
+  const handleDeleteSelected = useCallback(() => {
+    if (!gameSpec || selectedEntities.size === 0) return;
+
+    const updatedEntities = gameSpec.entities?.filter(e => !selectedEntities.has(e.name)) || [];
+    const updatedSpec = { ...gameSpec, entities: updatedEntities };
+
+    pushHistory(updatedSpec, `Delete ${selectedEntities.size} entities`);
+    setGameSpec(updatedSpec);
+    setSelectedEntities(new Set());
+    setHasUnsavedChanges(true);
+    setNotification(`Deleted ${selectedEntities.size} entities`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, selectedEntities, pushHistory]);
+
+  // Duplicate all selected entities
+  const handleDuplicateSelected = useCallback(() => {
+    if (!gameSpec || selectedEntities.size === 0) return;
+
+    const existingNames = new Set(gameSpec.entities?.map(e => e.name) || []);
+    const newEntities: any[] = [];
+    const selectedArray = Array.from(selectedEntities);
+
+    selectedArray.forEach(entityName => {
+      const entity = gameSpec.entities?.find(e => e.name === entityName);
+      if (!entity) return;
+
+      let counter = 1;
+      while (existingNames.has(`${entityName}_copy${counter}`)) {
+        counter++;
+      }
+      const newName = `${entityName}_copy${counter}`;
+      existingNames.add(newName);
+
+      const newEntity = JSON.parse(JSON.stringify(entity));
+      newEntity.name = newName;
+      if (newEntity.components?.transform) {
+        newEntity.components.transform.x += 50;
+        newEntity.components.transform.y += 50;
+      }
+      newEntities.push(newEntity);
+    });
+
+    const updatedSpec = {
+      ...gameSpec,
+      entities: [...(gameSpec.entities || []), ...newEntities],
+    };
+
+    pushHistory(updatedSpec, `Duplicate ${selectedEntities.size} entities`);
+    setGameSpec(updatedSpec);
+    setSelectedEntities(new Set(newEntities.map(e => e.name)));
+    setHasUnsavedChanges(true);
+    setNotification(`Duplicated ${selectedEntities.size} entities`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, selectedEntities, pushHistory]);
+
 
   // Handle file changes from file watcher
   const handleFileChanged = useCallback(async (filePath: string) => {
@@ -655,20 +770,41 @@ function App() {
           setShowKeyboardShortcuts(false);
         }
       }
-      // Delete selected entity: Delete or Backspace
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEntity && viewMode === 'game') {
+      // Select All: Cmd/Ctrl + A
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a' && viewMode === 'game' && gameSpec?.entities) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        handleSelectAll();
+      }
+      // Clear Selection: Escape
+      if (e.key === 'Escape' && selectedEntities.size > 0 && !showKeyboardShortcuts) {
+        setSelectedEntities(new Set());
+      }
+      // Delete selected entity(ies): Delete or Backspace
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEntities.size > 0 && viewMode === 'game') {
         // Don't delete if we're in an input field
         const target = e.target as HTMLElement;
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
           return;
         }
         e.preventDefault();
-        handleDeleteEntity(selectedEntity);
+        if (selectedEntities.size > 1) {
+          handleDeleteSelected();
+        } else if (selectedEntity) {
+          handleDeleteEntity(selectedEntity);
+        }
       }
       // Duplicate: Cmd/Ctrl + D
-      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedEntity && viewMode === 'game') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedEntities.size > 0 && viewMode === 'game') {
         e.preventDefault();
-        handleDuplicateEntity(selectedEntity);
+        if (selectedEntities.size > 1) {
+          handleDuplicateSelected();
+        } else if (selectedEntity) {
+          handleDuplicateEntity(selectedEntity);
+        }
       }
       // Copy: Cmd/Ctrl + C
       if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedEntity && gameSpec && viewMode === 'game') {
@@ -716,7 +852,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, handleCreateEntity, pushHistory]);
+  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, selectedEntities, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, handleDeleteSelected, handleDuplicateSelected, handleSelectAll, handleCreateEntity, pushHistory]);
 
   // Listen for native menu events from Rust
   useEffect(() => {
@@ -746,12 +882,16 @@ function App() {
           handleRedo();
           break;
         case 'duplicate':
-          if (selectedEntity) {
+          if (selectedEntities.size > 1) {
+            handleDuplicateSelected();
+          } else if (selectedEntity) {
             handleDuplicateEntity(selectedEntity);
           }
           break;
         case 'delete':
-          if (selectedEntity) {
+          if (selectedEntities.size > 1) {
+            handleDeleteSelected();
+          } else if (selectedEntity) {
             handleDeleteEntity(selectedEntity);
           }
           break;
@@ -781,7 +921,7 @@ function App() {
     return () => {
       unlisten.then(fn => fn());
     };
-  }, [openProject, saveProject, exportGame, handleUndo, handleRedo, selectedEntity, handleDuplicateEntity, handleDeleteEntity, gameSpec, projectPath]);
+  }, [openProject, saveProject, exportGame, handleUndo, handleRedo, selectedEntity, selectedEntities, handleDuplicateEntity, handleDeleteEntity, handleDuplicateSelected, handleDeleteSelected, gameSpec, projectPath]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
@@ -861,12 +1001,12 @@ function App() {
           {leftPanelMode === 'scene' && (
             <SceneTree
               gameSpec={gameSpec}
-              selectedEntity={selectedEntity}
-              onSelectEntity={setSelectedEntity}
+              selectedEntities={selectedEntities}
+              onSelectEntity={handleEntitySelect}
               onCreateEntity={handleCreateEntity}
               onRenameEntity={handleRenameEntity}
-              onDeleteEntity={handleDeleteEntity}
-              onDuplicateEntity={handleDuplicateEntity}
+              onDeleteEntity={selectedEntities.size > 1 ? handleDeleteSelected : handleDeleteEntity}
+              onDuplicateEntity={selectedEntities.size > 1 ? handleDuplicateSelected : handleDuplicateEntity}
               onCopyEntity={handleCopyEntity}
             />
           )}
@@ -1071,7 +1211,7 @@ function App() {
             <GameCanvas
               gameSpec={gameSpec}
               isPlaying={isPlaying}
-              selectedEntity={selectedEntity}
+              selectedEntities={selectedEntities}
               onEntitySelect={handleEntitySelect}
               onReset={resetGame}
               onUpdateEntity={handleUpdateEntity}
@@ -1121,10 +1261,12 @@ function App() {
           {viewMode === 'game' && gameSpec && rightPanelMode === 'inspector' ? (
             <Inspector
               gameSpec={gameSpec}
-              selectedEntity={selectedEntity}
+              selectedEntities={selectedEntities}
               onUpdateEntity={handleUpdateEntity}
               onDeleteEntity={handleDeleteEntity}
               onDuplicateEntity={handleDuplicateEntity}
+              onDeleteSelected={handleDeleteSelected}
+              onDuplicateSelected={handleDuplicateSelected}
             />
           ) : viewMode === 'game' && gameSpec && rightPanelMode === 'json' ? (
             <JSONEditorPanel

@@ -33,8 +33,8 @@ interface ContextMenuState {
 
 interface SceneTreeProps {
   gameSpec: GameSpec | null;
-  selectedEntity: string | null;
-  onSelectEntity: (entityName: string) => void;
+  selectedEntities: Set<string>;
+  onSelectEntity: (entityName: string | null, options?: { ctrlKey?: boolean; shiftKey?: boolean }) => void;
   onCreateEntity?: () => void;
   onRenameEntity?: (oldName: string, newName: string) => void;
   onDeleteEntity?: (entityName: string) => void;
@@ -44,7 +44,7 @@ interface SceneTreeProps {
 
 export default function SceneTree({
   gameSpec,
-  selectedEntity,
+  selectedEntities,
   onSelectEntity,
   onCreateEntity,
   onRenameEntity,
@@ -129,6 +129,9 @@ export default function SceneTree({
     }
   }, [saveEdit, cancelEdit]);
 
+  // Get primary selected entity (first in set)
+  const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
+
   // Handle F2 key for selected entity and search shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -165,17 +168,25 @@ export default function SceneTree({
     }
   }, [contextMenu]);
 
+  // Handle entity click with modifier keys
+  const handleEntityClick = useCallback((e: React.MouseEvent, entityName: string) => {
+    onSelectEntity(entityName, { ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey });
+  }, [onSelectEntity]);
+
   // Handle right-click context menu
   const handleContextMenu = useCallback((e: React.MouseEvent, entityName: string) => {
     e.preventDefault();
     e.stopPropagation();
-    onSelectEntity(entityName);
+    // If right-clicking on a non-selected entity, select it
+    if (!selectedEntities.has(entityName)) {
+      onSelectEntity(entityName);
+    }
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
       entityName,
     });
-  }, [onSelectEntity]);
+  }, [onSelectEntity, selectedEntities]);
 
   // Context menu actions
   const handleContextMenuAction = useCallback((action: string) => {
@@ -298,7 +309,7 @@ export default function SceneTree({
             <p className="text-xs mt-1">Try a different search term</p>
           </div>
         ) : filteredEntities.map((entity) => {
-          const isSelected = selectedEntity === entity.name;
+          const isSelected = selectedEntities.has(entity.name);
           const isExpanded = expandedEntities.has(entity.name);
           const hasComponents = entity.components && Object.keys(entity.components).length > 0;
 
@@ -311,7 +322,7 @@ export default function SceneTree({
                     ? 'bg-primary text-white shadow-lg shadow-primary/20'
                     : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'}
                 `}
-                onClick={() => onSelectEntity(entity.name)}
+                onClick={(e) => handleEntityClick(e, entity.name)}
                 onDoubleClick={(e) => {
                   e.stopPropagation();
                   startEditing(entity.name);
@@ -376,7 +387,9 @@ export default function SceneTree({
       </div>
 
       <div className="px-4 py-3 text-[10px] uppercase font-bold text-text-tertiary/50 text-center tracking-widest">
-        {searchQuery ? (
+        {selectedEntities.size > 1 ? (
+          <span className="text-primary">{selectedEntities.size} Selected</span>
+        ) : searchQuery ? (
           <span>{filteredEntities.length} of {gameSpec?.entities?.length || 0} Entities</span>
         ) : (
           <span>{gameSpec?.entities?.length || 0} Entities</span>

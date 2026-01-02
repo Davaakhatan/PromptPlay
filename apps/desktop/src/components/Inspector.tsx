@@ -5,10 +5,12 @@ import { componentRegistry } from '../services/ComponentRegistry';
 
 interface InspectorProps {
   gameSpec: GameSpec | null;
-  selectedEntity: string | null;
+  selectedEntities: Set<string>;
   onUpdateEntity: (entityName: string, updates: any) => void;
   onDeleteEntity?: (entityName: string) => void;
   onDuplicateEntity?: (entityName: string) => void;
+  onDeleteSelected?: () => void;
+  onDuplicateSelected?: () => void;
 }
 
 // Convert number to hex color string
@@ -24,17 +26,22 @@ const hexToNumber = (hex: string): number => {
 
 export default function Inspector({
   gameSpec,
-  selectedEntity,
+  selectedEntities,
   onUpdateEntity,
   onDeleteEntity,
   onDuplicateEntity,
+  onDeleteSelected,
+  onDuplicateSelected,
 }: InspectorProps) {
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
   const [newTag, setNewTag] = useState('');
   const [showAddTag, setShowAddTag] = useState(false);
   const [showAddComponent, setShowAddComponent] = useState(false);
 
+  // Get primary selected entity (first in set)
+  const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
   const entity = gameSpec?.entities?.find((e) => e.name === selectedEntity);
+  const isMultiSelect = selectedEntities.size > 1;
 
   // Get available components that aren't already on this entity
   const availableComponents = componentRegistry.getAll().filter(
@@ -172,6 +179,83 @@ export default function Inspector({
         </div>
         <p>Select an entity from</p>
         <p>the scene tree to inspect</p>
+      </div>
+    );
+  }
+
+  // Multi-selection view
+  if (isMultiSelect) {
+    const selectedArray = Array.from(selectedEntities);
+    const selectedEntitiesData = selectedArray
+      .map(name => gameSpec?.entities?.find(e => e.name === name))
+      .filter(Boolean);
+
+    return (
+      <div className="h-full flex flex-col bg-panel">
+        {/* Header */}
+        <div className="px-4 py-3 bg-subtle border-b border-subtle">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-text-primary">
+              {selectedEntities.size} Entities Selected
+            </h3>
+            <div className="flex items-center gap-1">
+              {onDuplicateSelected && (
+                <button
+                  onClick={onDuplicateSelected}
+                  className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                  title="Duplicate All"
+                >
+                  <CopyIcon size={14} />
+                </button>
+              )}
+              {onDeleteSelected && (
+                <button
+                  onClick={onDeleteSelected}
+                  className="p-1.5 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400 transition-colors"
+                  title="Delete All"
+                >
+                  <TrashIcon size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Selected entities list */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2">
+            {selectedEntitiesData.map((ent) => ent && (
+              <div
+                key={ent.name}
+                className="p-3 bg-white/5 border border-subtle rounded-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-primary">{ent.name}</span>
+                  <div className="flex items-center gap-1">
+                    {ent.tags?.slice(0, 2).map(tag => (
+                      <span key={tag} className="px-1.5 py-0.5 text-[10px] bg-primary/20 text-primary rounded">
+                        {tag}
+                      </span>
+                    ))}
+                    {(ent.tags?.length || 0) > 2 && (
+                      <span className="text-[10px] text-text-tertiary">+{ent.tags!.length - 2}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-1 text-xs text-text-tertiary">
+                  {Object.keys(ent.components || {}).length} components
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 bg-panel border-t border-subtle">
+          <p className="text-[10px] text-text-tertiary text-center">
+            Ctrl+Click to toggle selection • Shift+Click for range
+          </p>
+        </div>
       </div>
     );
   }
