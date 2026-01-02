@@ -18,10 +18,12 @@ import ErrorDisplay from './components/ErrorDisplay';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import PhysicsSettings from './components/PhysicsSettings';
 import ScriptRunner from './components/ScriptRunner';
+import Toolbar from './components/Toolbar';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useHistoryState } from './hooks/useHistoryState';
 import { useEntityOperations } from './hooks/useEntityOperations';
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportIcon, LoadingSpinner, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon } from './components/Icons';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets';
@@ -865,157 +867,40 @@ function App() {
     }
   }, [gameSpec]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      // Quick Create Entity: Cmd/Ctrl + Shift + N
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'n') {
-        e.preventDefault();
-        if (gameSpec) {
-          handleCreateEntity();
-        }
-        return;
-      }
-      // New Project: Cmd/Ctrl + N
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-        e.preventDefault();
-        setShowNewProjectModal(true);
-      }
-      // Open Project: Cmd/Ctrl + O
-      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-        e.preventDefault();
-        openProject();
-      }
-      // Save: Cmd/Ctrl + S
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (gameSpec && projectPath) {
-          try {
-            const gameJsonPath = `${projectPath}/game.json`;
-            const gameJsonContent = JSON.stringify(gameSpec, null, 2);
-            await invoke('write_file', {
-              path: gameJsonPath,
-              content: gameJsonContent,
-            });
-            setHasUnsavedChanges(false);
-            setNotification('Saved');
-            setTimeout(() => setNotification(null), 2000);
-          } catch (err) {
-            console.error('Failed to save project:', err);
-          }
-        }
-      }
-      // Undo: Cmd/Ctrl + Z
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      }
-      // Redo: Cmd/Ctrl + Shift + Z or Cmd/Ctrl + Y
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        handleRedo();
-      }
-      // Export: Cmd/Ctrl + E
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
-        e.preventDefault();
-        if (gameSpec) {
-          exportGame();
-        }
-      }
-      // Keyboard shortcuts help: ?
-      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
-        e.preventDefault();
-        setShowKeyboardShortcuts(true);
-      }
-      // Close modals: Escape
-      if (e.key === 'Escape') {
-        if (showKeyboardShortcuts) {
-          setShowKeyboardShortcuts(false);
-        }
-      }
-      // Select All: Cmd/Ctrl + A
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a' && viewMode === 'game' && gameSpec?.entities) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-          return;
-        }
-        e.preventDefault();
-        handleSelectAll();
-      }
-      // Clear Selection: Escape
-      if (e.key === 'Escape' && selectedEntities.size > 0 && !showKeyboardShortcuts) {
-        setSelectedEntities(new Set());
-      }
-      // Delete selected entity(ies): Delete or Backspace
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEntities.size > 0 && viewMode === 'game') {
-        // Don't delete if we're in an input field
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-          return;
-        }
-        e.preventDefault();
-        if (selectedEntities.size > 1) {
-          handleDeleteSelected();
-        } else if (selectedEntity) {
-          handleDeleteEntity(selectedEntity);
-        }
-      }
-      // Duplicate: Cmd/Ctrl + D
-      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedEntities.size > 0 && viewMode === 'game') {
-        e.preventDefault();
-        if (selectedEntities.size > 1) {
-          handleDuplicateSelected();
-        } else if (selectedEntity) {
-          handleDuplicateEntity(selectedEntity);
-        }
-      }
-      // Copy: Cmd/Ctrl + C
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedEntity && gameSpec && viewMode === 'game') {
-        const entity = gameSpec.entities?.find((e) => e.name === selectedEntity);
-        if (entity) {
-          setClipboardEntity(JSON.parse(JSON.stringify(entity)));
-          setNotification('Entity copied');
-          setTimeout(() => setNotification(null), 1500);
-        }
-      }
-      // Paste: Cmd/Ctrl + V
-      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && clipboardEntity && gameSpec && viewMode === 'game') {
-        e.preventDefault();
-        // Generate unique name
-        let counter = 1;
-        const baseName = clipboardEntity.name.replace(/_copy\d+$/, '');
-        const existingNames = new Set(gameSpec.entities?.map((e) => e.name) || []);
-        let newName = `${baseName}_paste${counter}`;
-        while (existingNames.has(newName)) {
-          counter++;
-          newName = `${baseName}_paste${counter}`;
-        }
-
-        // Deep clone and offset position
-        const newEntity = JSON.parse(JSON.stringify(clipboardEntity));
-        newEntity.name = newName;
-        if (newEntity.components?.transform) {
-          newEntity.components.transform.x += 30;
-          newEntity.components.transform.y += 30;
-        }
-
-        const updatedSpec = {
-          ...gameSpec,
-          entities: [...(gameSpec.entities || []), newEntity],
-        };
-
-        pushHistory(updatedSpec, `Paste ${newName}`);
-        setGameSpec(updatedSpec);
-        setSelectedEntity(newName);
-        setHasUnsavedChanges(true);
-        setNotification('Entity pasted');
-        setTimeout(() => setNotification(null), 1500);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, gameSpec, projectPath, openProject, exportGame, showKeyboardShortcuts, selectedEntity, selectedEntities, viewMode, clipboardEntity, handleDeleteEntity, handleDuplicateEntity, handleDeleteSelected, handleDuplicateSelected, handleSelectAll, handleCreateEntity, pushHistory]);
+  // Keyboard shortcuts hook
+  useKeyboardShortcuts({
+    gameSpec,
+    projectPath,
+    viewMode,
+    selectedEntity,
+    selectedEntities,
+    clipboardEntity,
+    showKeyboardShortcuts,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onSave: saveProject,
+    onOpenProject: openProject,
+    onExportGame: exportGame,
+    onCreateEntity: handleCreateEntity,
+    onDeleteEntity: handleDeleteEntity,
+    onDeleteSelected: handleDeleteSelected,
+    onDuplicateEntity: handleDuplicateEntity,
+    onDuplicateSelected: handleDuplicateSelected,
+    onSelectAll: handleSelectAll,
+    onClearSelection: () => setSelectedEntities(new Set()),
+    onCopyEntity: (entity) => setClipboardEntity(entity),
+    onShowNewProjectModal: () => setShowNewProjectModal(true),
+    onShowKeyboardShortcuts: () => setShowKeyboardShortcuts(true),
+    onHideKeyboardShortcuts: () => setShowKeyboardShortcuts(false),
+    onNotification: (msg) => {
+      setNotification(msg);
+      setTimeout(() => setNotification(null), 1500);
+    },
+    pushHistory,
+    setGameSpec,
+    setSelectedEntity,
+    setHasUnsavedChanges,
+  });
 
   // Listen for native menu events from Rust
   useEffect(() => {
@@ -1247,157 +1132,28 @@ function App() {
 
       {/* Center Panel - Game Canvas / Code Editor */}
       <main className="flex-1 flex flex-col">
-        {/* Toolbar - Minimalist Design */}
-        <div className="bg-panel border-b border-subtle h-10 flex items-center justify-between px-2 backdrop-blur-md sticky top-0 z-10">
-          {/* Left: View Mode Tabs */}
-          <div className="flex items-center gap-1">
-            {projectPath && (
-              <div className="flex bg-subtle/50 rounded p-0.5">
-                <button
-                  onClick={() => setViewMode('game')}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${viewMode === 'game'
-                    ? 'bg-white/10 text-white'
-                    : 'text-text-tertiary hover:text-text-secondary'
-                    }`}
-                >
-                  Game
-                </button>
-                <button
-                  onClick={() => setViewMode('code')}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${viewMode === 'code'
-                    ? 'bg-white/10 text-white'
-                    : 'text-text-tertiary hover:text-text-secondary'
-                    }`}
-                >
-                  Code
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Center: Play Controls */}
-          {gameSpec && viewMode === 'game' && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={togglePlayPause}
-                className={`w-7 h-7 rounded flex items-center justify-center transition-all ${isPlaying
-                  ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
-                  : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                  }`}
-                title={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? (
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="4" width="4" height="16" />
-                    <rect x="14" y="4" width="4" height="16" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={resetGame}
-                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
-                title="Reset"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* Right: Actions */}
-          <div className="flex items-center gap-0.5">
-            {/* File operations */}
-            <button
-              onClick={() => setShowNewProjectModal(true)}
-              className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
-              title="New Project (Cmd+N)"
-            >
-              <NewProjectIcon size={14} />
-            </button>
-            <button
-              onClick={openProject}
-              disabled={loading}
-              className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
-              title="Open Project (Cmd+O)"
-            >
-              {loading ? <LoadingSpinner size={14} /> : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-              )}
-            </button>
-
-            {projectPath && (
-              <>
-                <div className="w-px h-4 bg-subtle mx-1" />
-
-                {/* Save */}
-                <button
-                  onClick={saveProject}
-                  className={`relative w-7 h-7 rounded flex items-center justify-center transition-all ${hasUnsavedChanges
-                    ? 'text-amber-400 hover:bg-amber-500/10'
-                    : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
-                    }`}
-                  title={hasUnsavedChanges ? 'Save (Cmd+S) - Unsaved' : 'Save (Cmd+S)'}
-                >
-                  <SaveIcon size={14} />
-                  {hasUnsavedChanges && (
-                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
-                  )}
-                </button>
-
-                {/* Undo/Redo */}
-                <button
-                  onClick={handleUndo}
-                  disabled={!canUndo}
-                  className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title={canUndo ? `Undo (Cmd+Z)` : 'Nothing to undo'}
-                >
-                  <UndoIcon size={14} />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={!canRedo}
-                  className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title={canRedo ? `Redo (Cmd+Shift+Z)` : 'Nothing to redo'}
-                >
-                  <RedoIcon size={14} />
-                </button>
-
-                <div className="w-px h-4 bg-subtle mx-1" />
-
-                {/* AI */}
-                <button
-                  onClick={() => setShowAIPanel(prev => !prev)}
-                  className={`w-7 h-7 rounded flex items-center justify-center transition-all ${showAIPanel
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
-                    }`}
-                  title="AI Assistant"
-                >
-                  <AIIcon size={14} />
-                </button>
-
-                {/* Export */}
-                {gameSpec && (
-                  <button
-                    onClick={exportGame}
-                    disabled={isExporting}
-                    className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
-                    title="Export as HTML (Cmd+E)"
-                  >
-                    {isExporting ? <LoadingSpinner size={14} /> : <ExportIcon size={14} />}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+        <Toolbar
+          projectPath={projectPath}
+          viewMode={viewMode}
+          isPlaying={isPlaying}
+          loading={loading}
+          isExporting={isExporting}
+          hasUnsavedChanges={hasUnsavedChanges}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          showAIPanel={showAIPanel}
+          hasGameSpec={!!gameSpec}
+          onViewModeChange={setViewMode}
+          onTogglePlayPause={togglePlayPause}
+          onReset={resetGame}
+          onNewProject={() => setShowNewProjectModal(true)}
+          onOpenProject={openProject}
+          onSave={saveProject}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onToggleAI={() => setShowAIPanel(prev => !prev)}
+          onExport={exportGame}
+        />
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden">
