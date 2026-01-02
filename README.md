@@ -17,6 +17,11 @@ PromptPlay is an AI-powered 2D game engine with a native desktop editor. Create 
 - Native desktop app (Windows, macOS, Linux)
 - Visual scene editor with entity management
 - Real-time game preview with play/pause controls
+- AI-powered chat with persistent history
+- TypeScript custom code compilation (esbuild)
+- Monaco code editor with live error checking
+- Undo/Redo with visual history timeline
+- Export to standalone HTML
 - File system access for real project workflows
 - Hot reload on file changes
 
@@ -113,24 +118,55 @@ PromptPlay/
 
 ### Visual Scene Editor
 
-- **Scene Tree** - Hierarchical view of all entities with tags
+- **Scene Tree** - Hierarchical view of all entities with tags and search/filter
 - **Inspector** - Edit entity properties (transform, sprite, collider, etc.)
-- **Game Canvas** - Live preview with entity selection
-- **Entity Management** - Create, delete, duplicate entities
+- **Game Canvas** - Live preview with entity selection and drag handles
+- **Entity Management** - Create, rename, copy, paste, duplicate, delete entities
+- **Keyboard Shortcuts** - Full keyboard navigation (Ctrl+C, Ctrl+V, Ctrl+D, Delete, etc.)
+
+### AI Assistant
+
+- **Natural Language Editing** - Describe changes in plain English
+- **Chat History** - Persistent conversation sessions per project
+- **Streaming Responses** - Token-by-token AI response display
+- **Context-Aware** - AI understands your game spec and selected entities
+- **Quick Examples** - Pre-built prompts for common tasks
+
+### TypeScript Code Support
+
+- **Live Compilation** - esbuild-powered TypeScript compilation in browser
+- **Error Highlighting** - Real-time syntax and type error markers
+- **Custom Systems** - Write and load custom game systems
+- **Script Templates** - Built-in templates for movement, spawners, etc.
+- **Module Management** - Load/unload compiled modules dynamically
+
+### Undo/Redo System
+
+- **Visual Timeline** - See all changes with visual history indicators
+- **Unlimited History** - Undo/redo any number of changes
+- **Keyboard Shortcuts** - Ctrl+Z / Ctrl+Shift+Z support
+
+### Export & Build
+
+- **HTML Export** - Export games as standalone HTML files
+- **Embedded Assets** - All assets bundled in single file
+- **Share Anywhere** - Play exported games in any browser
 
 ### File System Integration
 
 - Open game projects from anywhere on disk
 - Edit game.json files directly
 - Hot reload on file changes
-- Code editor with Monaco integration
+- Monaco code editor with full IDE features
+- JSON editor with syntax validation
 
 ### Game Preview
 
 - Play/Pause/Reset controls
 - Click-to-select entities on canvas
-- Selection highlight with corner handles
+- Selection highlight with resize handles
 - Real-time property updates
+- Physics debug overlay
 
 ---
 
@@ -142,6 +178,7 @@ PromptPlay/
 | **Frontend** | React 18, Vite | UI framework |
 | **Styling** | Tailwind CSS | Utility-first CSS |
 | **Editor** | Monaco Editor | Code editing |
+| **Compiler** | esbuild-wasm | TypeScript compilation |
 | **ECS** | bitecs | Entity Component System |
 | **Rendering** | Canvas2D | 2D graphics |
 | **Physics** | Matter.js | 2D physics simulation |
