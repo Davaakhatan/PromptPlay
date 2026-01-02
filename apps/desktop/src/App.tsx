@@ -2,11 +2,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import type { GameSpec } from '@promptplay/shared-types';
+import type { GameSpec, SceneSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
 import CodeEditor from './components/CodeEditor';
 import FileTree from './components/FileTree';
 import SceneTree from './components/SceneTree';
+import SceneManager from './components/SceneManager';
 import Inspector from './components/Inspector';
 import JSONEditorPanel from './components/JSONEditorPanel';
 import AIPromptPanel from './components/AIPromptPanel';
@@ -17,10 +18,10 @@ import KeyboardShortcuts from './components/KeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useHistoryState } from './hooks/useHistoryState';
 import { useEntityOperations } from './hooks/useEntityOperations';
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ImageIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, CodeIcon, ExportIcon, LoadingSpinner, CheckIcon } from './components/Icons';
 
 type ViewMode = 'game' | 'code';
-type LeftPanelMode = 'files' | 'scene' | 'assets';
+type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'assets';
 type RightPanelMode = 'inspector' | 'json';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('game');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('files');
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedEntities, setSelectedEntities] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<string | null>(null);
@@ -131,7 +133,7 @@ function App() {
     }
 
     if (entityName) {
-      setLeftPanelMode('scene');
+      setLeftPanelMode('entities');
     }
   }, [gameSpec, selectedEntity]);
 
@@ -198,6 +200,120 @@ function App() {
     setTimeout(() => setNotification(null), 2000);
   }, [gameSpec, selectedEntities, pushHistory]);
 
+  // Scene management handlers
+  const handleSwitchScene = useCallback((sceneId: string) => {
+    setActiveSceneId(sceneId);
+    setSelectedEntities(new Set());
+    setNotification(`Switched to scene`);
+    setTimeout(() => setNotification(null), 1500);
+  }, []);
+
+  const handleCreateScene = useCallback((name: string) => {
+    if (!gameSpec) return;
+
+    const newSceneId = `scene_${Date.now()}`;
+    const newScene: SceneSpec = {
+      id: newSceneId,
+      name,
+      entities: [],
+    };
+
+    // If no scenes exist yet, convert entities to first scene
+    let updatedScenes: SceneSpec[];
+    if (!gameSpec.scenes || gameSpec.scenes.length === 0) {
+      const mainScene: SceneSpec = {
+        id: 'main',
+        name: 'Main Scene',
+        entities: gameSpec.entities || [],
+      };
+      updatedScenes = [mainScene, newScene];
+    } else {
+      updatedScenes = [...gameSpec.scenes, newScene];
+    }
+
+    const updatedSpec: GameSpec = {
+      ...gameSpec,
+      scenes: updatedScenes,
+      activeScene: newSceneId,
+      entities: [], // Clear root entities when using scenes
+    };
+
+    pushHistory(updatedSpec, `Create scene "${name}"`);
+    setGameSpec(updatedSpec);
+    setActiveSceneId(newSceneId);
+    setHasUnsavedChanges(true);
+    setNotification(`Created scene "${name}"`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, pushHistory]);
+
+  const handleRenameScene = useCallback((sceneId: string, newName: string) => {
+    if (!gameSpec?.scenes) return;
+
+    const updatedScenes = gameSpec.scenes.map(scene =>
+      scene.id === sceneId ? { ...scene, name: newName } : scene
+    );
+
+    const updatedSpec: GameSpec = {
+      ...gameSpec,
+      scenes: updatedScenes,
+    };
+
+    pushHistory(updatedSpec, `Rename scene to "${newName}"`);
+    setGameSpec(updatedSpec);
+    setHasUnsavedChanges(true);
+  }, [gameSpec, pushHistory]);
+
+  const handleDeleteScene = useCallback((sceneId: string) => {
+    if (!gameSpec?.scenes || gameSpec.scenes.length <= 1) return;
+
+    const updatedScenes = gameSpec.scenes.filter(scene => scene.id !== sceneId);
+    const deletedScene = gameSpec.scenes.find(s => s.id === sceneId);
+
+    // If deleting active scene, switch to first available
+    let newActiveScene = activeSceneId;
+    if (activeSceneId === sceneId) {
+      newActiveScene = updatedScenes[0]?.id || null;
+    }
+
+    const updatedSpec: GameSpec = {
+      ...gameSpec,
+      scenes: updatedScenes,
+      activeScene: newActiveScene || undefined,
+    };
+
+    pushHistory(updatedSpec, `Delete scene "${deletedScene?.name || sceneId}"`);
+    setGameSpec(updatedSpec);
+    setActiveSceneId(newActiveScene);
+    setHasUnsavedChanges(true);
+    setNotification(`Deleted scene`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, activeSceneId, pushHistory]);
+
+  const handleDuplicateScene = useCallback((sceneId: string) => {
+    if (!gameSpec?.scenes) return;
+
+    const sourceScene = gameSpec.scenes.find(s => s.id === sceneId);
+    if (!sourceScene) return;
+
+    const newSceneId = `scene_${Date.now()}`;
+    const newScene: SceneSpec = {
+      id: newSceneId,
+      name: `${sourceScene.name} Copy`,
+      entities: JSON.parse(JSON.stringify(sourceScene.entities)),
+      config: sourceScene.config ? { ...sourceScene.config } : undefined,
+    };
+
+    const updatedSpec: GameSpec = {
+      ...gameSpec,
+      scenes: [...gameSpec.scenes, newScene],
+    };
+
+    pushHistory(updatedSpec, `Duplicate scene "${sourceScene.name}"`);
+    setGameSpec(updatedSpec);
+    setHasUnsavedChanges(true);
+    setNotification(`Duplicated scene`);
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, pushHistory]);
 
   // Handle file changes from file watcher
   const handleFileChanged = useCallback(async (filePath: string) => {
@@ -254,6 +370,13 @@ function App() {
       setIsPlaying(false);
       setLoading(false);
       setHasUnsavedChanges(false);
+      setSelectedEntities(new Set());
+      // Initialize active scene if project has scenes
+      if (spec.scenes && spec.scenes.length > 0) {
+        setActiveSceneId(spec.activeScene || spec.scenes[0].id);
+      } else {
+        setActiveSceneId(null);
+      }
       initializeHistory(spec);
     } catch (err) {
       console.error('Failed to open project:', err);
@@ -363,6 +486,8 @@ function App() {
       setHasUnsavedChanges(false);
       setShowNewProjectModal(false);
       setNewProjectName('');
+      setActiveSceneId(null); // New projects start without scenes
+      setSelectedEntities(new Set());
       initializeHistory(defaultSpec);
 
       setNotification('Project created');
@@ -629,6 +754,8 @@ function App() {
       setGameSpec(templateSpec);
       setIsPlaying(false);
       setHasUnsavedChanges(false);
+      setActiveSceneId(null); // Templates start without scenes
+      setSelectedEntities(new Set());
       initializeHistory(templateSpec);
 
       setNotification(`${templateId} project created`);
@@ -943,10 +1070,10 @@ function App() {
       <aside className="w-64 bg-panel border-r border-subtle flex flex-col backdrop-blur-md">
         {/* Panel Mode Tabs */}
         {projectPath && gameSpec && (
-          <div className="flex gap-1 bg-panel border-b border-subtle p-2">
+          <div className="flex gap-0.5 bg-panel border-b border-subtle p-1.5">
             <button
               onClick={() => setLeftPanelMode('files')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${leftPanelMode === 'files'
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'files'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
@@ -954,22 +1081,30 @@ function App() {
               Files
             </button>
             <button
-              onClick={() => setLeftPanelMode('scene')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${leftPanelMode === 'scene'
+              onClick={() => setLeftPanelMode('scenes')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'scenes'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              Scene
+              Scenes
+            </button>
+            <button
+              onClick={() => setLeftPanelMode('entities')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'entities'
+                ? 'bg-subtle text-white shadow-sm border border-white/5'
+                : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+            >
+              Entities
             </button>
             <button
               onClick={() => setLeftPanelMode('assets')}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${leftPanelMode === 'assets'
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${leftPanelMode === 'assets'
                 ? 'bg-subtle text-white shadow-sm border border-white/5'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                 }`}
             >
-              <ImageIcon size={12} />
               Assets
             </button>
           </div>
@@ -998,7 +1133,18 @@ function App() {
               selectedFile={selectedFile}
             />
           )}
-          {leftPanelMode === 'scene' && (
+          {leftPanelMode === 'scenes' && (
+            <SceneManager
+              gameSpec={gameSpec}
+              activeSceneId={activeSceneId}
+              onSwitchScene={handleSwitchScene}
+              onCreateScene={handleCreateScene}
+              onRenameScene={handleRenameScene}
+              onDeleteScene={handleDeleteScene}
+              onDuplicateScene={handleDuplicateScene}
+            />
+          )}
+          {leftPanelMode === 'entities' && (
             <SceneTree
               gameSpec={gameSpec}
               selectedEntities={selectedEntities}

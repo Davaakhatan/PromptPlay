@@ -1,9 +1,27 @@
+// Scene specification for multi-scene support
+export interface SceneSpec {
+  id: string;
+  name: string;
+  entities: EntitySpec[];
+  config?: SceneConfig;
+}
+
+export interface SceneConfig {
+  gravity?: { x: number; y: number };
+  worldBounds?: { width: number; height: number };
+  backgroundColor?: string;
+}
+
 // Game specification types for JSON serialization
 export interface GameSpec {
   version: string;
   metadata: GameMetadata;
   config: GameConfig;
+  // Legacy: flat entity list (for backwards compatibility with single-scene games)
   entities: EntitySpec[];
+  // Multi-scene support (optional)
+  scenes?: SceneSpec[];
+  activeScene?: string; // Scene ID
   systems: string[];
   settings?: GameSettings;
 }

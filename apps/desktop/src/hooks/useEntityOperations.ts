@@ -8,7 +8,7 @@ interface UseEntityOperationsOptions {
   onSelectedEntityChange: (name: string | null) => void;
   onUnsavedChange: (hasChanges: boolean) => void;
   onNotification: (message: string | null) => void;
-  onLeftPanelModeChange: (mode: 'files' | 'scene' | 'assets') => void;
+  onLeftPanelModeChange: (mode: 'files' | 'scenes' | 'entities' | 'assets') => void;
   pushHistory: (spec: GameSpec, description: string) => void;
 }
 
@@ -70,7 +70,7 @@ export function useEntityOperations({
     pushHistory(updatedSpec, `Create ${newName}`);
     onGameSpecChange(updatedSpec);
     onSelectedEntityChange(newName);
-    onLeftPanelModeChange('scene');
+    onLeftPanelModeChange('entities');
     onUnsavedChange(true);
     onNotification('Entity created');
     setTimeout(() => onNotification(null), 2000);
