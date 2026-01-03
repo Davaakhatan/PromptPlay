@@ -1,12 +1,13 @@
-import { defineQuery, IWorld } from 'bitecs';
-import { Transform3D, Velocity3D } from '../components';
+import { defineQuery, hasComponent, IWorld } from 'bitecs';
+import { Transform3D, Velocity3D, RigidBody3D } from '../components';
 import { ThreeRenderer } from '../renderers/ThreeRenderer';
 
-// Query for entities with transform and velocity
+// Query for entities with transform and velocity (non-physics entities)
 const movingQuery = defineQuery([Transform3D, Velocity3D]);
 
 /**
  * System for updating 3D transforms based on velocity
+ * Only handles non-physics entities - physics entities are handled by Physics3DSystem
  */
 export class Transform3DSystem {
   constructor(private renderer: ThreeRenderer) {}
@@ -18,6 +19,11 @@ export class Transform3DSystem {
     const entities = movingQuery(world);
 
     for (const eid of entities) {
+      // Skip physics entities - they are handled by Physics3DSystem
+      if (hasComponent(world, RigidBody3D, eid)) {
+        continue;
+      }
+
       // Update position based on velocity
       Transform3D.x[eid] += Velocity3D.vx[eid] * dt;
       Transform3D.y[eid] += Velocity3D.vy[eid] * dt;

@@ -101,7 +101,7 @@ export class Physics3DSystem {
     // Step physics simulation
     this.physics.step(dt);
 
-    // Sync physics state back to ECS
+    // Sync physics state back to ECS and renderer
     const bodyStates = this.physics.getBodyStates();
     for (const eid of entities) {
       const state = bodyStates.get(eid);
@@ -121,6 +121,20 @@ export class Physics3DSystem {
         Velocity3D.vx[eid] = state.velocity.x;
         Velocity3D.vy[eid] = state.velocity.y;
         Velocity3D.vz[eid] = state.velocity.z;
+
+        // Sync with renderer
+        if (this.renderer) {
+          this.renderer.updateMeshTransform(
+            eid,
+            { x: state.position.x, y: state.position.y, z: state.position.z },
+            { x: euler.x, y: euler.y, z: euler.z },
+            {
+              x: Transform3D.scaleX[eid] || 1,
+              y: Transform3D.scaleY[eid] || 1,
+              z: Transform3D.scaleZ[eid] || 1,
+            }
+          );
+        }
       }
     }
 
