@@ -426,6 +426,62 @@ function App() {
     }
   }, [initializeHistory]);
 
+  // Import a game.json file directly
+  const importGame = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const selected = await open({
+        multiple: false,
+        title: 'Import Game',
+        filters: [
+          { name: 'Game Files', extensions: ['json', 'promptplay'] },
+        ],
+      });
+
+      if (!selected || typeof selected !== 'string') {
+        setLoading(false);
+        return;
+      }
+
+      // Read the file
+      const fileContent = await invoke<string>('read_file', { path: selected });
+      const spec = JSON.parse(fileContent) as GameSpec;
+
+      // Validate it looks like a game spec
+      if (!spec.version && !spec.entities && !spec.metadata) {
+        throw new Error('Invalid game file format');
+      }
+
+      // Set the project path to the parent directory of the file
+      const pathParts = selected.split('/');
+      pathParts.pop(); // Remove filename
+      const parentDir = pathParts.join('/');
+
+      setProjectPath(parentDir);
+      setGameSpec(spec);
+      setIsPlaying(false);
+      setLoading(false);
+      setHasUnsavedChanges(false);
+      setSelectedEntities(new Set());
+
+      if (spec.scenes && spec.scenes.length > 0) {
+        setActiveSceneId(spec.activeScene || spec.scenes[0].id);
+      } else {
+        setActiveSceneId(null);
+      }
+
+      initializeHistory(spec);
+      setNotification('Game imported successfully');
+      setTimeout(() => setNotification(null), 2000);
+    } catch (err) {
+      console.error('Failed to import game:', err);
+      setError(err instanceof Error ? err.message : String(err));
+      setLoading(false);
+    }
+  }, [initializeHistory]);
+
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
   };
@@ -453,6 +509,42 @@ function App() {
 
       setHasUnsavedChanges(false);
       setNotification('Saved');
+      setTimeout(() => setNotification(null), 2000);
+    } catch (err) {
+      console.error('Failed to save project:', err);
+      setError('Failed to save project: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Save project to a new location
+  const saveProjectAs = async () => {
+    if (!gameSpec) return;
+
+    try {
+      // Ask user where to save
+      const selectedPath = await save({
+        title: 'Save Project As',
+        defaultPath: gameSpec.metadata?.title || 'my-game',
+      });
+
+      if (!selectedPath) return;
+
+      // Create project directory
+      await invoke('create_directory', { path: selectedPath });
+
+      // Save game.json
+      const gameJsonPath = `${selectedPath}/game.json`;
+      const gameJsonContent = JSON.stringify(gameSpec, null, 2);
+
+      await invoke('write_file', {
+        path: gameJsonPath,
+        content: gameJsonContent,
+      });
+
+      // Update project path to new location
+      setProjectPath(selectedPath);
+      setHasUnsavedChanges(false);
+      setNotification('Saved to ' + selectedPath.split('/').pop());
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
       console.error('Failed to save project:', err);
@@ -941,14 +1033,12 @@ function App() {
           }
           break;
         case 'save_as':
-          // TODO: Implement save as
-          setNotification('Save As - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          if (gameSpec) {
+            saveProjectAs();
+          }
           break;
         case 'import_game':
-          // TODO: Implement import game
-          setNotification('Import Game - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          importGame();
           break;
         case 'export_html':
           if (gameSpec) {
