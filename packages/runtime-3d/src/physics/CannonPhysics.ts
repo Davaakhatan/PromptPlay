@@ -329,6 +329,37 @@ export class CannonPhysics {
   }
 
   /**
+   * Get single body state
+   */
+  getBodyState(entityId: number): {
+    position: { x: number; y: number; z: number };
+    quaternion: { x: number; y: number; z: number; w: number };
+    velocity: { x: number; y: number; z: number };
+  } | null {
+    const body = this.bodies.get(entityId);
+    if (!body) return null;
+
+    return {
+      position: {
+        x: body.position.x,
+        y: body.position.y,
+        z: body.position.z,
+      },
+      quaternion: {
+        x: body.quaternion.x,
+        y: body.quaternion.y,
+        z: body.quaternion.z,
+        w: body.quaternion.w,
+      },
+      velocity: {
+        x: body.velocity.x,
+        y: body.velocity.y,
+        z: body.velocity.z,
+      },
+    };
+  }
+
+  /**
    * Add collision event listener
    */
   onCollision(

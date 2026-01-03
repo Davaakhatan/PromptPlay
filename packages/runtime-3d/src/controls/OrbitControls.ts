@@ -202,6 +202,22 @@ export class OrbitControls {
     this.update();
   }
 
+  /**
+   * Update camera aspect ratio on resize
+   */
+  updateAspect(width: number, height: number): void {
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+    } else if (this.camera instanceof THREE.OrthographicCamera) {
+      const aspect = width / height;
+      const viewSize = this.camera.top - this.camera.bottom;
+      this.camera.left = -viewSize * aspect / 2;
+      this.camera.right = viewSize * aspect / 2;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
   // Event handlers
   private onMouseDown(event: MouseEvent): void {
     if (!this.enabled) return;

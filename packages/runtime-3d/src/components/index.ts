@@ -189,3 +189,14 @@ export const RigidBodyType = {
   STATIC: 1,
   KINEMATIC: 2,
 } as const;
+
+/**
+ * Input3D component
+ * Keyboard input handling for 3D entities
+ */
+export const Input3D = defineComponent({
+  moveSpeed: Types.f32,
+  jumpForce: Types.f32,
+  canJump: Types.ui8,
+  isGrounded: Types.ui8,
+});

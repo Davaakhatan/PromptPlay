@@ -1,7 +1,11 @@
-import { createWorld, addEntity, removeEntity, IWorld } from 'bitecs';
+import { createWorld, addEntity, removeEntity, addComponent, IWorld } from 'bitecs';
 import { ThreeRenderer, ThreeRendererOptions } from './renderers/ThreeRenderer';
 import { Render3DSystem } from './systems/Render3DSystem';
 import { Transform3DSystem } from './systems/Transform3DSystem';
+import { Input3DSystem } from './systems/Input3DSystem';
+import { Physics3DSystem } from './systems/Physics3DSystem';
+import { InputManager3D } from './input/InputManager3D';
+import { CannonPhysics } from './physics/CannonPhysics';
 import {
   Transform3D,
   Mesh,
@@ -9,6 +13,9 @@ import {
   Light,
   Velocity3D,
   Camera3D,
+  Input3D,
+  Collider3D,
+  RigidBody3D,
 } from './components';
 import type { Game3DSpec, Entity3DComponents } from '@promptplay/shared-types';
 
@@ -31,6 +38,14 @@ export class Game3D {
   // Systems
   private render3DSystem: Render3DSystem;
   private transform3DSystem: Transform3DSystem;
+  private input3DSystem: Input3DSystem;
+  private physics3DSystem: Physics3DSystem;
+
+  // Physics
+  private physics: CannonPhysics;
+
+  // Input
+  private inputManager: InputManager3D;
 
   // Entity tracking
   private entityMap: Map<string, number> = new Map();
@@ -43,9 +58,19 @@ export class Game3D {
     this.renderer = new ThreeRenderer(rendererOptions);
     this.fixedDeltaTime = fixedDeltaTime;
 
+    // Initialize physics with gravity
+    this.physics = new CannonPhysics({
+      gravity: { x: 0, y: -20, z: 0 },
+    });
+
+    // Initialize input
+    this.inputManager = new InputManager3D();
+
     // Initialize systems
     this.render3DSystem = new Render3DSystem(this.renderer);
     this.transform3DSystem = new Transform3DSystem(this.renderer);
+    this.input3DSystem = new Input3DSystem(this.inputManager);
+    this.physics3DSystem = new Physics3DSystem(this.physics, this.renderer);
 
     // Add debug helpers in development
     if (process.env.NODE_ENV === 'development') {
@@ -88,6 +113,7 @@ export class Game3D {
 
     // Add Transform3D component
     if (components.transform3d) {
+      addComponent(this.world, Transform3D, eid);
       const t = components.transform3d;
       Transform3D.x[eid] = t.x;
       Transform3D.y[eid] = t.y;
@@ -102,6 +128,7 @@ export class Game3D {
 
     // Add Mesh component
     if (components.mesh) {
+      addComponent(this.world, Mesh, eid);
       const m = components.mesh;
       Mesh.geometry[eid] = this.geometryToIndex(m.geometry);
       Mesh.width[eid] = m.width ?? 1;
@@ -115,6 +142,7 @@ export class Game3D {
 
     // Add Material component
     if (components.material) {
+      addComponent(this.world, Material, eid);
       const mat = components.material;
       Material.color[eid] = this.colorToInt(mat.color ?? '#3498db');
       Material.metallic[eid] = mat.metallic ?? 0.1;
@@ -125,6 +153,7 @@ export class Game3D {
 
     // Add Light component
     if (components.light) {
+      addComponent(this.world, Light, eid);
       const l = components.light;
       Light.type[eid] = this.lightTypeToIndex(l.type);
       Light.color[eid] = this.colorToInt(l.color ?? '#ffffff');
@@ -141,6 +170,7 @@ export class Game3D {
 
     // Add Velocity3D component
     if (components.velocity3d) {
+      addComponent(this.world, Velocity3D, eid);
       const v = components.velocity3d;
       Velocity3D.vx[eid] = v.vx;
       Velocity3D.vy[eid] = v.vy;
@@ -152,6 +182,7 @@ export class Game3D {
 
     // Add Camera3D component
     if (components.camera3d) {
+      addComponent(this.world, Camera3D, eid);
       const c = components.camera3d;
       Camera3D.type[eid] = c.type === 'orthographic' ? 1 : 0;
       Camera3D.fov[eid] = c.fov ?? 75;
@@ -163,6 +194,44 @@ export class Game3D {
       Camera3D.followOffsetX[eid] = c.followOffsetX ?? 0;
       Camera3D.followOffsetY[eid] = c.followOffsetY ?? 5;
       Camera3D.followOffsetZ[eid] = c.followOffsetZ ?? 10;
+    }
+
+    // Add Input3D component
+    if (components.input3d) {
+      addComponent(this.world, Input3D, eid);
+      const i = components.input3d;
+      Input3D.moveSpeed[eid] = i.moveSpeed ?? 5;
+      Input3D.jumpForce[eid] = i.jumpForce ?? 10;
+      Input3D.canJump[eid] = i.canJump !== false ? 1 : 0;
+      Input3D.isGrounded[eid] = i.isGrounded !== false ? 1 : 0;
+    }
+
+    // Add Collider3D component
+    if (components.collider3d) {
+      addComponent(this.world, Collider3D, eid);
+      const c = components.collider3d;
+      const colliderTypes = ['box', 'sphere', 'capsule', 'cylinder', 'plane'];
+      Collider3D.type[eid] = colliderTypes.indexOf(c.type) !== -1 ? colliderTypes.indexOf(c.type) : 0;
+      Collider3D.width[eid] = c.width ?? 1;
+      Collider3D.height[eid] = c.height ?? 1;
+      Collider3D.depth[eid] = c.depth ?? 1;
+      Collider3D.radius[eid] = c.radius ?? 0.5;
+      Collider3D.mass[eid] = c.mass ?? 1;
+      Collider3D.friction[eid] = c.friction ?? 0.5;
+      Collider3D.restitution[eid] = c.restitution ?? 0.3;
+      Collider3D.isTrigger[eid] = c.isTrigger ? 1 : 0;
+    }
+
+    // Add RigidBody3D component
+    if (components.rigidbody3d) {
+      addComponent(this.world, RigidBody3D, eid);
+      const rb = components.rigidbody3d;
+      const bodyTypes = ['dynamic', 'static', 'kinematic'];
+      RigidBody3D.type[eid] = bodyTypes.indexOf(rb.type ?? 'dynamic') !== -1 ? bodyTypes.indexOf(rb.type ?? 'dynamic') : 0;
+      RigidBody3D.mass[eid] = rb.mass ?? 1;
+      RigidBody3D.linearDamping[eid] = rb.linearDamping ?? 0.01;
+      RigidBody3D.angularDamping[eid] = rb.angularDamping ?? 0.01;
+      RigidBody3D.fixedRotation[eid] = rb.fixedRotation ? 1 : 0;
     }
 
     // Initialize mesh in renderer if mesh component exists
@@ -291,8 +360,11 @@ export class Game3D {
    * Fixed timestep update (for physics)
    */
   private fixedUpdate(dt: number): void {
-    // Velocity system
-    // Physics system (future)
+    // Input system (reads keyboard, sets velocity)
+    this.input3DSystem.execute(this.world, dt);
+    // Physics system (handles gravity, collisions, updates transforms)
+    this.physics3DSystem.execute(this.world, dt);
+    // Transform system (for non-physics entities with velocity)
     this.transform3DSystem.execute(this.world, dt);
   }
 
@@ -300,7 +372,7 @@ export class Game3D {
    * Variable timestep update
    */
   private update(_dt: number): void {
-    // Animation, input, etc.
+    // Animation, camera, etc.
   }
 
   /**
@@ -338,6 +410,7 @@ export class Game3D {
   dispose(): void {
     this.stop();
     this.clear();
+    this.inputManager.cleanup();
     this.renderer.dispose();
   }
 

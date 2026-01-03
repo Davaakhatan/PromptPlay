@@ -11,6 +11,7 @@ interface ToolbarProps {
   canRedo: boolean;
   showAIPanel: boolean;
   hasGameSpec: boolean;
+  is3DMode?: boolean;
 
   onViewModeChange: (mode: 'game' | 'code') => void;
   onTogglePlayPause: () => void;
@@ -22,6 +23,7 @@ interface ToolbarProps {
   onRedo: () => void;
   onToggleAI: () => void;
   onExport: () => void;
+  onToggle3DMode?: () => void;
 }
 
 export default function Toolbar({
@@ -35,6 +37,7 @@ export default function Toolbar({
   canRedo,
   showAIPanel,
   hasGameSpec,
+  is3DMode = false,
   onViewModeChange,
   onTogglePlayPause,
   onReset,
@@ -45,34 +48,59 @@ export default function Toolbar({
   onRedo,
   onToggleAI,
   onExport,
+  onToggle3DMode,
 }: ToolbarProps) {
   return (
     <div className="bg-panel border-b border-subtle h-10 flex items-center justify-between px-2 backdrop-blur-md sticky top-0 z-10">
       {/* Left: View Mode Tabs */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {projectPath && (
-          <div className="flex bg-subtle/50 rounded p-0.5">
-            <button
-              onClick={() => onViewModeChange('game')}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                viewMode === 'game'
-                  ? 'bg-white/10 text-white'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Game
-            </button>
-            <button
-              onClick={() => onViewModeChange('code')}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                viewMode === 'code'
-                  ? 'bg-white/10 text-white'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Code
-            </button>
-          </div>
+          <>
+            <div className="flex bg-subtle/50 rounded p-0.5">
+              <button
+                onClick={() => onViewModeChange('game')}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  viewMode === 'game'
+                    ? 'bg-white/10 text-white'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                Game
+              </button>
+              <button
+                onClick={() => onViewModeChange('code')}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  viewMode === 'code'
+                    ? 'bg-white/10 text-white'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                Code
+              </button>
+            </div>
+
+            {/* 2D/3D Mode Toggle */}
+            {viewMode === 'game' && hasGameSpec && onToggle3DMode && (
+              <button
+                onClick={onToggle3DMode}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+                  is3DMode
+                    ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30'
+                    : 'bg-subtle/50 text-text-secondary hover:bg-subtle hover:text-text-primary'
+                }`}
+                title="Toggle 2D/3D Mode (Cmd+Shift+M)"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  {is3DMode ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+                  )}
+                </svg>
+                {is3DMode ? '3D' : '2D'}
+              </button>
+            )}
+          </>
         )}
       </div>
 

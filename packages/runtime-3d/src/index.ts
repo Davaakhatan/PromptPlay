@@ -14,6 +14,7 @@ export {
   Camera3D,
   Collider3D,
   RigidBody3D,
+  Input3D,
   // Type constants
   GeometryType,
   LightType,
@@ -29,6 +30,10 @@ export { Transform3DSystem } from './systems/Transform3DSystem';
 export { Physics3DSystem } from './systems/Physics3DSystem';
 export { Camera3DSystem } from './systems/Camera3DSystem';
 export { LightingSystem } from './systems/LightingSystem';
+export { Input3DSystem } from './systems/Input3DSystem';
+
+// Input
+export { InputManager3D } from './input/InputManager3D';
 
 // Physics
 export {

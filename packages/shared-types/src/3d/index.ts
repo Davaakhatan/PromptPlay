@@ -143,6 +143,23 @@ export interface Camera3DComponent {
   lookAtTarget?: number;  // Entity ID
 }
 
+// 3D Input component
+export interface Input3DComponent {
+  moveSpeed?: number;     // Movement speed
+  jumpForce?: number;     // Jump force
+  canJump?: boolean;      // Whether jumping is enabled
+  isGrounded?: boolean;   // Whether entity is on ground
+}
+
+// 3D RigidBody component
+export interface RigidBody3DComponent {
+  type?: 'dynamic' | 'static' | 'kinematic';
+  mass?: number;
+  linearDamping?: number;
+  angularDamping?: number;
+  fixedRotation?: boolean;
+}
+
 // Extended EntityComponents for 3D
 export interface Entity3DComponents {
   transform3d?: Transform3DComponent;
@@ -152,6 +169,8 @@ export interface Entity3DComponents {
   collider3d?: Collider3DComponent;
   velocity3d?: Velocity3DComponent;
   camera3d?: Camera3DComponent;
+  input3d?: Input3DComponent;
+  rigidbody3d?: RigidBody3DComponent;
 }
 
 // 3D Scene configuration

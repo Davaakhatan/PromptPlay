@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import type { Game3DSpec } from '@promptplay/shared-types';
 import {
   Game3D,
-  ThreeRenderer,
   OrbitControls,
 } from '@promptplay/runtime-3d';
 
@@ -28,10 +27,10 @@ export function GameCanvas3D({
 }: GameCanvas3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rendererRef = useRef<ThreeRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const game3DRef = useRef<Game3D | null>(null);
   const animationFrameRef = useRef<number>(0);
+  const isPlayingRef = useRef(isPlaying);
 
   const [isDragging, setIsDragging] = useState(false);
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
@@ -39,21 +38,28 @@ export function GameCanvas3D({
   // Selection visualization
   const selectionBoxesRef = useRef<Map<string, THREE.BoxHelper>>(new Map());
 
-  // Initialize renderer and controls
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Initialize Game3D (which has its own renderer)
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight;
 
-    // Create renderer
-    const renderer = new ThreeRenderer({
+    // Create game instance (Game3D creates its own ThreeRenderer internally)
+    const game = new Game3D({
       canvas: canvasRef.current,
       width,
       height,
-      antialias: true,
     });
-    rendererRef.current = renderer;
+    game3DRef.current = game;
+
+    // Get the renderer from the game instance
+    const renderer = game.renderer;
 
     // Add grid helper
     if (showGrid) {
@@ -65,25 +71,17 @@ export function GameCanvas3D({
       renderer.addAxesHelper(5);
     }
 
-    // Create orbit controls for editor
+    // Create orbit controls for editor using the game's camera
     const controls = new OrbitControls(renderer.camera, canvasRef.current);
     controls.enableDamping = true;
     controlsRef.current = controls;
 
-    // Create game instance
-    const game = new Game3D({
-      canvas: canvasRef.current,
-      width,
-      height,
-    });
-    game3DRef.current = game;
-
-    // Animation loop for editor
+    // Animation loop for editor mode (when not playing, Game3D's loop handles play mode)
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
-      if (!isPlaying) {
-        // Editor mode - just update controls and render
+      // Only render in editor mode - Game3D handles its own rendering when playing
+      if (!isPlayingRef.current) {
         controls.update();
         renderer.render();
       }
@@ -94,20 +92,34 @@ export function GameCanvas3D({
     return () => {
       cancelAnimationFrame(animationFrameRef.current);
       controls.dispose();
-      renderer.dispose();
       game.dispose();
     };
   }, [showGrid, showAxes]);
 
+  // Handle play/stop state changes
+  useEffect(() => {
+    const game = game3DRef.current;
+    if (!game || !gameSpec) return;
+
+    if (isPlaying) {
+      // Load the spec and start the game loop
+      game.loadSpec(gameSpec);
+      game.start();
+    } else {
+      // Stop the game loop
+      game.stop();
+    }
+  }, [isPlaying, gameSpec]);
+
   // Handle resize
   useEffect(() => {
     const handleResize = () => {
-      if (!containerRef.current || !rendererRef.current || !controlsRef.current) return;
+      if (!containerRef.current || !game3DRef.current || !controlsRef.current) return;
 
       const width = containerRef.current.clientWidth;
       const height = containerRef.current.clientHeight;
 
-      rendererRef.current.resize(width, height);
+      game3DRef.current.resize(width, height);
       controlsRef.current.updateAspect(width, height);
     };
 
@@ -119,11 +131,11 @@ export function GameCanvas3D({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Load game spec
+  // Load game spec for editor preview (when not playing)
   useEffect(() => {
-    if (!gameSpec || !rendererRef.current) return;
+    if (!gameSpec || !game3DRef.current) return;
 
-    const renderer = rendererRef.current;
+    const renderer = game3DRef.current.renderer;
 
     // Clear existing meshes (except helpers)
     // In a full implementation, we'd track entity meshes separately
@@ -163,9 +175,9 @@ export function GameCanvas3D({
 
   // Update selection visualization
   useEffect(() => {
-    if (!rendererRef.current || !gameSpec) return;
+    if (!game3DRef.current || !gameSpec) return;
 
-    const renderer = rendererRef.current;
+    const renderer = game3DRef.current.renderer;
 
     // Remove old selection boxes
     selectionBoxesRef.current.forEach((box) => {
@@ -191,7 +203,7 @@ export function GameCanvas3D({
   // Handle click to select entity
   const handleCanvasClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!rendererRef.current || !gameSpec || isDragging) return;
+      if (!game3DRef.current || !gameSpec || isDragging) return;
 
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -201,12 +213,13 @@ export function GameCanvas3D({
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
       // Raycast to find clicked entity
+      const renderer = game3DRef.current.renderer;
       const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(new THREE.Vector2(x, y), rendererRef.current.camera);
+      raycaster.setFromCamera(new THREE.Vector2(x, y), renderer.camera);
 
       const meshes: THREE.Object3D[] = [];
       gameSpec.entities.forEach((_, index) => {
-        const mesh = rendererRef.current?.getMesh(index);
+        const mesh = renderer.getMesh(index);
         if (mesh) meshes.push(mesh);
       });
 

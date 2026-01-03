@@ -1,5 +1,5 @@
-import { defineQuery, enterQuery, exitQuery, IWorld } from 'bitecs';
-import { Transform3D, Collider3D, Velocity3D, RigidBody3D } from '../components';
+import { defineQuery, enterQuery, exitQuery, hasComponent, IWorld } from 'bitecs';
+import { Transform3D, Collider3D, Velocity3D, RigidBody3D, Input3D } from '../components';
 import { CannonPhysics, ColliderShape, RigidBodyOptions } from '../physics/CannonPhysics';
 import { ThreeRenderer } from '../renderers/ThreeRenderer';
 import * as THREE from 'three';
@@ -79,6 +79,20 @@ export class Physics3DSystem {
           eid,
           Velocity3D.vx[eid] || 0,
           Velocity3D.vy[eid] || 0,
+          Velocity3D.vz[eid] || 0
+        );
+      } else if (hasComponent(world, Input3D, eid)) {
+        // Dynamic body with input - sync horizontal velocity, preserve physics vertical
+        const bodyState = this.physics.getBodyState(eid);
+        const physicsVy = bodyState?.velocity.y ?? 0;
+        // Use ECS vx/vz for horizontal movement, but keep physics vy for gravity/jump
+        const inputVy = Velocity3D.vy[eid] || 0;
+        // If input has upward velocity (jump), use it; otherwise use physics
+        const vy = inputVy > 0 ? inputVy : physicsVy;
+        this.physics.setVelocity(
+          eid,
+          Velocity3D.vx[eid] || 0,
+          vy,
           Velocity3D.vz[eid] || 0
         );
       }

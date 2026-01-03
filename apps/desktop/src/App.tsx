@@ -2,8 +2,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import type { GameSpec, SceneSpec, EntitySpec } from '@promptplay/shared-types';
+import type { GameSpec, SceneSpec, EntitySpec, Game3DSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
+import GameCanvas3D from './components/GameCanvas3D';
 import CodeEditor from './components/CodeEditor';
 import FileTree from './components/FileTree';
 import SceneTree from './components/SceneTree';
@@ -51,6 +52,7 @@ function App() {
   const [clipboardEntity, setClipboardEntity] = useState<any>(null);
   const [showGrid, setShowGrid] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [is3DMode, setIs3DMode] = useState(false);
 
   // History management
   const {
@@ -898,6 +900,147 @@ function App() {
     }
   };
 
+  // Convert 2D GameSpec to 3D Game3DSpec for 3D preview
+  const convertTo3DSpec = useCallback((spec: GameSpec): Game3DSpec => {
+    return {
+      version: spec.version || '1.0',
+      mode: '3d',
+      metadata: {
+        title: spec.metadata?.title || 'Untitled',
+        genre: spec.metadata?.genre || 'other',
+        description: spec.metadata?.description || '',
+      },
+      config: {
+        gravity: { x: 0, y: -9.81, z: 0 },
+        worldBounds: {
+          width: spec.config?.worldBounds?.width || 800,
+          height: spec.config?.worldBounds?.height || 600,
+          depth: 800
+        },
+        backgroundColor: '#1a1a2e',
+        ambientColor: '#404040',
+        ambientIntensity: 0.5,
+      },
+      entities: [
+        // Add ground plane first
+        {
+          name: 'Ground',
+          components: {
+            transform3d: {
+              x: 0,
+              y: -2,
+              z: 0,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: 0,
+              scaleX: 1,
+              scaleY: 1,
+              scaleZ: 1,
+            },
+            mesh: {
+              geometry: 'box' as const,
+              width: 30,
+              height: 0.5,
+              depth: 30,
+              castShadow: false,
+              receiveShadow: true,
+            },
+            material: {
+              color: '#2a4a2a',
+              metallic: 0.1,
+              roughness: 0.9,
+            },
+            collider3d: {
+              type: 'box' as const,
+              width: 30,
+              height: 0.5,
+              depth: 30,
+            },
+            rigidbody3d: {
+              type: 'static' as const,
+              mass: 0,
+            },
+          },
+          tags: ['ground'],
+        },
+        // Convert existing entities
+        ...(spec.entities || []).map((entity) => {
+          const t = entity.components?.transform;
+          const s = entity.components?.sprite;
+          const input = entity.components?.input;
+          const collider = entity.components?.collider;
+          const isPlayer = !!input || entity.tags?.includes('player');
+          const isStatic = collider?.isStatic || entity.tags?.includes('platform') || entity.tags?.includes('ground');
+
+          const width = (s?.width ?? 32) / 50;
+          const height = (s?.height ?? 32) / 50;
+
+          // Base components
+          const components: Record<string, unknown> = {
+            transform3d: {
+              x: (t?.x ?? 400) / 50 - 8,  // Convert 2D coords to 3D space
+              y: -(t?.y ?? 300) / 50 + 6,
+              z: 0,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: -(t?.rotation ?? 0),
+              scaleX: t?.scaleX ?? 1,
+              scaleY: t?.scaleY ?? 1,
+              scaleZ: 1,
+            },
+            mesh: {
+              geometry: 'box' as const,
+              width,
+              height,
+              depth: 0.5,
+              castShadow: true,
+              receiveShadow: true,
+            },
+            material: {
+              color: s?.tint ? `#${s.tint.toString(16).padStart(6, '0')}` : '#4488ff',
+              metallic: 0.1,
+              roughness: 0.8,
+            },
+            // Add physics components
+            collider3d: {
+              type: 'box' as const,
+              width,
+              height,
+              depth: 0.5,
+            },
+            rigidbody3d: {
+              type: isStatic ? 'static' as const : 'dynamic' as const,
+              mass: isStatic ? 0 : 1,
+              fixedRotation: isPlayer,
+            },
+            velocity3d: {
+              vx: 0,
+              vy: 0,
+              vz: 0,
+            },
+          };
+
+          // Add input for player entities
+          if (isPlayer) {
+            components.input3d = {
+              moveSpeed: input?.moveSpeed ?? 5,
+              jumpForce: input?.jumpForce ?? 10,
+              canJump: input?.canJump !== false,
+              isGrounded: true,
+            };
+          }
+
+          return {
+            name: entity.name,
+            components,
+            tags: entity.tags,
+          };
+        }),
+      ],
+      systems: ['render3d', 'physics3d'],
+    };
+  }, []);
+
   // Export game as standalone HTML
   const exportGame = useCallback(async () => {
     if (!gameSpec) return;
@@ -1097,9 +1240,12 @@ function App() {
           setShowDebug(prev => !prev);
           break;
         case 'toggle_2d_3d':
-          // TODO: Implement 2D/3D toggle
-          setNotification('Switch 2D/3D Mode - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setIs3DMode(prev => {
+            const newMode = !prev;
+            setNotification(newMode ? 'Switched to 3D Mode' : 'Switched to 2D Mode');
+            setTimeout(() => setNotification(null), 2000);
+            return newMode;
+          });
           break;
         case 'zoom_in':
         case 'zoom_out':
@@ -1365,6 +1511,7 @@ function App() {
           canRedo={canRedo}
           showAIPanel={showAIPanel}
           hasGameSpec={!!gameSpec}
+          is3DMode={is3DMode}
           onViewModeChange={setViewMode}
           onTogglePlayPause={togglePlayPause}
           onReset={resetGame}
@@ -1375,6 +1522,7 @@ function App() {
           onRedo={handleRedo}
           onToggleAI={() => setShowAIPanel(prev => !prev)}
           onExport={exportGame}
+          onToggle3DMode={() => setIs3DMode(prev => !prev)}
         />
 
         {/* Main Content Area */}
@@ -1392,7 +1540,7 @@ function App() {
             />
           )}
 
-          {projectPath && viewMode === 'game' && (
+          {projectPath && viewMode === 'game' && !is3DMode && (
             <GameCanvas
               gameSpec={gameSpec}
               isPlaying={isPlaying}
@@ -1405,6 +1553,17 @@ function App() {
               debugEnabled={showDebug}
               onDebugToggle={() => setShowDebug(prev => !prev)}
               gridSize={16}
+            />
+          )}
+
+          {projectPath && viewMode === 'game' && is3DMode && gameSpec && (
+            <GameCanvas3D
+              gameSpec={convertTo3DSpec(gameSpec)}
+              isPlaying={isPlaying}
+              selectedEntities={selectedEntities}
+              onEntitySelect={handleEntitySelect}
+              showGrid={showGrid}
+              showAxes={true}
             />
           )}
 
