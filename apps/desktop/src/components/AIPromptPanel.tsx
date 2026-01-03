@@ -328,7 +328,7 @@ export default function AIPromptPanel({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 w-[450px] bg-panel-solid rounded-xl shadow-2xl border border-subtle flex flex-col z-50 max-h-[700px] animate-scale-in overflow-hidden backdrop-blur-xl">
+    <div className="fixed bottom-4 right-4 w-[450px] bg-[#1a1a2e] rounded-xl shadow-2xl border border-white/10 flex flex-col z-50 max-h-[700px] animate-scale-in overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2">
@@ -352,37 +352,37 @@ export default function AIPromptPanel({
               <span className="hidden sm:inline">History</span>
             </button>
             {showHistory && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-panel-solid rounded-lg shadow-xl border border-subtle z-50 overflow-hidden">
-                <div className="px-3 py-2 border-b border-subtle flex items-center justify-between">
-                  <span className="text-xs font-medium text-text-secondary">Chat Sessions</span>
+              <div className="absolute right-0 top-full mt-1 w-64 bg-[#1e1e3a] rounded-lg shadow-xl border border-white/10 z-50 overflow-hidden">
+                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-300">Chat Sessions</span>
                   <button
                     onClick={handleNewSession}
-                    className="text-[10px] px-2 py-0.5 bg-primary text-white rounded hover:bg-primary-hover transition-colors"
+                    className="text-[10px] px-2 py-0.5 bg-violet-600 text-white rounded hover:bg-violet-500 transition-colors"
                   >
                     + New
                   </button>
                 </div>
                 <div className="max-h-48 overflow-y-auto">
                   {sessions.length === 0 ? (
-                    <p className="text-xs text-text-tertiary p-3 text-center">No sessions yet</p>
+                    <p className="text-xs text-gray-500 p-3 text-center">No sessions yet</p>
                   ) : (
                     sessions.map(session => (
                       <div
                         key={session.id}
                         onClick={() => handleSelectSession(session.id)}
                         className={`px-3 py-2 cursor-pointer hover:bg-white/5 flex items-center justify-between group ${
-                          currentSessionId === session.id ? 'bg-primary/10 border-l-2 border-primary' : ''
+                          currentSessionId === session.id ? 'bg-violet-500/10 border-l-2 border-violet-500' : ''
                         }`}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-text-primary truncate">{session.title}</p>
-                          <p className="text-[10px] text-text-tertiary">
+                          <p className="text-xs text-gray-200 truncate">{session.title}</p>
+                          <p className="text-[10px] text-gray-500">
                             {session.messages.length} messages · {new Date(session.updatedAt).toLocaleDateString()}
                           </p>
                         </div>
                         <button
                           onClick={(e) => handleDeleteSession(session.id, e)}
-                          className="p-1 text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                           title="Delete session"
                         >
                           <TrashIcon size={12} />
@@ -412,37 +412,39 @@ export default function AIPromptPanel({
 
       {/* Settings Panel */}
       {showSettings && (
-        <div className="px-4 py-3 bg-subtle border-b border-subtle">
-          <h4 className="text-sm font-medium text-text-primary mb-2">API Settings</h4>
+        <div className="px-4 py-3 bg-[#252542] border-b border-white/10">
+          <h4 className="text-sm font-medium text-white mb-2">API Settings</h4>
           <div className="flex gap-2">
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter Anthropic API key"
-              className="flex-1 px-3 py-1.5 bg-black/20 border border-subtle rounded text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary placeholder-text-tertiary"
+              className="flex-1 px-3 py-1.5 bg-white/5 border border-white/20 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder-gray-500"
             />
             <button
               onClick={handleSaveApiKey}
               disabled={!apiKey.trim()}
-              className="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 bg-violet-600 text-white rounded text-sm hover:bg-violet-500 disabled:opacity-50 transition-colors"
             >
               Save
             </button>
           </div>
-          <p className="text-xs text-text-tertiary mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Or set ANTHROPIC_API_KEY environment variable
           </p>
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[250px] max-h-[400px] bg-canvas/50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[250px] max-h-[400px] bg-gradient-to-b from-[#1a1a2e] to-[#16162a]">
         {messages.length === 0 && (
-          <div className="text-center text-text-tertiary py-8">
-            <AIIcon size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium text-text-secondary">Ask me to modify your game!</p>
-            <p className="text-xs mt-1">I can add entities, change properties, and more.</p>
+          <div className="text-center py-8">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center border border-violet-500/30">
+              <AIIcon size={28} className="text-violet-400" />
+            </div>
+            <p className="text-base font-semibold text-white">Ask me to modify your game!</p>
+            <p className="text-sm mt-2 text-gray-400">I can add entities, change properties, and more.</p>
           </div>
         )}
 
@@ -453,14 +455,14 @@ export default function AIPromptPanel({
           >
             <div
               className={`max-w-[90%] px-3 py-2 rounded-lg text-sm shadow-sm ${msg.role === 'user'
-                  ? 'bg-primary text-white'
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
                   : msg.role === 'system'
-                    ? 'bg-white/5 text-text-secondary italic border border-subtle'
-                    : 'bg-panel-solid border border-subtle text-text-primary'
+                    ? 'bg-white/5 text-gray-400 italic border border-white/10'
+                    : 'bg-[#252542] border border-white/10 text-gray-200'
                 }`}
             >
               {msg.role === 'assistant' ? (
-                <div className="prose prose-sm max-w-none prose-invert prose-pre:bg-black/50 prose-pre:border prose-pre:border-subtle prose-code:text-primary-light prose-code:bg-white/10 prose-code:px-1 prose-code:rounded">
+                <div className="prose prose-sm max-w-none prose-invert prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/10 prose-code:text-violet-400 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
                   </ReactMarkdown>
@@ -474,11 +476,11 @@ export default function AIPromptPanel({
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-panel-solid px-3 py-2 rounded-lg border border-subtle">
+            <div className="bg-[#252542] px-3 py-2 rounded-lg border border-white/10">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-text-tertiary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
@@ -489,21 +491,21 @@ export default function AIPromptPanel({
 
       {/* Pending Changes with Diff Preview */}
       {pendingChanges && gameSpec && (
-        <div className="px-4 py-3 bg-primary/10 border-t border-primary/20 backdrop-blur-sm">
-          <p className="text-sm text-primary-light mb-2 font-medium">Review Changes</p>
-          <div className="bg-black/40 rounded border border-subtle overflow-hidden">
+        <div className="px-4 py-3 bg-violet-500/10 border-t border-violet-500/20">
+          <p className="text-sm text-violet-300 mb-2 font-medium">Review Changes</p>
+          <div className="bg-black/30 rounded border border-white/10 overflow-hidden">
             <DiffPreview currentSpec={gameSpec} pendingSpec={pendingChanges} />
           </div>
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleApplyChanges}
-              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 shadow-lg shadow-green-900/20 transition-colors"
+              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-500 shadow-lg shadow-green-900/20 transition-colors"
             >
               Apply Changes
             </button>
             <button
               onClick={handleRejectChanges}
-              className="flex-1 px-3 py-1.5 bg-white/10 text-white rounded text-sm font-medium hover:bg-white/20 transition-colors"
+              className="flex-1 px-3 py-1.5 bg-white/10 text-gray-300 rounded text-sm font-medium hover:bg-white/20 transition-colors"
             >
               Reject
             </button>
@@ -513,16 +515,16 @@ export default function AIPromptPanel({
 
       {/* Example prompts */}
       {messages.length === 0 && (
-        <div className="px-4 py-2 border-t border-subtle bg-subtle/50">
-          <p className="text-xs text-text-tertiary mb-2">Try these:</p>
-          <div className="flex flex-wrap gap-1">
-            {examplePrompts.slice(0, 3).map((example, i) => (
+        <div className="px-4 py-3 border-t border-white/10 bg-[#1e1e3a]">
+          <p className="text-xs font-medium text-gray-300 mb-2">Try these:</p>
+          <div className="flex flex-wrap gap-2">
+            {examplePrompts.slice(0, 4).map((example, i) => (
               <button
                 key={i}
                 onClick={() => setPrompt(example)}
-                className="text-xs px-2 py-1 bg-white/5 text-text-secondary rounded border border-subtle hover:bg-white/10 hover:text-text-primary transition-colors"
+                className="text-xs px-3 py-1.5 bg-white/10 text-gray-200 rounded-full border border-white/20 hover:bg-violet-500/30 hover:border-violet-400/50 hover:text-white transition-all"
               >
-                {example.length > 30 ? example.slice(0, 30) + '...' : example}
+                {example}
               </button>
             ))}
           </div>
@@ -530,7 +532,7 @@ export default function AIPromptPanel({
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-subtle bg-panel-solid">
+      <div className="p-3 border-t border-white/10 bg-[#1a1a2e]">
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -538,7 +540,7 @@ export default function AIPromptPanel({
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe what you want to change..."
-            className="flex-1 px-3 py-2 bg-black/20 border border-subtle rounded-lg text-sm text-text-primary resize-none focus:outline-none focus:ring-2 focus:ring-primary placeholder-text-tertiary"
+            className="flex-1 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 placeholder-gray-500"
             rows={2}
             disabled={isLoading}
           />
@@ -546,14 +548,14 @@ export default function AIPromptPanel({
             <button
               onClick={handleSubmit}
               disabled={!prompt.trim() || isLoading}
-              className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20 transition-all"
             >
               Send
             </button>
             {messages.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="px-2 py-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+                className="px-2 py-1 text-xs text-gray-500 hover:text-gray-300 transition-colors"
               >
                 Clear
               </button>
