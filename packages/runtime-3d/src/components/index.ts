@@ -167,3 +167,25 @@ export const ColliderType = {
   CYLINDER: 3,
   MESH: 4,
 } as const;
+
+/**
+ * RigidBody3D component
+ * Physics rigid body properties
+ */
+export const RigidBody3D = defineComponent({
+  type: Types.ui8,              // 0=dynamic, 1=static, 2=kinematic
+  mass: Types.f32,
+  linearDamping: Types.f32,
+  angularDamping: Types.f32,
+  fixedRotation: Types.ui8,     // 1 = locked rotation
+  sleepSpeedLimit: Types.f32,
+  sleepTimeLimit: Types.f32,
+  isSleeping: Types.ui8,
+});
+
+// RigidBody type constants
+export const RigidBodyType = {
+  DYNAMIC: 0,
+  STATIC: 1,
+  KINEMATIC: 2,
+} as const;

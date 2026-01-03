@@ -13,17 +13,31 @@ export {
   Velocity3D,
   Camera3D,
   Collider3D,
+  RigidBody3D,
   // Type constants
   GeometryType,
   LightType,
   CameraType,
   MaterialSide,
   ColliderType,
+  RigidBodyType,
 } from './components';
 
 // Systems
 export { Render3DSystem } from './systems/Render3DSystem';
 export { Transform3DSystem } from './systems/Transform3DSystem';
+export { Physics3DSystem } from './systems/Physics3DSystem';
+
+// Physics
+export {
+  CannonPhysics,
+  type PhysicsConfig,
+  type RigidBodyOptions,
+  type ColliderShape,
+} from './physics/CannonPhysics';
 
 // Re-export Three.js types that users might need
 export type { Scene, WebGLRenderer, PerspectiveCamera, OrthographicCamera } from 'three';
+
+// Re-export Cannon-es types that users might need
+export type { World as CannonWorld, Body as CannonBody } from 'cannon-es';

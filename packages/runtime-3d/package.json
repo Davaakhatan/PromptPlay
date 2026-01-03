@@ -14,6 +14,7 @@
   "dependencies": {
     "@promptplay/ecs-core": "workspace:*",
     "@promptplay/shared-types": "workspace:*",
+    "cannon-es": "^0.20.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
