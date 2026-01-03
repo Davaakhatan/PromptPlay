@@ -27,6 +27,8 @@ export {
 export { Render3DSystem } from './systems/Render3DSystem';
 export { Transform3DSystem } from './systems/Transform3DSystem';
 export { Physics3DSystem } from './systems/Physics3DSystem';
+export { Camera3DSystem } from './systems/Camera3DSystem';
+export { LightingSystem } from './systems/LightingSystem';
 
 // Physics
 export {
@@ -35,6 +37,9 @@ export {
   type RigidBodyOptions,
   type ColliderShape,
 } from './physics/CannonPhysics';
+
+// Controls
+export { OrbitControls } from './controls/OrbitControls';
 
 // Re-export Three.js types that users might need
 export type { Scene, WebGLRenderer, PerspectiveCamera, OrthographicCamera } from 'three';
