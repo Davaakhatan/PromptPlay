@@ -902,27 +902,69 @@ function App() {
     setHasUnsavedChanges,
   });
 
+  // Close project handler
+  const closeProject = useCallback(() => {
+    if (hasUnsavedChanges) {
+      // In a full implementation, show a confirmation dialog
+      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to close?');
+      if (!confirmed) return;
+    }
+    setProjectPath(null);
+    setGameSpec(null);
+    setSelectedEntities(new Set());
+    setSelectedFile(null);
+    setActiveSceneId(null);
+    setHasUnsavedChanges(false);
+    setShowAIPanel(false);
+  }, [hasUnsavedChanges]);
+
   // Listen for native menu events from Rust
   useEffect(() => {
     const unlisten = listen<string>('menu-event', (event) => {
       const action = event.payload;
       switch (action) {
+        // ==================== FILE MENU ====================
         case 'new_project':
           setShowNewProjectModal(true);
           break;
         case 'open_project':
           openProject();
           break;
+        case 'close_project':
+          closeProject();
+          break;
         case 'save':
           if (gameSpec && projectPath) {
             saveProject();
           }
           break;
-        case 'export':
+        case 'save_as':
+          // TODO: Implement save as
+          setNotification('Save As - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'import_game':
+          // TODO: Implement import game
+          setNotification('Import Game - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'export_html':
           if (gameSpec) {
             exportGame();
           }
           break;
+        case 'export_zip':
+          // TODO: Implement ZIP export
+          setNotification('Export ZIP - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'publish':
+          // TODO: Implement publish to gallery
+          setNotification('Publish to Gallery - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+
+        // ==================== EDIT MENU ====================
         case 'undo':
           handleUndo();
           break;
@@ -943,24 +985,116 @@ function App() {
             handleDeleteEntity(selectedEntity);
           }
           break;
-        case 'keyboard_shortcuts':
-          setShowKeyboardShortcuts(true);
+        case 'select_all_entities':
+          handleSelectAll();
           break;
-        case 'about':
-          setNotification('PromptPlay - AI-First 2D Game Engine');
-          setTimeout(() => setNotification(null), 3000);
+        case 'deselect_all':
+          setSelectedEntities(new Set());
           break;
-        // Grid, debug, and zoom controls can be added when those features are implemented
+        case 'preferences':
+          // TODO: Implement preferences panel
+          setNotification('Preferences - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+
+        // ==================== VIEW MENU ====================
         case 'toggle_grid':
+          // TODO: Implement grid toggle
+          setNotification('Toggle Grid - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
         case 'toggle_debug':
+          // TODO: Implement debug toggle
+          setNotification('Toggle Physics Debug - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'toggle_2d_3d':
+          // TODO: Implement 2D/3D toggle
+          setNotification('Switch 2D/3D Mode - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
         case 'zoom_in':
         case 'zoom_out':
         case 'zoom_reset':
         case 'fit_view':
-          // TODO: Implement these view controls
-          setNotification(`${action.replace('_', ' ')} - Coming soon`);
+          setNotification(`${action.replace(/_/g, ' ')} - Coming soon`);
           setTimeout(() => setNotification(null), 2000);
           break;
+        case 'show_scene_tree':
+          setLeftPanelMode('entities');
+          break;
+        case 'show_inspector':
+          setRightPanelMode('inspector');
+          break;
+        case 'show_assets':
+          setLeftPanelMode('assets');
+          break;
+        case 'show_animation':
+          // TODO: Show animation editor
+          setNotification('Animation Editor - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'show_code':
+          setViewMode('code');
+          break;
+        case 'show_ai':
+          setShowAIPanel(true);
+          break;
+
+        // ==================== GAME MENU ====================
+        case 'play_game':
+          if (gameSpec) {
+            setIsPlaying(true);
+          }
+          break;
+        case 'stop_game':
+          setIsPlaying(false);
+          break;
+        case 'restart_game':
+          resetGame();
+          break;
+        case 'ai_playtest':
+          // TODO: Implement AI playtest
+          setNotification('AI Playtest - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'game_settings':
+          setRightPanelMode('physics');
+          break;
+
+        // ==================== WINDOW MENU ====================
+        case 'community_gallery':
+          // TODO: Show community gallery
+          setNotification('Community Gallery - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'marketplace':
+          // TODO: Show marketplace
+          setNotification('Asset Marketplace - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+
+        // ==================== HELP MENU ====================
+        case 'getting_started':
+          // TODO: Show getting started guide
+          setNotification('Getting Started - Coming soon');
+          setTimeout(() => setNotification(null), 2000);
+          break;
+        case 'keyboard_shortcuts':
+          setShowKeyboardShortcuts(true);
+          break;
+        case 'documentation':
+          // Open documentation in browser
+          window.open('https://github.com/promptplay/docs', '_blank');
+          break;
+        case 'report_issue':
+          window.open('https://github.com/promptplay/promptplay/issues', '_blank');
+          break;
+        case 'about':
+          setNotification('PromptPlay v1.0 - AI-First 2D/3D Game Engine');
+          setTimeout(() => setNotification(null), 3000);
+          break;
+
         default:
           console.log('Unknown menu event:', action);
       }
@@ -969,7 +1103,7 @@ function App() {
     return () => {
       unlisten.then(fn => fn());
     };
-  }, [openProject, saveProject, exportGame, handleUndo, handleRedo, selectedEntity, selectedEntities, handleDuplicateEntity, handleDeleteEntity, handleDuplicateSelected, handleDeleteSelected, gameSpec, projectPath]);
+  }, [openProject, closeProject, saveProject, exportGame, handleUndo, handleRedo, selectedEntity, selectedEntities, handleDuplicateEntity, handleDeleteEntity, handleDuplicateSelected, handleDeleteSelected, handleSelectAll, gameSpec, projectPath, resetGame]);
 
   return (
     <div className="flex h-screen bg-canvas text-text-primary overflow-hidden font-sans">
