@@ -1,11 +1,18 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import type { GameSpec } from '@promptplay/shared-types';
+import type { GameSpec, Prefab, ChatMessage } from '@promptplay/shared-types';
+import {
+  exportGamePackage,
+  importGamePackage,
+  type ExportOptions,
+} from '../services/GamePackageService';
 
 interface UseProjectOperationsOptions {
   gameSpec: GameSpec | null;
   projectPath: string | null;
+  prefabs?: Prefab[];
+  chatHistory?: ChatMessage[];
   onGameSpecChange: (spec: GameSpec | null) => void;
   onProjectPathChange: (path: string | null) => void;
   onActiveSceneChange: (sceneId: string | null) => void;
@@ -17,6 +24,8 @@ interface UseProjectOperationsOptions {
   onExportingChange: (isExporting: boolean) => void;
   onNotification: (message: string) => void;
   initializeHistory: (spec: GameSpec) => void;
+  onPrefabsChange?: (prefabs: Prefab[]) => void;
+  onChatHistoryChange?: (history: ChatMessage[]) => void;
 }
 
 // Template specs for different game types
@@ -248,6 +257,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
   const {
     gameSpec,
     projectPath,
+    prefabs = [],
+    chatHistory = [],
     onGameSpecChange,
     onProjectPathChange,
     onActiveSceneChange,
@@ -259,6 +270,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
     onExportingChange,
     onNotification,
     initializeHistory,
+    onPrefabsChange,
+    onChatHistoryChange,
   } = options;
 
   const openProject = useCallback(async () => {
@@ -503,11 +516,109 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
     }
   }, [gameSpec, onExportingChange, onNotification, onErrorChange]);
 
+  /**
+   * Export game as a portable .promptplay.json package
+   */
+  const exportPackage = useCallback(async (exportOptions?: ExportOptions) => {
+    if (!gameSpec) return;
+
+    try {
+      onExportingChange(true);
+
+      const savedPath = await exportGamePackage(
+        gameSpec,
+        projectPath,
+        prefabs,
+        chatHistory,
+        exportOptions
+      );
+
+      if (savedPath) {
+        onNotification('Package exported successfully!');
+        setTimeout(() => onNotification(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to export package:', err);
+      onErrorChange('Failed to export package: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      onExportingChange(false);
+    }
+  }, [gameSpec, projectPath, prefabs, chatHistory, onExportingChange, onNotification, onErrorChange]);
+
+  /**
+   * Import a .promptplay.json package
+   */
+  const importPackage = useCallback(async () => {
+    try {
+      onLoadingChange(true);
+      onErrorChange(null);
+
+      const result = await importGamePackage(projectPath || undefined);
+
+      if (!result) {
+        onLoadingChange(false);
+        return; // User cancelled
+      }
+
+      // Update game spec
+      onGameSpecChange(result.gameSpec);
+      initializeHistory(result.gameSpec);
+
+      // Update prefabs if handler provided
+      if (onPrefabsChange && result.prefabs.length > 0) {
+        onPrefabsChange(result.prefabs);
+      }
+
+      // Update chat history if handler provided
+      if (onChatHistoryChange && result.chatHistory) {
+        onChatHistoryChange(result.chatHistory);
+      }
+
+      // Set active scene if multi-scene
+      if (result.gameSpec.scenes && result.gameSpec.scenes.length > 0) {
+        onActiveSceneChange(result.gameSpec.activeScene || result.gameSpec.scenes[0].id);
+      } else {
+        onActiveSceneChange(null);
+      }
+
+      onSelectedEntitiesChange(new Set());
+      onPlayingChange(false);
+      onUnsavedChange(true); // Mark as unsaved since it's imported
+
+      const assetMsg = result.extractedAssets.length > 0
+        ? ` (${result.extractedAssets.length} assets extracted)`
+        : '';
+      onNotification(`Imported "${result.gameSpec.metadata.title}"${assetMsg}`);
+      setTimeout(() => onNotification(''), 3000);
+
+      onLoadingChange(false);
+    } catch (err) {
+      console.error('Failed to import package:', err);
+      onErrorChange('Failed to import package: ' + (err instanceof Error ? err.message : String(err)));
+      onLoadingChange(false);
+    }
+  }, [
+    projectPath,
+    onGameSpecChange,
+    onActiveSceneChange,
+    onSelectedEntitiesChange,
+    onPlayingChange,
+    onLoadingChange,
+    onErrorChange,
+    onUnsavedChange,
+    onNotification,
+    initializeHistory,
+    onPrefabsChange,
+    onChatHistoryChange,
+  ]);
+
   return {
     openProject,
     saveProject,
     createNewProject,
     createFromTemplate,
     exportGame,
+    exportPackage,
+    importPackage,
   };
 }

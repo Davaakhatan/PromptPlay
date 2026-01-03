@@ -224,3 +224,58 @@ export interface Prefab {
   entity: Omit<EntitySpec, 'name'>; // Entity template without name
   isBuiltIn?: boolean;
 }
+
+// Game Package types for import/export
+export interface GamePackage {
+  /** Package format version */
+  formatVersion: '1.0';
+  /** The game specification */
+  gameSpec: GameSpec;
+  /** Package metadata */
+  packageMetadata: PackageMetadata;
+  /** Embedded assets (base64 encoded) */
+  assets?: EmbeddedAsset[];
+  /** Custom prefabs used in this game */
+  prefabs?: Prefab[];
+  /** Chat history for AI context (optional) */
+  chatHistory?: ChatMessage[];
+}
+
+export interface PackageMetadata {
+  /** When the package was created */
+  createdAt: string;
+  /** When the package was last modified */
+  modifiedAt: string;
+  /** Author name or identifier */
+  author?: string;
+  /** Package description (can differ from game description) */
+  description?: string;
+  /** Tags for categorization */
+  tags?: string[];
+  /** Thumbnail image as base64 data URL */
+  thumbnail?: string;
+  /** PromptPlay version used to create this package */
+  engineVersion?: string;
+}
+
+export interface EmbeddedAsset {
+  /** Asset filename (e.g., "player.png") */
+  name: string;
+  /** Asset type */
+  type: 'image' | 'audio' | 'spritesheet' | 'other';
+  /** MIME type (e.g., "image/png") */
+  mimeType: string;
+  /** Base64 encoded data */
+  data: string;
+  /** Original file size in bytes */
+  size?: number;
+}
+
+export interface ChatMessage {
+  /** Message role */
+  role: 'user' | 'assistant';
+  /** Message content */
+  content: string;
+  /** Timestamp */
+  timestamp: string;
+}
