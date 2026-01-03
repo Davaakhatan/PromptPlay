@@ -1,39 +1,91 @@
 # PromptPlay
 
-> AI-First 2D Game Engine with Native Desktop Editor
+> **The AI-First Game Engine** - Create 2D & 3D games by describing them in plain English
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://tauri.app/)
+[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## What is PromptPlay?
+## Vision
 
-PromptPlay is an AI-powered 2D game engine with a native desktop editor. Create playable games by describing them in plain English, or use the visual scene editor to build games interactively.
+**PromptPlay aims to be the Unity/Unreal of AI-native game development.**
 
-**Key Features:**
+While traditional game engines require years of learning, PromptPlay lets anyone create games through natural conversation. Describe what you want, and AI builds it. Professional developers get a powerful visual editor with full code access.
 
-- Native desktop app (Windows, macOS, Linux)
-- Visual scene editor with entity management
-- Real-time game preview with play/pause controls
-- AI-powered chat with persistent history
-- TypeScript custom code compilation (esbuild)
-- Monaco code editor with live error checking
-- Undo/Redo with visual history timeline
-- Export to standalone HTML
-- File system access for real project workflows
-- Hot reload on file changes
+**"Describe your game. AI builds it. Play immediately."**
+
+---
+
+## Why PromptPlay?
+
+| Feature | Unity/Unreal | PromptPlay |
+|---------|-------------|------------|
+| Learning Curve | Months to years | Minutes |
+| AI Integration | Plugins/Add-ons | Native, first-class |
+| Game Creation | Code + Visual | Conversation + Visual + Code |
+| Export | Complex build systems | One-click HTML/Desktop |
+| Cost | Subscription/Royalties | Free & Open Source |
+| Extensibility | C#/C++/Blueprints | TypeScript |
+
+---
+
+## Features
+
+### AI-Powered Development
+- **Natural Language Editing** - "Add a blue player that can double-jump"
+- **Context-Aware AI** - Understands your game, entities, and code
+- **Streaming Responses** - See AI thinking in real-time
+- **Persistent Chat History** - Pick up where you left off
+- **Demo Mode** - Try without API key
+
+### Visual Scene Editor
+- **Scene Tree** - Hierarchical entity management with search/filter
+- **Inspector** - Edit all component properties visually
+- **Game Canvas** - Live preview with selection, drag handles, transform gizmos
+- **Multi-Entity Selection** - Ctrl+Click, Shift+Click, Ctrl+A to select all
+- **Undo/Redo Timeline** - Visual history with unlimited undo
+
+### Animation System
+- **Animation Editor** - Visual timeline with keyframes
+- **Sprite Sheet Importer** - Auto-detect frame dimensions
+- **Animation States** - Idle, walk, jump with transitions
+- **Playback Controls** - Play, pause, step through frames
+
+### Physics & Debug
+- **Matter.js Integration** - Full 2D physics simulation
+- **Physics Debug Overlay** - Collider visualization, velocity vectors
+- **Sensor Support** - Trigger zones for collectibles, damage
+- **Collision Layers** - Control what collides with what
+
+### Scene & Prefab Management
+- **Multiple Scenes** - Level management with scene switching
+- **Prefab Library** - Reusable entity templates
+- **Built-in Prefabs** - Player, Enemy, Platform, Collectible
+- **Custom Prefabs** - Save any entity as reusable prefab
+
+### Code & Scripting
+- **Monaco Editor** - Full IDE with IntelliSense
+- **TypeScript Compilation** - esbuild-powered, instant feedback
+- **Custom Systems** - Extend engine with your own logic
+- **Hot Reload** - See changes instantly
+
+### Export & Distribution
+- **HTML Export** - Single-file, runs anywhere
+- **Desktop Build** - Windows, macOS, Linux via Tauri
+- **Embedded Assets** - Everything bundled together
+- **No Dependencies** - Exported games run standalone
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-
 - Node.js 18+
 - pnpm 8+
-- Rust (for Tauri desktop app)
+- Rust (for desktop app)
 
 ### Installation
 
@@ -47,126 +99,140 @@ pnpm install
 
 # Build all packages
 pnpm build
-```
 
-### Run Desktop App
-
-```bash
-# Development mode
-pnpm --filter promptplay-desktop dev
-
-# Or from apps/desktop
+# Run desktop app
 cd apps/desktop && pnpm dev
 ```
 
-### Run Web Editor
+### Create Your First Game
 
-```bash
-# Start the web editor
-pnpm --filter editor dev
-
-# Open http://localhost:3000
-```
+1. **New Project** - Click "New Project" or use a template
+2. **Add Entities** - Use prefabs or create custom entities
+3. **Edit Properties** - Transform, sprite, physics in Inspector
+4. **AI Assist** - Type "make the player faster" in AI chat
+5. **Play & Test** - Click Play, test your game
+6. **Export** - Export as HTML to share
 
 ---
 
-## Project Structure
+## Architecture
 
 ```
 PromptPlay/
 ├── apps/
-│   ├── desktop/              # Tauri 2.0 native desktop app
-│   │   ├── src/              # React frontend
-│   │   │   ├── components/   # UI components
-│   │   │   │   ├── GameCanvas.tsx
-│   │   │   │   ├── SceneTree.tsx
-│   │   │   │   ├── Inspector.tsx
-│   │   │   │   ├── FileTree.tsx
-│   │   │   │   ├── CodeEditor.tsx
-│   │   │   │   └── Icons.tsx
-│   │   │   └── App.tsx
-│   │   └── src-tauri/        # Rust backend
-│   │       └── src/
-│   │           ├── commands.rs
-│   │           └── file_watcher.rs
-│   │
-│   └── editor/               # Next.js web editor
+│   └── desktop/                 # Tauri 2.0 Desktop App
+│       ├── src/                 # React Frontend
+│       │   ├── components/      # 30+ UI Components
+│       │   │   ├── GameCanvas   # Live game preview
+│       │   │   ├── Inspector    # Property editor
+│       │   │   ├── SceneTree    # Entity hierarchy
+│       │   │   ├── AIPromptPanel# AI chat interface
+│       │   │   ├── AnimationEditor
+│       │   │   ├── PrefabLibrary
+│       │   │   └── ...
+│       │   ├── hooks/           # Reusable logic
+│       │   └── services/        # Core services
+│       └── src-tauri/           # Rust Backend
+│           └── src/
+│               ├── commands.rs  # File, AI, export
+│               └── ai_client.rs # Claude integration
 │
 ├── packages/
-│   ├── ecs-core/             # Entity Component System
-│   │   ├── components/       # Transform, Sprite, Collider, etc.
-│   │   ├── world/            # GameWorld management
-│   │   └── serialization/    # JSON serialization
+│   ├── ecs-core/                # Entity Component System
+│   │   ├── components/          # 12 built-in components
+│   │   ├── world/               # GameWorld management
+│   │   └── serialization/       # JSON import/export
 │   │
-│   ├── runtime-2d/           # 2D Game Runtime
-│   │   ├── renderers/        # Canvas2D renderer
-│   │   ├── physics/          # Matter.js integration
-│   │   ├── input/            # Input management
-│   │   └── gameloop/         # Fixed timestep loop
+│   ├── runtime-2d/              # 2D Game Runtime
+│   │   ├── Runtime2D.ts         # Main orchestrator
+│   │   ├── renderers/           # Canvas2D, PixiJS
+│   │   ├── physics/             # Matter.js wrapper
+│   │   ├── systems/             # Input, Animation, AI, Particles
+│   │   └── tests/               # 284 tests, 80%+ coverage
 │   │
-│   ├── ai-prompt/            # AI game generation
-│   │   └── templates/        # Genre-specific prompts
+│   ├── ai-prompt/               # AI Integration
+│   │   └── templates/           # Genre-specific prompts
 │   │
-│   └── shared-types/         # TypeScript definitions
+│   └── shared-types/            # TypeScript Definitions
 │
-└── docs/                     # Documentation
+└── docs/                        # Documentation
+    ├── architecture.md
+    ├── user-guide.md
+    └── api-reference.md
 ```
 
 ---
 
-## Desktop App Features
+## Components
 
-### Visual Scene Editor
+| Component | Description | Key Properties |
+|-----------|-------------|----------------|
+| **Transform** | Position & orientation | x, y, rotation, scaleX, scaleY |
+| **Velocity** | Movement | vx, vy |
+| **Sprite** | Visual appearance | texture, width, height, tint, zIndex, animation frames |
+| **Collider** | Physics shape | type (box/circle), dimensions, isSensor |
+| **Input** | Player controls | moveSpeed, jumpForce, canJump |
+| **Health** | Damage system | current, max |
+| **AIBehavior** | Enemy AI | type (patrol/chase/flee), speed, detectionRadius |
+| **Animation** | Sprite animation | frameCount, frameDuration, loop, states |
+| **Camera** | View control | zoom, followTarget, shake |
+| **ParticleEmitter** | Effects | emitRate, lifetime, colors, gravity |
+| **Audio** | Sound | source, volume, loop, spatial |
 
-- **Scene Tree** - Hierarchical view of all entities with tags and search/filter
-- **Inspector** - Edit entity properties (transform, sprite, collider, etc.)
-- **Game Canvas** - Live preview with entity selection and drag handles
-- **Entity Management** - Create, rename, copy, paste, duplicate, delete entities
-- **Keyboard Shortcuts** - Full keyboard navigation (Ctrl+C, Ctrl+V, Ctrl+D, Delete, etc.)
+---
 
-### AI Assistant
+## Keyboard Shortcuts
 
-- **Natural Language Editing** - Describe changes in plain English
-- **Chat History** - Persistent conversation sessions per project
-- **Streaming Responses** - Token-by-token AI response display
-- **Context-Aware** - AI understands your game spec and selected entities
-- **Quick Examples** - Pre-built prompts for common tasks
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + N` | New Project |
+| `Cmd/Ctrl + O` | Open Project |
+| `Cmd/Ctrl + S` | Save |
+| `Cmd/Ctrl + Z` | Undo |
+| `Cmd/Ctrl + Shift + Z` | Redo |
+| `Cmd/Ctrl + C` | Copy Entity |
+| `Cmd/Ctrl + V` | Paste Entity |
+| `Cmd/Ctrl + D` | Duplicate |
+| `Cmd/Ctrl + A` | Select All |
+| `Delete/Backspace` | Delete Selected |
+| `Cmd/Ctrl + E` | Export HTML |
+| `D` | Toggle Debug Overlay |
+| `?` | Show Shortcuts |
 
-### TypeScript Code Support
+---
 
-- **Live Compilation** - esbuild-powered TypeScript compilation in browser
-- **Error Highlighting** - Real-time syntax and type error markers
-- **Custom Systems** - Write and load custom game systems
-- **Script Templates** - Built-in templates for movement, spawners, etc.
-- **Module Management** - Load/unload compiled modules dynamically
+## Roadmap
 
-### Undo/Redo System
+### Current (v1.0)
+- [x] 2D Game Engine
+- [x] Visual Editor
+- [x] AI Chat Integration
+- [x] Animation Editor
+- [x] Physics System
+- [x] Prefab System
+- [x] Scene Management
+- [x] HTML Export
+- [x] 80%+ Test Coverage
 
-- **Visual Timeline** - See all changes with visual history indicators
-- **Unlimited History** - Undo/redo any number of changes
-- **Keyboard Shortcuts** - Ctrl+Z / Ctrl+Shift+Z support
+### Next (v1.5)
+- [ ] JSON Schema for AI
+- [ ] Game Package Import/Export
+- [ ] Dynamic Template Generation
+- [ ] Voice Input
 
-### Export & Build
+### Future (v2.0)
+- [ ] 3D Support (Three.js + Cannon-es)
+- [ ] 3D Physics
+- [ ] Lighting & Shadows
+- [ ] GLTF Model Loading
+- [ ] 3D Editor Tools
 
-- **HTML Export** - Export games as standalone HTML files
-- **Embedded Assets** - All assets bundled in single file
-- **Share Anywhere** - Play exported games in any browser
-
-### File System Integration
-
-- Open game projects from anywhere on disk
-- Edit game.json files directly
-- Hot reload on file changes
-- Monaco code editor with full IDE features
-- JSON editor with syntax validation
-
-### Game Preview
-
-- Play/Pause/Reset controls
-- Click-to-select entities on canvas
-- Selection highlight with resize handles
-- Real-time property updates
-- Physics debug overlay
+### Vision (v3.0)
+- [ ] Community Marketplace
+- [ ] Collaborative Editing
+- [ ] Mobile Export
+- [ ] AI Playtesting
+- [ ] One-Click Publishing
 
 ---
 
@@ -174,165 +240,44 @@ PromptPlay/
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Desktop** | Tauri 2.0 | Native app framework |
-| **Frontend** | React 18, Vite | UI framework |
-| **Styling** | Tailwind CSS | Utility-first CSS |
-| **Editor** | Monaco Editor | Code editing |
-| **Compiler** | esbuild-wasm | TypeScript compilation |
-| **ECS** | bitecs | Entity Component System |
-| **Rendering** | Canvas2D | 2D graphics |
-| **Physics** | Matter.js | 2D physics simulation |
-| **AI** | OpenAI SDK | Game generation |
+| **Desktop** | Tauri 2.0 | Native cross-platform app |
+| **Frontend** | React 18, Vite | Fast, modern UI |
+| **Styling** | Tailwind CSS | Beautiful, consistent design |
+| **Editor** | Monaco | Professional code editing |
+| **Compiler** | esbuild-wasm | Instant TypeScript compilation |
+| **ECS** | bitecs | High-performance game logic |
+| **Rendering** | Canvas2D | Fast 2D graphics |
+| **Physics** | Matter.js | Realistic 2D physics |
+| **AI** | Claude API | Intelligent game generation |
+| **Testing** | Vitest | Fast unit tests |
 
 ---
 
-## Game Spec Format
+## Contributing
 
-Games are defined in JSON format:
-
-```json
-{
-  "version": "1.0",
-  "metadata": {
-    "title": "My Game",
-    "genre": "platformer",
-    "description": "A simple platformer"
-  },
-  "config": {
-    "gravity": { "x": 0, "y": 1 },
-    "worldBounds": { "width": 800, "height": 600 }
-  },
-  "entities": [
-    {
-      "name": "player",
-      "components": {
-        "transform": { "x": 100, "y": 400, "rotation": 0, "scaleX": 1, "scaleY": 1 },
-        "sprite": { "texture": "player", "width": 32, "height": 32, "tint": 4886754 },
-        "collider": { "type": "box", "width": 32, "height": 32 },
-        "input": { "moveSpeed": 5, "jumpForce": -15 }
-      },
-      "tags": ["player"]
-    }
-  ],
-  "systems": ["physics", "input", "collision", "render"]
-}
-```
-
----
-
-## Available Components
-
-| Component | Properties | Description |
-|-----------|-----------|-------------|
-| **Transform** | x, y, rotation, scaleX, scaleY | Position and orientation |
-| **Velocity** | vx, vy | Movement speed |
-| **Sprite** | texture, width, height, tint, visible, zIndex, frameX/Y, anchorX/Y, flipX/Y | Visual representation with sprite sheet & layering |
-| **Collider** | type, width, height, radius, isSensor, layer | Physics shape |
-| **Input** | moveSpeed, jumpForce, canJump | Player controls |
-| **Health** | current, max | Damage system |
-| **AIBehavior** | type, speed, detectionRadius | Enemy AI |
-| **Animation** | frameCount, frameDuration, loop, isPlaying | Sprite animations |
-| **Camera** | zoom, followTarget, followSmoothing, shake | Camera control |
-| **ParticleEmitter** | emitRate, lifetime, size, speed, colors | Particle effects |
-| **Audio** | source, volume, pitch, loop, spatial | Sound playback |
-
----
-
-## Development Commands
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Install dependencies
+# Development setup
 pnpm install
-
-# Build all packages
 pnpm build
-
-# Development mode (all packages)
-pnpm dev
-
-# Desktop app
-pnpm --filter promptplay-desktop dev
-pnpm --filter promptplay-desktop build
-
-# Web editor
-pnpm --filter editor dev
-
-# Run tests
 pnpm test
 
-# Lint
+# Run tests with coverage
+pnpm --filter @promptplay/runtime-2d test
+
+# Lint code
 pnpm lint
-
-# Clean
-pnpm clean
 ```
 
 ---
 
-## Build Desktop App
+## Documentation
 
-```bash
-# Development
-cd apps/desktop
-pnpm dev
-
-# Production build
-pnpm build
-
-# The built app will be in:
-# - macOS: src-tauri/target/release/bundle/macos/
-# - Windows: src-tauri/target/release/bundle/msi/
-# - Linux: src-tauri/target/release/bundle/deb/
-```
-
----
-
-## Supported Game Genres
-
-### Platformer
-- Gravity-based physics
-- Jump mechanics
-- Collectibles and enemies
-
-### Shooter
-- Top-down or side-scrolling
-- Projectile system
-- Enemy AI
-
-### Puzzle
-- Grid-based movement
-- Push mechanics
-- Logic challenges
-
----
-
-## Architecture
-
-### ECS (Entity Component System)
-
-PromptPlay uses bitecs for high-performance game logic:
-
-- **Entities**: Simple numeric IDs
-- **Components**: Data stored in TypedArrays
-- **Systems**: Logic that operates on components
-
-### Rendering Pipeline
-
-```
-GameSpec → Deserializer → ECS World → Canvas2DRenderer → Screen
-                                            ↓
-                                    Texture Loading
-                                    Z-Index Sorting
-                                    Sprite Sheet Frames
-```
-
-### Physics Integration
-
-Matter.js bodies are synchronized with ECS Transform components:
-
-```
-ECS Transform ↔ Matter.js Body ↔ Physics World
-```
+- [User Guide](docs/user-guide.md) - Getting started
+- [Architecture](docs/architecture.md) - System design
+- [API Reference](docs/api-reference.md) - Component & type reference
+- [Testing Guide](docs/testing-guide.md) - Testing patterns
 
 ---
 
@@ -344,6 +289,11 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## Links
 
+- [GitHub](https://github.com/Davaakhatan/PromptPlay)
 - [Documentation](docs/user-guide.md)
-- [API Reference](docs/api-reference.md)
-- [Architecture](docs/architecture.md)
+- [Discord](#) *(coming soon)*
+- [Examples](#) *(coming soon)*
+
+---
+
+**Built with passion for making game development accessible to everyone.**
