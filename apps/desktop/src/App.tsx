@@ -49,6 +49,8 @@ function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [clipboardEntity, setClipboardEntity] = useState<any>(null);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   // History management
   const {
@@ -999,14 +1001,10 @@ function App() {
 
         // ==================== VIEW MENU ====================
         case 'toggle_grid':
-          // TODO: Implement grid toggle
-          setNotification('Toggle Grid - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setShowGrid(prev => !prev);
           break;
         case 'toggle_debug':
-          // TODO: Implement debug toggle
-          setNotification('Toggle Physics Debug - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setShowDebug(prev => !prev);
           break;
         case 'toggle_2d_3d':
           // TODO: Implement 2D/3D toggle
@@ -1312,7 +1310,10 @@ function App() {
               onEntitySelect={handleEntitySelect}
               onReset={resetGame}
               onUpdateEntity={handleUpdateEntity}
-              gridEnabled={false}
+              gridEnabled={showGrid}
+              onGridToggle={() => setShowGrid(prev => !prev)}
+              debugEnabled={showDebug}
+              onDebugToggle={() => setShowDebug(prev => !prev)}
               gridSize={16}
             />
           )}

@@ -11,6 +11,9 @@ interface GameCanvasProps {
   onReset?: () => void;
   onUpdateEntity?: (entityName: string, updates: any) => void;
   gridEnabled?: boolean;
+  onGridToggle?: () => void;
+  debugEnabled?: boolean;
+  onDebugToggle?: () => void;
   gridSize?: number;
 }
 
@@ -40,6 +43,9 @@ export default function GameCanvas({
   onReset,
   onUpdateEntity,
   gridEnabled = false,
+  onGridToggle,
+  debugEnabled = false,
+  onDebugToggle,
   gridSize = 16,
 }: GameCanvasProps) {
   // Get primary selected entity (first in set, for transform operations)
@@ -48,10 +54,12 @@ export default function GameCanvas({
   const runtimeRef = useRef<Runtime2D | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [debugEnabled, setDebugEnabled] = useState(false);
-  const [showGrid, setShowGrid] = useState(gridEnabled);
   const [transformMode, setTransformMode] = useState<TransformMode>('move');
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Use controlled props for grid and debug, with local state fallback
+  const showGrid = gridEnabled;
+  const showDebug = debugEnabled;
 
   // Drag state for repositioning/rotating/scaling entities
   const [dragState, setDragState] = useState<DragState>({
@@ -173,12 +181,12 @@ export default function GameCanvas({
       if (e.key === 'd' || e.key === 'D') {
         if (runtimeRef.current) {
           runtimeRef.current.toggleDebug();
-          setDebugEnabled(prev => !prev);
         }
+        onDebugToggle?.();
       }
       // Toggle grid with G key
       if (e.key === 'g' || e.key === 'G') {
-        setShowGrid(prev => !prev);
+        onGridToggle?.();
       }
       // Zoom controls
       if (e.key === '=' || e.key === '+') {
@@ -195,7 +203,7 @@ export default function GameCanvas({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, handleZoomIn, handleZoomOut, handleFitAll]);
+  }, [isPlaying, handleZoomIn, handleZoomOut, handleFitAll, onGridToggle, onDebugToggle]);
 
   // Initialize runtime when gameSpec changes
   useEffect(() => {
@@ -640,7 +648,7 @@ export default function GameCanvas({
 
     // Draw physics debug overlay (colliders, velocity vectors, sensors)
     const renderPhysicsDebug = () => {
-      if (!debugEnabled || !gameSpec?.entities) return null;
+      if (!showDebug || !gameSpec?.entities) return null;
 
       return gameSpec.entities.map(entity => {
         const collider = entity.components?.collider;
@@ -875,7 +883,7 @@ export default function GameCanvas({
               </>
             )}
             <button
-              onClick={() => setShowGrid(prev => !prev)}
+              onClick={() => onGridToggle?.()}
               className={`p-2 rounded backdrop-blur-md transition-all ${showGrid
                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                 : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
@@ -888,10 +896,10 @@ export default function GameCanvas({
               onClick={() => {
                 if (runtimeRef.current) {
                   runtimeRef.current.toggleDebug();
-                  setDebugEnabled(prev => !prev);
                 }
+                onDebugToggle?.();
               }}
-              className={`p-2 rounded backdrop-blur-md transition-all ${debugEnabled
+              className={`p-2 rounded backdrop-blur-md transition-all ${showDebug
                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                 : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                 }`}
