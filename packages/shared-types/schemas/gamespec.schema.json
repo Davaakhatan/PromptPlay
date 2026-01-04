@@ -908,6 +908,134 @@
           "default": 500
         }
       }
+    },
+    "Transform3DComponent": {
+      "type": "object",
+      "description": "3D position and orientation",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number", "description": "X position" },
+        "y": { "type": "number", "description": "Y position (up is positive)" },
+        "z": { "type": "number", "description": "Z position" },
+        "rotationX": { "type": "number", "description": "Rotation around X axis in radians", "default": 0 },
+        "rotationY": { "type": "number", "description": "Rotation around Y axis in radians", "default": 0 },
+        "rotationZ": { "type": "number", "description": "Rotation around Z axis in radians", "default": 0 },
+        "scaleX": { "type": "number", "description": "Scale on X axis", "default": 1 },
+        "scaleY": { "type": "number", "description": "Scale on Y axis", "default": 1 },
+        "scaleZ": { "type": "number", "description": "Scale on Z axis", "default": 1 }
+      }
+    },
+    "MeshComponent": {
+      "type": "object",
+      "description": "3D mesh geometry",
+      "required": ["geometry"],
+      "properties": {
+        "geometry": {
+          "type": "string",
+          "enum": ["box", "sphere", "plane", "cylinder", "cone", "torus"],
+          "description": "Geometry type"
+        },
+        "width": { "type": "number", "description": "Width (for box, plane)", "default": 1 },
+        "height": { "type": "number", "description": "Height (for box, cylinder, cone)", "default": 1 },
+        "depth": { "type": "number", "description": "Depth (for box)", "default": 1 },
+        "radius": { "type": "number", "description": "Radius (for sphere, cylinder, cone, torus)", "default": 0.5 },
+        "castShadow": { "type": "boolean", "description": "Whether mesh casts shadows", "default": true },
+        "receiveShadow": { "type": "boolean", "description": "Whether mesh receives shadows", "default": true }
+      }
+    },
+    "MaterialComponent": {
+      "type": "object",
+      "description": "PBR material properties",
+      "properties": {
+        "color": { "type": "string", "description": "Base color as hex string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "metallic": { "type": "number", "description": "Metalness 0-1", "minimum": 0, "maximum": 1, "default": 0.1 },
+        "roughness": { "type": "number", "description": "Roughness 0-1", "minimum": 0, "maximum": 1, "default": 0.7 },
+        "opacity": { "type": "number", "description": "Opacity 0-1", "minimum": 0, "maximum": 1, "default": 1 },
+        "emissive": { "type": "string", "description": "Emissive color as hex" }
+      }
+    },
+    "LightComponent": {
+      "type": "object",
+      "description": "3D light source",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ambient", "directional", "point", "spot", "hemisphere"],
+          "description": "Light type"
+        },
+        "color": { "type": "string", "description": "Light color as hex", "default": "#ffffff" },
+        "intensity": { "type": "number", "description": "Light intensity", "default": 1 },
+        "castShadow": { "type": "boolean", "description": "Whether light casts shadows", "default": false },
+        "distance": { "type": "number", "description": "Maximum range for point/spot lights" },
+        "angle": { "type": "number", "description": "Cone angle for spot lights" }
+      }
+    },
+    "Collider3DComponent": {
+      "type": "object",
+      "description": "3D physics collider",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["box", "sphere", "capsule", "cylinder"],
+          "description": "Collider shape"
+        },
+        "width": { "type": "number", "description": "Width for box collider" },
+        "height": { "type": "number", "description": "Height for box/capsule/cylinder" },
+        "depth": { "type": "number", "description": "Depth for box collider" },
+        "radius": { "type": "number", "description": "Radius for sphere/capsule/cylinder" },
+        "isTrigger": { "type": "boolean", "description": "If true, detects collisions without response", "default": false }
+      }
+    },
+    "Velocity3DComponent": {
+      "type": "object",
+      "description": "3D velocity",
+      "properties": {
+        "vx": { "type": "number", "description": "Velocity X", "default": 0 },
+        "vy": { "type": "number", "description": "Velocity Y", "default": 0 },
+        "vz": { "type": "number", "description": "Velocity Z", "default": 0 },
+        "angularX": { "type": "number", "description": "Angular velocity X", "default": 0 },
+        "angularY": { "type": "number", "description": "Angular velocity Y", "default": 0 },
+        "angularZ": { "type": "number", "description": "Angular velocity Z", "default": 0 }
+      }
+    },
+    "Input3DComponent": {
+      "type": "object",
+      "description": "3D player input",
+      "properties": {
+        "moveSpeed": { "type": "number", "description": "Movement speed", "default": 5 },
+        "jumpForce": { "type": "number", "description": "Jump force", "default": 10 },
+        "canJump": { "type": "boolean", "description": "Whether jumping is enabled", "default": true },
+        "isGrounded": { "type": "boolean", "description": "Whether player is on ground", "default": false }
+      }
+    },
+    "RigidBody3DComponent": {
+      "type": "object",
+      "description": "3D rigid body physics",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["dynamic", "static", "kinematic"],
+          "description": "Body type",
+          "default": "dynamic"
+        },
+        "mass": { "type": "number", "description": "Mass in kg", "default": 1 },
+        "linearDamping": { "type": "number", "description": "Linear damping", "default": 0 },
+        "angularDamping": { "type": "number", "description": "Angular damping", "default": 0 },
+        "fixedRotation": { "type": "boolean", "description": "Prevent rotation", "default": false }
+      }
+    },
+    "Model3DComponent": {
+      "type": "object",
+      "description": "3D model (GLTF/GLB)",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "description": "URL or path to GLTF/GLB file" },
+        "scale": { "type": "number", "description": "Uniform scale factor", "default": 1 },
+        "castShadow": { "type": "boolean", "description": "Whether model casts shadows", "default": true },
+        "receiveShadow": { "type": "boolean", "description": "Whether model receives shadows", "default": true }
+      }
     }
   },
   "examples": [
