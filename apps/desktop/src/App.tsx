@@ -67,6 +67,8 @@ function App() {
   const [showMobileExport, setShowMobileExport] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showAIPlaytest, setShowAIPlaytest] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1426,9 +1428,19 @@ function App() {
       )}
 
       {/* Left Panel - File Tree / Scene Tree */}
-      <aside className="w-64 bg-panel border-r border-subtle flex flex-col backdrop-blur-md">
+      <aside className={`${leftPanelCollapsed ? 'w-10' : 'w-64'} bg-panel border-r border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+          className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 w-6 h-12 bg-panel border border-subtle rounded-r-md flex items-center justify-center hover:bg-white/5 transition-colors"
+          title={leftPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+        >
+          <svg className={`w-3 h-3 text-text-secondary transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         {/* Panel Mode Tabs */}
-        {projectPath && gameSpec && (
+        {projectPath && gameSpec && !leftPanelCollapsed && (
           <div className="flex items-center justify-between bg-panel border-b border-subtle px-2 py-1.5">
             <div className="flex gap-1">
               <button
@@ -1498,8 +1510,35 @@ function App() {
           </div>
         )}
 
+        {/* Collapsed mode - vertical icon strip */}
+        {projectPath && gameSpec && leftPanelCollapsed && (
+          <div className="flex flex-col items-center py-2 gap-1">
+            <button
+              onClick={() => { setLeftPanelCollapsed(false); setLeftPanelMode('files'); }}
+              className={`p-1.5 rounded transition-colors ${leftPanelMode === 'files' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="Files"
+            >
+              <FolderIcon size={16} />
+            </button>
+            <button
+              onClick={() => { setLeftPanelCollapsed(false); setLeftPanelMode('entities'); }}
+              className={`p-1.5 rounded transition-colors ${leftPanelMode === 'entities' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="Entities"
+            >
+              <EntityIcon size={16} />
+            </button>
+            <button
+              onClick={() => { setLeftPanelCollapsed(false); setLeftPanelMode('assets'); }}
+              className={`p-1.5 rounded transition-colors ${leftPanelMode === 'assets' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="Assets"
+            >
+              <ImageIcon size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Panel Header */}
-        {(!projectPath || !gameSpec) && (
+        {(!projectPath || !gameSpec) && !leftPanelCollapsed && (
           <div className="p-4 border-b border-subtle">
             <h2 className="text-lg font-semibold text-text-primary">
               {leftPanelMode === 'files' ? 'Files' : 'Scene'}
@@ -1513,69 +1552,71 @@ function App() {
         )}
 
         {/* Panel Content */}
-        <div className="flex-1 overflow-y-auto">
-          {leftPanelMode === 'files' && (
-            <FileTree
-              projectPath={projectPath}
-              onFileSelect={setSelectedFile}
-              selectedFile={selectedFile}
-            />
-          )}
-          {leftPanelMode === 'scenes' && (
-            <SceneManager
-              gameSpec={gameSpec}
-              activeSceneId={activeSceneId}
-              onSwitchScene={handleSwitchScene}
-              onCreateScene={handleCreateScene}
-              onRenameScene={handleRenameScene}
-              onDeleteScene={handleDeleteScene}
-              onDuplicateScene={handleDuplicateScene}
-            />
-          )}
-          {leftPanelMode === 'entities' && (
-            <SceneTree
-              gameSpec={gameSpec}
-              selectedEntities={selectedEntities}
-              onSelectEntity={handleEntitySelect}
-              onCreateEntity={handleCreateEntity}
-              onRenameEntity={handleRenameEntity}
-              onDeleteEntity={selectedEntities.size > 1 ? handleDeleteSelected : handleDeleteEntity}
-              onDuplicateEntity={selectedEntities.size > 1 ? handleDuplicateSelected : handleDuplicateEntity}
-              onCopyEntity={handleCopyEntity}
-            />
-          )}
-          {leftPanelMode === 'prefabs' && (
-            <PrefabLibrary
-              onInstantiate={handleInstantiatePrefab}
-              selectedEntity={selectedEntity ? gameSpec?.entities?.find(e => e.name === selectedEntity) : null}
-            />
-          )}
-          {leftPanelMode === 'assets' && (
-            <AssetBrowser
-              projectPath={projectPath}
-              onAssetSelect={(path, type) => {
-                if (type === 'script') {
-                  setSelectedFile(path);
-                  setViewMode('code');
-                } else {
-                  console.log('Selected asset:', path, type);
-                }
-              }}
-            />
-          )}
-          {leftPanelMode === 'tilemap' && (
-            <TilemapEditor
-              tilemap={currentTilemap}
-              onTilemapChange={(tilemap) => {
-                setCurrentTilemap(tilemap);
-                setHasUnsavedChanges(true);
-              }}
-            />
-          )}
-        </div>
+        {!leftPanelCollapsed && (
+          <div className="flex-1 overflow-y-auto">
+            {leftPanelMode === 'files' && (
+              <FileTree
+                projectPath={projectPath}
+                onFileSelect={setSelectedFile}
+                selectedFile={selectedFile}
+              />
+            )}
+            {leftPanelMode === 'scenes' && (
+              <SceneManager
+                gameSpec={gameSpec}
+                activeSceneId={activeSceneId}
+                onSwitchScene={handleSwitchScene}
+                onCreateScene={handleCreateScene}
+                onRenameScene={handleRenameScene}
+                onDeleteScene={handleDeleteScene}
+                onDuplicateScene={handleDuplicateScene}
+              />
+            )}
+            {leftPanelMode === 'entities' && (
+              <SceneTree
+                gameSpec={gameSpec}
+                selectedEntities={selectedEntities}
+                onSelectEntity={handleEntitySelect}
+                onCreateEntity={handleCreateEntity}
+                onRenameEntity={handleRenameEntity}
+                onDeleteEntity={selectedEntities.size > 1 ? handleDeleteSelected : handleDeleteEntity}
+                onDuplicateEntity={selectedEntities.size > 1 ? handleDuplicateSelected : handleDuplicateEntity}
+                onCopyEntity={handleCopyEntity}
+              />
+            )}
+            {leftPanelMode === 'prefabs' && (
+              <PrefabLibrary
+                onInstantiate={handleInstantiatePrefab}
+                selectedEntity={selectedEntity ? gameSpec?.entities?.find(e => e.name === selectedEntity) : null}
+              />
+            )}
+            {leftPanelMode === 'assets' && (
+              <AssetBrowser
+                projectPath={projectPath}
+                onAssetSelect={(path, type) => {
+                  if (type === 'script') {
+                    setSelectedFile(path);
+                    setViewMode('code');
+                  } else {
+                    console.log('Selected asset:', path, type);
+                  }
+                }}
+              />
+            )}
+            {leftPanelMode === 'tilemap' && (
+              <TilemapEditor
+                tilemap={currentTilemap}
+                onTilemapChange={(tilemap) => {
+                  setCurrentTilemap(tilemap);
+                  setHasUnsavedChanges(true);
+                }}
+              />
+            )}
+          </div>
+        )}
 
         {/* Footer Info */}
-        {gameSpec && leftPanelMode === 'files' && (
+        {gameSpec && leftPanelMode === 'files' && !leftPanelCollapsed && (
           <div className="p-4 border-t border-subtle space-y-1">
             <p className="text-sm font-medium text-text-primary">
               {gameSpec.metadata?.title || 'Untitled Game'}
@@ -1680,9 +1721,20 @@ function App() {
       </main>
 
       {/* Right Panel - Inspector / JSON Editor */}
-      <aside className="w-80 bg-panel border-l border-subtle flex flex-col backdrop-blur-md">
+      <aside className={`${rightPanelCollapsed ? 'w-10' : 'w-80'} bg-panel border-l border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+          className="absolute top-1/2 -translate-y-1/2 -left-3 z-10 w-6 h-12 bg-panel border border-subtle rounded-l-md flex items-center justify-center hover:bg-white/5 transition-colors"
+          title={rightPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+        >
+          <svg className={`w-3 h-3 text-text-secondary transition-transform ${rightPanelCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
         {/* Panel Mode Tabs */}
-        {projectPath && gameSpec && viewMode === 'game' && (
+        {projectPath && gameSpec && viewMode === 'game' && !rightPanelCollapsed && (
           <div className="flex gap-1 bg-panel border-b border-subtle p-1.5">
             <button
               onClick={() => setRightPanelMode('inspector')}
@@ -1731,9 +1783,37 @@ function App() {
           </div>
         )}
 
+        {/* Collapsed mode - vertical icon strip */}
+        {projectPath && gameSpec && viewMode === 'game' && rightPanelCollapsed && (
+          <div className="flex flex-col items-center py-2 gap-1">
+            <button
+              onClick={() => { setRightPanelCollapsed(false); setRightPanelMode('inspector'); }}
+              className={`p-1.5 rounded transition-colors ${rightPanelMode === 'inspector' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="Inspector"
+            >
+              <EntityIcon size={16} />
+            </button>
+            <button
+              onClick={() => { setRightPanelCollapsed(false); setRightPanelMode('json'); }}
+              className={`p-1.5 rounded transition-colors ${rightPanelMode === 'json' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="JSON Editor"
+            >
+              <CodeIcon size={16} />
+            </button>
+            <button
+              onClick={() => { setRightPanelCollapsed(false); setRightPanelMode('physics'); }}
+              className={`p-1.5 rounded transition-colors ${rightPanelMode === 'physics' ? 'bg-primary/20 text-primary' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+              title="Physics"
+            >
+              <PhysicsIcon size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Panel Content */}
-        <div className="flex-1 overflow-hidden">
-          {viewMode === 'game' && gameSpec && rightPanelMode === 'inspector' ? (
+        {!rightPanelCollapsed && (
+          <div className="flex-1 overflow-hidden">
+            {viewMode === 'game' && gameSpec && rightPanelMode === 'inspector' ? (
             <Inspector
               gameSpec={gameSpec}
               selectedEntities={selectedEntities}
@@ -1781,7 +1861,8 @@ function App() {
               </p>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* New Project Modal */}
