@@ -30,6 +30,9 @@ import { addRecentProject } from './services/RecentProjectsService';
 import { screenCapture } from './services/ScreenCaptureService';
 import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
 import TilemapEditor, { Tilemap } from './components/TilemapEditor';
+import MobileExportDialog from './components/MobileExportDialog';
+import PublishDialog from './components/PublishDialog';
+import AIPlaytestPanel from './components/AIPlaytestPanel';
 
 type ViewMode = 'game' | 'code';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -61,6 +64,9 @@ function App() {
   const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false);
   const [showEntitySearch, setShowEntitySearch] = useState(false);
   const [currentTilemap, setCurrentTilemap] = useState<Tilemap | null>(null);
+  const [showMobileExport, setShowMobileExport] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showAIPlaytest, setShowAIPlaytest] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1617,6 +1623,9 @@ function App() {
               }
             }
           }}
+          onMobileExport={() => setShowMobileExport(true)}
+          onPublish={() => setShowPublishDialog(true)}
+          onAIPlaytest={() => setShowAIPlaytest(true)}
         />
 
         {/* Main Content Area */}
@@ -1866,6 +1875,35 @@ function App() {
           onClose={() => setShowEntitySearch(false)}
         />
       )}
+
+      {/* Mobile Export Dialog */}
+      <MobileExportDialog
+        isOpen={showMobileExport}
+        onClose={() => setShowMobileExport(false)}
+        gameSpec={gameSpec}
+        onNotification={(msg) => {
+          setNotification(msg);
+          setTimeout(() => setNotification(null), 5000);
+        }}
+      />
+
+      {/* Publish Dialog */}
+      <PublishDialog
+        isOpen={showPublishDialog}
+        onClose={() => setShowPublishDialog(false)}
+        gameSpec={gameSpec}
+        onNotification={(msg) => {
+          setNotification(msg);
+          setTimeout(() => setNotification(null), 5000);
+        }}
+      />
+
+      {/* AI Playtest Panel */}
+      <AIPlaytestPanel
+        isOpen={showAIPlaytest}
+        onClose={() => setShowAIPlaytest(false)}
+        gameSpec={gameSpec}
+      />
     </div>
   );
 }

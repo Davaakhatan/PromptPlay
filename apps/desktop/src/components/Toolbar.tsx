@@ -1,4 +1,4 @@
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon } from './Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon, SmartphoneIcon, RocketIcon, BrainIcon } from './Icons';
 
 interface ToolbarProps {
   projectPath: string | null;
@@ -26,6 +26,9 @@ interface ToolbarProps {
   onToggle3DMode?: () => void;
   onScreenshot?: () => void;
   onSearch?: () => void;
+  onMobileExport?: () => void;
+  onPublish?: () => void;
+  onAIPlaytest?: () => void;
 }
 
 export default function Toolbar({
@@ -53,6 +56,9 @@ export default function Toolbar({
   onToggle3DMode,
   onScreenshot,
   onSearch,
+  onMobileExport,
+  onPublish,
+  onAIPlaytest,
 }: ToolbarProps) {
   return (
     <div className="bg-panel border-b border-subtle h-10 flex items-center justify-between px-2 backdrop-blur-md sticky top-0 z-10">
@@ -252,6 +258,39 @@ export default function Toolbar({
                 title="Export as HTML (Cmd+E)"
               >
                 {isExporting ? <LoadingSpinner size={14} /> : <ExportIcon size={14} />}
+              </button>
+            )}
+
+            {/* Mobile Export */}
+            {hasGameSpec && onMobileExport && (
+              <button
+                onClick={onMobileExport}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                title="Mobile Export (PWA)"
+              >
+                <SmartphoneIcon size={14} />
+              </button>
+            )}
+
+            {/* Publish */}
+            {hasGameSpec && onPublish && (
+              <button
+                onClick={onPublish}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-orange-400 hover:bg-orange-500/10 transition-all"
+                title="Publish Game"
+              >
+                <RocketIcon size={14} />
+              </button>
+            )}
+
+            {/* AI Playtest */}
+            {hasGameSpec && onAIPlaytest && (
+              <button
+                onClick={onAIPlaytest}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                title="AI Playtest"
+              >
+                <BrainIcon size={14} />
               </button>
             )}
           </>

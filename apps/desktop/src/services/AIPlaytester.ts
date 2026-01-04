@@ -324,7 +324,7 @@ export class AIPlaytesterService {
     const colors = new Set<string>();
     gameSpec.entities.forEach((entity) => {
       if (entity.components.sprite?.tint) {
-        colors.add(entity.components.sprite.tint);
+        colors.add(String(entity.components.sprite.tint));
       }
     });
 

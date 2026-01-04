@@ -291,12 +291,18 @@ PromptPlay/
 - [x] Tilemap Editor (tile-based level design)
 - [x] Tilemap Component (tile-based rendering)
 
-### Future (v3.0)
+### Completed (v3.0)
+
+- [x] Mobile Export (PWA with touch controls, offline support)
+- [x] One-Click Publishing (itch.io, GitHub Pages, HTML export)
+- [x] AI Playtesting (automated game analysis and feedback)
+
+### Future (v3.1)
+
 - [ ] Community Marketplace
 - [ ] Collaborative Editing
-- [ ] Mobile Export
-- [ ] AI Playtesting
-- [ ] One-Click Publishing
+- [ ] Advanced AI Game Generation
+- [ ] Cloud Save & Sync
 
 ---
 
