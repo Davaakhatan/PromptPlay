@@ -270,10 +270,10 @@ PromptPlay/
 
 - [x] GLTF/GLB Model Loading
 - [x] Lighting & Shadows (configurable)
+- [x] JSON Schema with 3D Components
 
 ### Next (v2.0)
 
-- [ ] JSON Schema for better AI generation
 - [ ] Game Package Import/Export
 - [ ] Dynamic Template Generation
 - [ ] Voice Input
