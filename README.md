@@ -266,14 +266,17 @@ PromptPlay/
 - [x] 2D to 3D Conversion
 - [x] Ground Detection & Jumping
 
+### Completed (v1.6)
+
+- [x] GLTF/GLB Model Loading
+- [x] Lighting & Shadows (configurable)
+
 ### Next (v2.0)
 
 - [ ] JSON Schema for better AI generation
 - [ ] Game Package Import/Export
 - [ ] Dynamic Template Generation
 - [ ] Voice Input
-- [ ] GLTF Model Loading
-- [ ] Lighting & Shadows
 
 ### Future (v3.0)
 - [ ] Community Marketplace
