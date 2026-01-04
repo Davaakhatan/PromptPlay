@@ -232,6 +232,17 @@ export class Game3D {
       RigidBody3D.linearDamping[eid] = rb.linearDamping ?? 0.01;
       RigidBody3D.angularDamping[eid] = rb.angularDamping ?? 0.01;
       RigidBody3D.fixedRotation[eid] = rb.fixedRotation ? 1 : 0;
+
+      // Ensure Velocity3D exists for physics entities (required for proper syncing)
+      if (!components.velocity3d) {
+        addComponent(this.world, Velocity3D, eid);
+        Velocity3D.vx[eid] = 0;
+        Velocity3D.vy[eid] = 0;
+        Velocity3D.vz[eid] = 0;
+        Velocity3D.angularX[eid] = 0;
+        Velocity3D.angularY[eid] = 0;
+        Velocity3D.angularZ[eid] = 0;
+      }
     }
 
     // Initialize mesh in renderer if mesh component exists
@@ -311,6 +322,12 @@ export class Game3D {
     }
     this.entityMap.clear();
     this.entityNames.clear();
+    // Clear physics world to ensure no stale bodies remain
+    this.physics.clear();
+    // Clear physics system tracking state
+    this.physics3DSystem.clear();
+    // Clear all meshes from renderer (including any orphaned preview meshes)
+    this.renderer.clearAllMeshes();
   }
 
   /**

@@ -76,13 +76,15 @@ export function GameCanvas3D({
     controls.enableDamping = true;
     controlsRef.current = controls;
 
-    // Animation loop for editor mode (when not playing, Game3D's loop handles play mode)
+    // Animation loop - OrbitControls always update so camera can be rotated during play
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
 
+      // Always update controls for camera movement (works during play mode too)
+      controls.update();
+
       // Only render in editor mode - Game3D handles its own rendering when playing
       if (!isPlayingRef.current) {
-        controls.update();
         renderer.render();
       }
     };
@@ -137,10 +139,15 @@ export function GameCanvas3D({
 
     const renderer = game3DRef.current.renderer;
 
-    // Clear existing meshes (except helpers)
-    // In a full implementation, we'd track entity meshes separately
+    // When playing, Game3D handles all rendering - don't create preview meshes
+    if (isPlaying) {
+      return;
+    }
 
-    // Create meshes for each entity
+    // Clear existing preview meshes before creating new ones
+    renderer.clearAllMeshes();
+
+    // Create meshes for each entity (editor preview only)
     gameSpec.entities.forEach((entity, index) => {
       if (entity.components.transform3d && entity.components.mesh) {
         const t = entity.components.transform3d;
@@ -171,7 +178,7 @@ export function GameCanvas3D({
         );
       }
     });
-  }, [gameSpec]);
+  }, [gameSpec, isPlaying]);
 
   // Update selection visualization
   useEffect(() => {

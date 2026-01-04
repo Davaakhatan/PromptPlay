@@ -367,24 +367,30 @@ export class CannonPhysics {
   ): void {
     // Define collision event interface locally since cannon-es doesn't export it
     interface CollisionEvent {
-      bodyA: CANNON.Body;
-      bodyB: CANNON.Body;
+      bodyA?: CANNON.Body;
+      bodyB?: CANNON.Body;
     }
 
     this.world.addEventListener('beginContact', (event: CollisionEvent) => {
+      // Guard against undefined bodies
+      if (!event.bodyA || !event.bodyB) return;
+
       const bodyA = event.bodyA as unknown as { userData?: { entityId: number } };
       const bodyB = event.bodyB as unknown as { userData?: { entityId: number } };
 
-      if (bodyA.userData?.entityId !== undefined && bodyB.userData?.entityId !== undefined) {
+      if (bodyA?.userData?.entityId !== undefined && bodyB?.userData?.entityId !== undefined) {
         callback(bodyA.userData.entityId, bodyB.userData.entityId, 'begin');
       }
     });
 
     this.world.addEventListener('endContact', (event: CollisionEvent) => {
+      // Guard against undefined bodies
+      if (!event.bodyA || !event.bodyB) return;
+
       const bodyA = event.bodyA as unknown as { userData?: { entityId: number } };
       const bodyB = event.bodyB as unknown as { userData?: { entityId: number } };
 
-      if (bodyA.userData?.entityId !== undefined && bodyB.userData?.entityId !== undefined) {
+      if (bodyA?.userData?.entityId !== undefined && bodyB?.userData?.entityId !== undefined) {
         callback(bodyA.userData.entityId, bodyB.userData.entityId, 'end');
       }
     });

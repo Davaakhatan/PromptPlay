@@ -19,8 +19,8 @@ export class OrbitControls {
   public maxDistance = 100;
 
   // Speed settings
-  public rotateSpeed = 1.0;
-  public panSpeed = 1.0;
+  public rotateSpeed = 0.25;
+  public panSpeed = 0.5;
   public zoomSpeed = 1.0;
 
   // Damping

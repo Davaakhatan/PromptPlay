@@ -21,6 +21,9 @@ export class Physics3DSystem {
   private renderer?: ThreeRenderer;
   private debugMeshes: Map<number, THREE.LineSegments> = new Map();
   private debugEnabled = false;
+  private world?: IWorld;
+  // Track ground contacts per entity (entityId -> Set of entities it's touching that are static)
+  private groundContacts: Map<number, Set<number>> = new Map();
 
   constructor(physics: CannonPhysics, renderer?: ThreeRenderer) {
     this.physics = physics;
@@ -58,6 +61,9 @@ export class Physics3DSystem {
    * Execute the physics system
    */
   execute(world: IWorld, dt: number): void {
+    // Store world reference for collision callbacks
+    this.world = world;
+
     // Handle new physics entities
     const enteredEntities = physicsEnterQuery(world);
     for (const eid of enteredEntities) {
@@ -203,6 +209,13 @@ export class Physics3DSystem {
   private removePhysicsBody(eid: number): void {
     this.physics.removeBody(eid);
 
+    // Clear ground contacts for this entity
+    this.groundContacts.delete(eid);
+    // Also remove this entity from other entities' contact lists
+    this.groundContacts.forEach((contacts) => {
+      contacts.delete(eid);
+    });
+
     // Remove debug mesh if exists
     const debugMesh = this.debugMeshes.get(eid);
     if (debugMesh && this.renderer) {
@@ -305,17 +318,63 @@ export class Physics3DSystem {
   /**
    * Collision begin callback
    */
-  private onCollisionBegin(_entityA: number, _entityB: number): void {
-    // Can be extended to trigger events or callbacks
-    // console.log(`Collision begin: ${entityA} <-> ${entityB}`);
+  private onCollisionBegin(entityA: number, entityB: number): void {
+    if (!this.world) return;
+
+    // Check if either entity has input component (is a player)
+    const aHasInput = hasComponent(this.world, Input3D, entityA);
+    const bHasInput = hasComponent(this.world, Input3D, entityB);
+
+    // Ground the player when they collide with any other entity
+    // (More sophisticated check could verify collision is from below)
+    if (aHasInput) {
+      if (!this.groundContacts.has(entityA)) {
+        this.groundContacts.set(entityA, new Set());
+      }
+      this.groundContacts.get(entityA)!.add(entityB);
+      Input3D.isGrounded[entityA] = 1;
+    }
+
+    if (bHasInput) {
+      if (!this.groundContacts.has(entityB)) {
+        this.groundContacts.set(entityB, new Set());
+      }
+      this.groundContacts.get(entityB)!.add(entityA);
+      Input3D.isGrounded[entityB] = 1;
+    }
   }
 
   /**
    * Collision end callback
    */
-  private onCollisionEnd(_entityA: number, _entityB: number): void {
-    // Can be extended to trigger events or callbacks
-    // console.log(`Collision end: ${entityA} <-> ${entityB}`);
+  private onCollisionEnd(entityA: number, entityB: number): void {
+    if (!this.world) return;
+
+    // Check if either entity has input component (is a player)
+    const aHasInput = hasComponent(this.world, Input3D, entityA);
+    const bHasInput = hasComponent(this.world, Input3D, entityB);
+
+    // Player A stopped touching entity B
+    if (aHasInput) {
+      const contacts = this.groundContacts.get(entityA);
+      if (contacts) {
+        contacts.delete(entityB);
+        if (contacts.size === 0) {
+          Input3D.isGrounded[entityA] = 0;
+        }
+      }
+    }
+
+    // Player B stopped touching entity A
+    if (bHasInput) {
+      const contacts = this.groundContacts.get(entityB);
+      if (contacts) {
+        contacts.delete(entityA);
+        if (contacts.size === 0) {
+          Input3D.isGrounded[entityB] = 0;
+        }
+      }
+    }
   }
 
   /**
@@ -347,5 +406,20 @@ export class Physics3DSystem {
    */
   getPhysics(): CannonPhysics {
     return this.physics;
+  }
+
+  /**
+   * Clear all tracking state (call when game is reset)
+   */
+  clear(): void {
+    this.groundContacts.clear();
+    this.debugMeshes.forEach((mesh) => {
+      if (this.renderer) {
+        this.renderer.scene.remove(mesh);
+      }
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    });
+    this.debugMeshes.clear();
   }
 }

@@ -26,6 +26,7 @@ While traditional game engines require years of learning, PromptPlay lets anyone
 | Learning Curve | Months to years | Minutes |
 | AI Integration | Plugins/Add-ons | Native, first-class |
 | Game Creation | Code + Visual | Conversation + Visual + Code |
+| 2D & 3D Support | Yes | Yes |
 | Export | Complex build systems | One-click HTML/Desktop |
 | Cost | Subscription/Royalties | Free & Open Source |
 | Extensibility | C#/C++/Blueprints | TypeScript |
@@ -41,10 +42,24 @@ While traditional game engines require years of learning, PromptPlay lets anyone
 - **Persistent Chat History** - Pick up where you left off
 - **Demo Mode** - Try without API key
 
+### 2D Game Engine
+
+- **Canvas2D Rendering** - Fast, efficient 2D graphics
+- **Matter.js Physics** - Full 2D physics simulation
+- **Sprite Animation** - Timeline editor with keyframes
+- **Particle System** - Effects for explosions, trails, etc.
+
+### 3D Game Engine
+
+- **Three.js Rendering** - Full 3D scene with lighting
+- **Cannon-es Physics** - Realistic 3D physics simulation
+- **Orbit Controls** - Camera rotation, pan, zoom
+- **2D to 3D Conversion** - Switch your 2D game to 3D instantly
+
 ### Visual Scene Editor
 - **Scene Tree** - Hierarchical entity management with search/filter
 - **Inspector** - Edit all component properties visually
-- **Game Canvas** - Live preview with selection, drag handles, transform gizmos
+- **Game Canvas** - Live preview with selection and transform gizmos
 - **Multi-Entity Selection** - Ctrl+Click, Shift+Click, Ctrl+A to select all
 - **Undo/Redo Timeline** - Visual history with unlimited undo
 
@@ -55,10 +70,11 @@ While traditional game engines require years of learning, PromptPlay lets anyone
 - **Playback Controls** - Play, pause, step through frames
 
 ### Physics & Debug
-- **Matter.js Integration** - Full 2D physics simulation
-- **Physics Debug Overlay** - Collider visualization, velocity vectors
-- **Sensor Support** - Trigger zones for collectibles, damage
-- **Collision Layers** - Control what collides with what
+
+- **2D Physics** - Matter.js with collision layers, sensors
+- **3D Physics** - Cannon-es with rigid bodies, constraints
+- **Debug Overlay** - Collider visualization, velocity vectors
+- **Ground Detection** - Automatic grounded state for jumping
 
 ### Scene & Prefab Management
 - **Multiple Scenes** - Level management with scene switching
@@ -101,7 +117,7 @@ pnpm install
 pnpm build
 
 # Run desktop app
-cd apps/desktop && pnpm dev
+cd apps/desktop && pnpm tauri dev
 ```
 
 ### Create Your First Game
@@ -111,7 +127,8 @@ cd apps/desktop && pnpm dev
 3. **Edit Properties** - Transform, sprite, physics in Inspector
 4. **AI Assist** - Type "make the player faster" in AI chat
 5. **Play & Test** - Click Play, test your game
-6. **Export** - Export as HTML to share
+6. **Switch to 3D** - Toggle to 3D mode to see your game in 3D
+7. **Export** - Export as HTML to share
 
 ---
 
@@ -123,7 +140,8 @@ PromptPlay/
 │   └── desktop/                 # Tauri 2.0 Desktop App
 │       ├── src/                 # React Frontend
 │       │   ├── components/      # 30+ UI Components
-│       │   │   ├── GameCanvas   # Live game preview
+│       │   │   ├── GameCanvas   # 2D game preview
+│       │   │   ├── GameCanvas3D # 3D game preview
 │       │   │   ├── Inspector    # Property editor
 │       │   │   ├── SceneTree    # Entity hierarchy
 │       │   │   ├── AIPromptPanel# AI chat interface
@@ -145,15 +163,24 @@ PromptPlay/
 │   │
 │   ├── runtime-2d/              # 2D Game Runtime
 │   │   ├── Runtime2D.ts         # Main orchestrator
-│   │   ├── renderers/           # Canvas2D, PixiJS
+│   │   ├── renderers/           # Canvas2D renderer
 │   │   ├── physics/             # Matter.js wrapper
 │   │   ├── systems/             # Input, Animation, AI, Particles
 │   │   └── tests/               # 284 tests, 80%+ coverage
+│   │
+│   ├── runtime-3d/              # 3D Game Runtime
+│   │   ├── Game3D.ts            # Main orchestrator
+│   │   ├── renderers/           # Three.js renderer
+│   │   ├── physics/             # Cannon-es wrapper
+│   │   ├── systems/             # Physics3D, Input3D, Transform3D
+│   │   ├── controls/            # OrbitControls for camera
+│   │   └── components/          # 3D-specific components
 │   │
 │   ├── ai-prompt/               # AI Integration
 │   │   └── templates/           # Genre-specific prompts
 │   │
 │   └── shared-types/            # TypeScript Definitions
+│       └── 3d/                  # 3D type definitions
 │
 └── docs/                        # Documentation
     ├── architecture.md
@@ -165,19 +192,34 @@ PromptPlay/
 
 ## Components
 
+### 2D Components
+
 | Component | Description | Key Properties |
 |-----------|-------------|----------------|
 | **Transform** | Position & orientation | x, y, rotation, scaleX, scaleY |
 | **Velocity** | Movement | vx, vy |
-| **Sprite** | Visual appearance | texture, width, height, tint, zIndex, animation frames |
+| **Sprite** | Visual appearance | texture, width, height, tint, zIndex |
 | **Collider** | Physics shape | type (box/circle), dimensions, isSensor |
 | **Input** | Player controls | moveSpeed, jumpForce, canJump |
 | **Health** | Damage system | current, max |
-| **AIBehavior** | Enemy AI | type (patrol/chase/flee), speed, detectionRadius |
-| **Animation** | Sprite animation | frameCount, frameDuration, loop, states |
+| **AIBehavior** | Enemy AI | type (patrol/chase/flee), speed |
+| **Animation** | Sprite animation | frameCount, frameDuration, loop |
 | **Camera** | View control | zoom, followTarget, shake |
-| **ParticleEmitter** | Effects | emitRate, lifetime, colors, gravity |
-| **Audio** | Sound | source, volume, loop, spatial |
+| **ParticleEmitter** | Effects | emitRate, lifetime, colors |
+
+### 3D Components
+
+| Component | Description | Key Properties |
+|-----------|-------------|----------------|
+| **Transform3D** | 3D Position | x, y, z, rotationX/Y/Z, scaleX/Y/Z |
+| **Velocity3D** | 3D Movement | vx, vy, vz, angularX/Y/Z |
+| **Mesh** | 3D Geometry | geometry (box/sphere/cylinder), dimensions |
+| **Material** | Surface appearance | color, metallic, roughness |
+| **Collider3D** | 3D Physics shape | type, width, height, depth, radius |
+| **RigidBody3D** | Physics body | type (dynamic/static/kinematic), mass |
+| **Input3D** | 3D Player controls | moveSpeed, jumpForce, canJump, isGrounded |
+| **Light** | Scene lighting | type (ambient/directional/point), intensity |
+| **Camera3D** | 3D Camera | fov, near, far, followTarget |
 
 ---
 
@@ -197,37 +239,43 @@ PromptPlay/
 | `Delete/Backspace` | Delete Selected |
 | `Cmd/Ctrl + E` | Export HTML |
 | `D` | Toggle Debug Overlay |
-| `?` | Show Shortcuts |
+| `Space` | Jump (in game) |
+| `WASD/Arrows` | Move (in game) |
 
 ---
 
 ## Roadmap
 
-### Current (v1.0)
-- [x] 2D Game Engine
-- [x] Visual Editor
-- [x] AI Chat Integration
-- [x] Animation Editor
-- [x] Physics System
+### Completed (v1.0)
+
+- [x] 2D Game Engine (Canvas2D + Matter.js)
+- [x] Visual Editor with Inspector
+- [x] AI Chat Integration (Claude API)
+- [x] Animation Editor & Timeline
+- [x] Physics System with Debug Overlay
 - [x] Prefab System
 - [x] Scene Management
 - [x] HTML Export
 - [x] 80%+ Test Coverage
 
-### Next (v1.5)
-- [ ] JSON Schema for AI
+### Completed (v1.5)
+
+- [x] 3D Support (Three.js + Cannon-es)
+- [x] 3D Physics with Rigid Bodies
+- [x] OrbitControls for 3D Camera
+- [x] 2D to 3D Conversion
+- [x] Ground Detection & Jumping
+
+### Next (v2.0)
+
+- [ ] JSON Schema for better AI generation
 - [ ] Game Package Import/Export
 - [ ] Dynamic Template Generation
 - [ ] Voice Input
-
-### Future (v2.0)
-- [ ] 3D Support (Three.js + Cannon-es)
-- [ ] 3D Physics
-- [ ] Lighting & Shadows
 - [ ] GLTF Model Loading
-- [ ] 3D Editor Tools
+- [ ] Lighting & Shadows
 
-### Vision (v3.0)
+### Future (v3.0)
 - [ ] Community Marketplace
 - [ ] Collaborative Editing
 - [ ] Mobile Export
@@ -246,8 +294,10 @@ PromptPlay/
 | **Editor** | Monaco | Professional code editing |
 | **Compiler** | esbuild-wasm | Instant TypeScript compilation |
 | **ECS** | bitecs | High-performance game logic |
-| **Rendering** | Canvas2D | Fast 2D graphics |
-| **Physics** | Matter.js | Realistic 2D physics |
+| **2D Rendering** | Canvas2D | Fast 2D graphics |
+| **2D Physics** | Matter.js | Realistic 2D physics |
+| **3D Rendering** | Three.js | Full 3D graphics |
+| **3D Physics** | Cannon-es | Realistic 3D physics |
 | **AI** | Claude API | Intelligent game generation |
 | **Testing** | Vitest | Fast unit tests |
 
@@ -265,6 +315,9 @@ pnpm test
 
 # Run tests with coverage
 pnpm --filter @promptplay/runtime-2d test
+
+# Build 3D runtime
+pnpm build --filter=runtime-3d
 
 # Lint code
 pnpm lint
@@ -291,8 +344,6 @@ MIT License - see [LICENSE](LICENSE) file
 
 - [GitHub](https://github.com/Davaakhatan/PromptPlay)
 - [Documentation](docs/user-guide.md)
-- [Discord](#) *(coming soon)*
-- [Examples](#) *(coming soon)*
 
 ---
 

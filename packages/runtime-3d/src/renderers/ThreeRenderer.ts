@@ -160,6 +160,20 @@ export class ThreeRenderer {
     mesh.receiveShadow = true;
     mesh.userData.entityId = entityId;
 
+    // Remove existing mesh if one exists for this entity
+    const existingMesh = this.entityMeshes.get(entityId);
+    if (existingMesh) {
+      this.scene.remove(existingMesh);
+      if (existingMesh instanceof THREE.Mesh) {
+        existingMesh.geometry.dispose();
+        if (Array.isArray(existingMesh.material)) {
+          existingMesh.material.forEach(m => m.dispose());
+        } else {
+          existingMesh.material.dispose();
+        }
+      }
+    }
+
     // Store and add to scene
     this.entityMeshes.set(entityId, mesh);
     this.scene.add(mesh);
@@ -253,6 +267,24 @@ export class ThreeRenderer {
       }
       this.entityMeshes.delete(entityId);
     }
+  }
+
+  /**
+   * Clear all entity meshes (useful when reloading a game)
+   */
+  clearAllMeshes(): void {
+    this.entityMeshes.forEach((mesh, entityId) => {
+      this.scene.remove(mesh);
+      if (mesh instanceof THREE.Mesh) {
+        mesh.geometry.dispose();
+        if (mesh.material instanceof THREE.Material) {
+          mesh.material.dispose();
+        } else if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(m => m.dispose());
+        }
+      }
+    });
+    this.entityMeshes.clear();
   }
 
   /**

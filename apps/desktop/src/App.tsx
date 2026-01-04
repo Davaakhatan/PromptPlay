@@ -902,6 +902,10 @@ function App() {
 
   // Convert 2D GameSpec to 3D Game3DSpec for 3D preview
   const convertTo3DSpec = useCallback((spec: GameSpec): Game3DSpec => {
+    const worldHeight = spec.config?.worldBounds?.height || 600;
+    const worldWidth = spec.config?.worldBounds?.width || 800;
+    const scale = 50; // 50 pixels = 1 unit in 3D
+
     return {
       version: spec.version || '1.0',
       mode: '3d',
@@ -911,10 +915,10 @@ function App() {
         description: spec.metadata?.description || '',
       },
       config: {
-        gravity: { x: 0, y: -9.81, z: 0 },
+        gravity: { x: 0, y: -20, z: 0 },
         worldBounds: {
-          width: spec.config?.worldBounds?.width || 800,
-          height: spec.config?.worldBounds?.height || 600,
+          width: worldWidth,
+          height: worldHeight,
           depth: 800
         },
         backgroundColor: '#1a1a2e',
@@ -922,13 +926,13 @@ function App() {
         ambientIntensity: 0.5,
       },
       entities: [
-        // Add ground plane first
+        // Add ground plane first - positioned at y=-1 (top surface at y=-0.75)
         {
           name: 'Ground',
           components: {
             transform3d: {
               x: 0,
-              y: -2,
+              y: -1,
               z: 0,
               rotationX: 0,
               rotationY: 0,
@@ -939,9 +943,9 @@ function App() {
             },
             mesh: {
               geometry: 'box' as const,
-              width: 30,
+              width: 40,
               height: 0.5,
-              depth: 30,
+              depth: 40,
               castShadow: false,
               receiveShadow: true,
             },
@@ -952,9 +956,9 @@ function App() {
             },
             collider3d: {
               type: 'box' as const,
-              width: 30,
+              width: 40,
               height: 0.5,
-              depth: 30,
+              depth: 40,
             },
             rigidbody3d: {
               type: 'static' as const,
@@ -972,14 +976,22 @@ function App() {
           const isPlayer = !!input || entity.tags?.includes('player');
           const isStatic = collider?.isStatic || entity.tags?.includes('platform') || entity.tags?.includes('ground');
 
-          const width = (s?.width ?? 32) / 50;
-          const height = (s?.height ?? 32) / 50;
+          const width = (s?.width ?? 32) / scale;
+          const height = (s?.height ?? 32) / scale;
+
+          // Convert 2D coordinates to 3D:
+          // 2D Y goes down (0 = top, worldHeight = bottom)
+          // 3D Y goes up (higher values = higher position)
+          // Formula: 3D_y = (worldHeight - 2D_y) / scale - offset
+          // This maps 2D bottom (high Y) to just above ground, 2D top (low Y) to high up
+          const x3d = (t?.x ?? worldWidth / 2) / scale - worldWidth / scale / 2;
+          const y3d = (worldHeight - (t?.y ?? worldHeight / 2)) / scale - 0.5;
 
           // Base components
           const components: Record<string, unknown> = {
             transform3d: {
-              x: (t?.x ?? 400) / 50 - 8,  // Convert 2D coords to 3D space
-              y: -(t?.y ?? 300) / 50 + 6,
+              x: x3d,
+              y: y3d,
               z: 0,
               rotationX: 0,
               rotationY: 0,
@@ -1022,9 +1034,20 @@ function App() {
 
           // Add input for player entities
           if (isPlayer) {
+            // Scale 2D values to 3D units:
+            // 2D uses pixels, 3D uses meters (with scale factor)
+            // In 2D, jumpForce is negative (Canvas Y down), in 3D it must be positive (Y up)
+            const rawMoveSpeed = input?.moveSpeed ?? 200;
+            const rawJumpForce = input?.jumpForce ?? -400;
+
+            // Scale moveSpeed from pixels/s to 3D units/s (divide by scale factor)
+            const moveSpeed3D = rawMoveSpeed / scale;
+            // Scale jumpForce and ensure positive (2D negative = jump up, 3D positive = jump up)
+            const jumpForce3D = Math.abs(rawJumpForce) / (scale / 4); // /20 for good feel with gravity -20
+
             components.input3d = {
-              moveSpeed: input?.moveSpeed ?? 5,
-              jumpForce: input?.jumpForce ?? 10,
+              moveSpeed: Math.max(moveSpeed3D, 2), // Minimum 2 m/s
+              jumpForce: Math.max(jumpForce3D, 8), // Minimum 8 m/s for noticeable jump
               canJump: input?.canJump !== false,
               isGrounded: true,
             };
