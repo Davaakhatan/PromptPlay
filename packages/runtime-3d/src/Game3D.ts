@@ -260,7 +260,11 @@ export class Game3D {
           color: components.material.color,
           metallic: components.material.metallic,
           roughness: components.material.roughness,
-        } : undefined
+        } : undefined,
+        {
+          castShadow: components.mesh.castShadow ?? true,
+          receiveShadow: components.mesh.receiveShadow ?? true,
+        }
       );
 
       // Set initial transform
@@ -286,6 +290,35 @@ export class Game3D {
         color: components.light.color,
         intensity: components.light.intensity,
         castShadow: components.light.castShadow,
+      });
+    }
+
+    // Load 3D model if model3d component exists
+    if (components.model3d && components.transform3d) {
+      this.renderer.loadModel(eid, components.model3d.url, {
+        scale: components.model3d.scale,
+        castShadow: components.model3d.castShadow,
+        receiveShadow: components.model3d.receiveShadow,
+      }).then(() => {
+        // Update transform after model loads
+        if (components.transform3d) {
+          this.renderer.updateMeshTransform(
+            eid,
+            { x: components.transform3d.x, y: components.transform3d.y, z: components.transform3d.z },
+            {
+              x: components.transform3d.rotationX ?? 0,
+              y: components.transform3d.rotationY ?? 0,
+              z: components.transform3d.rotationZ ?? 0,
+            },
+            {
+              x: components.transform3d.scaleX ?? 1,
+              y: components.transform3d.scaleY ?? 1,
+              z: components.transform3d.scaleZ ?? 1,
+            }
+          );
+        }
+      }).catch((error) => {
+        console.error(`Failed to load model for entity ${name}:`, error);
       });
     }
 

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import type { Scene3DConfig } from '@promptplay/shared-types';
 
 export interface ThreeRendererOptions {
@@ -21,6 +23,8 @@ export class ThreeRenderer {
   private height: number;
   private entityMeshes: Map<number, THREE.Object3D> = new Map();
   private entityLights: Map<number, THREE.Light> = new Map();
+  private gltfLoader: GLTFLoader;
+  private modelCache: Map<string, THREE.Group> = new Map();
 
   constructor(options: ThreeRendererOptions = {}) {
     const {
@@ -64,6 +68,12 @@ export class ThreeRenderer {
 
     // Add default lighting
     this.addDefaultLighting();
+
+    // Initialize GLTF loader with Draco compression support
+    this.gltfLoader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    this.gltfLoader.setDRACOLoader(dracoLoader);
   }
 
   /**
@@ -107,8 +117,24 @@ export class ThreeRenderer {
       );
     }
 
+    // Update ambient light if configured
+    if (config.ambientColor || config.ambientIntensity !== undefined) {
+      // Find existing ambient light
+      const ambientLight = this.scene.children.find(
+        child => child instanceof THREE.AmbientLight
+      ) as THREE.AmbientLight | undefined;
+
+      if (ambientLight) {
+        if (config.ambientColor) {
+          ambientLight.color.set(config.ambientColor);
+        }
+        if (config.ambientIntensity !== undefined) {
+          ambientLight.intensity = config.ambientIntensity;
+        }
+      }
+    }
+
     // TODO: Skybox support
-    // TODO: Custom ambient lighting
   }
 
   /**
@@ -118,7 +144,8 @@ export class ThreeRenderer {
     entityId: number,
     geometryType: string,
     dimensions: { width?: number; height?: number; depth?: number; radius?: number },
-    materialProps?: { color?: string; metallic?: number; roughness?: number }
+    materialProps?: { color?: string; metallic?: number; roughness?: number },
+    shadowProps?: { castShadow?: boolean; receiveShadow?: boolean }
   ): THREE.Mesh {
     // Create geometry based on type
     let geometry: THREE.BufferGeometry;
@@ -156,8 +183,8 @@ export class ThreeRenderer {
 
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.castShadow = shadowProps?.castShadow ?? true;
+    mesh.receiveShadow = shadowProps?.receiveShadow ?? true;
     mesh.userData.entityId = entityId;
 
     // Remove existing mesh if one exists for this entity
@@ -179,6 +206,60 @@ export class ThreeRenderer {
     this.scene.add(mesh);
 
     return mesh;
+  }
+
+  /**
+   * Load a GLTF/GLB model for an entity
+   */
+  async loadModel(
+    entityId: number,
+    url: string,
+    options?: {
+      scale?: number;
+      castShadow?: boolean;
+      receiveShadow?: boolean;
+    }
+  ): Promise<THREE.Group> {
+    // Check cache first
+    let model: THREE.Group;
+
+    if (this.modelCache.has(url)) {
+      // Clone from cache
+      model = this.modelCache.get(url)!.clone();
+    } else {
+      // Load the model
+      const gltf = await this.gltfLoader.loadAsync(url);
+      model = gltf.scene;
+
+      // Cache the original
+      this.modelCache.set(url, model.clone());
+    }
+
+    // Apply scale
+    const scale = options?.scale ?? 1;
+    model.scale.set(scale, scale, scale);
+
+    // Set shadow properties on all meshes in the model
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = options?.castShadow ?? true;
+        child.receiveShadow = options?.receiveShadow ?? true;
+      }
+    });
+
+    model.userData.entityId = entityId;
+
+    // Remove existing mesh if one exists for this entity
+    const existingMesh = this.entityMeshes.get(entityId);
+    if (existingMesh) {
+      this.scene.remove(existingMesh);
+    }
+
+    // Store and add to scene
+    this.entityMeshes.set(entityId, model);
+    this.scene.add(model);
+
+    return model;
   }
 
   /**

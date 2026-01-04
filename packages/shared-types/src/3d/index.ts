@@ -160,6 +160,18 @@ export interface RigidBody3DComponent {
   fixedRotation?: boolean;
 }
 
+// 3D Model component (for GLTF/GLB models)
+export interface Model3DComponent {
+  url: string;              // Path or URL to GLTF/GLB file
+  scale?: number;           // Uniform scale factor
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+  // Animation
+  animationName?: string;   // Name of animation to play
+  animationLoop?: boolean;
+  animationSpeed?: number;
+}
+
 // Extended EntityComponents for 3D
 export interface Entity3DComponents {
   transform3d?: Transform3DComponent;
@@ -171,6 +183,7 @@ export interface Entity3DComponents {
   camera3d?: Camera3DComponent;
   input3d?: Input3DComponent;
   rigidbody3d?: RigidBody3DComponent;
+  model3d?: Model3DComponent;
 }
 
 // 3D Scene configuration

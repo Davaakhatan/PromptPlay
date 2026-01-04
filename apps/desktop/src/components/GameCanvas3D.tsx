@@ -167,7 +167,11 @@ export function GameCanvas3D({
             color: mat.color,
             metallic: mat.metallic,
             roughness: mat.roughness,
-          } : undefined
+          } : undefined,
+          {
+            castShadow: m.castShadow ?? true,
+            receiveShadow: m.receiveShadow ?? true,
+          }
         );
 
         renderer.updateMeshTransform(
