@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { NodeGraph } from '../../types/NodeEditor';
+import { NODE_LIBRARY } from '../../services/NodeLibrary';
 import NodeCanvas from './NodeCanvas';
 
 interface NodeEditorProps {
@@ -94,7 +95,6 @@ function NodeInspector({
   const node = graph.nodes.find(n => n.id === nodeId);
   if (!node) return null;
 
-  const { NODE_LIBRARY } = require('../../services/NodeLibrary');
   const definition = NODE_LIBRARY[node.type];
   if (!definition) return null;
 
