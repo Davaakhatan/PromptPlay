@@ -28,13 +28,15 @@ import { useEntityOperations } from './hooks/useEntityOperations';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { addRecentProject } from './services/RecentProjectsService';
 import { screenCapture } from './services/ScreenCaptureService';
-import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
+import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon, NodeEditorIcon } from './components/Icons';
 import TilemapEditor, { Tilemap } from './components/TilemapEditor';
 import MobileExportDialog from './components/MobileExportDialog';
 import PublishDialog from './components/PublishDialog';
 import AIPlaytestPanel from './components/AIPlaytestPanel';
+import NodeEditor, { createDefaultGraph } from './components/NodeEditor';
+import type { NodeGraph } from './types/NodeEditor';
 
-type ViewMode = 'game' | 'code';
+type ViewMode = 'game' | 'code' | 'nodes';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
 type RightPanelMode = 'inspector' | 'json' | 'physics' | 'scripts';
 
@@ -69,6 +71,7 @@ function App() {
   const [showAIPlaytest, setShowAIPlaytest] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [nodeGraph, setNodeGraph] = useState<NodeGraph | null>(null);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1715,6 +1718,17 @@ function App() {
             <CodeEditor
               filePath={selectedFile}
               onSave={handleFileSave}
+            />
+          )}
+
+          {projectPath && viewMode === 'nodes' && (
+            <NodeEditor
+              graph={nodeGraph}
+              onGraphChange={(graph) => {
+                setNodeGraph(graph);
+                setHasUnsavedChanges(true);
+              }}
+              onClose={() => setViewMode('game')}
             />
           )}
         </div>

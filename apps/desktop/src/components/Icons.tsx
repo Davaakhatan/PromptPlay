@@ -1496,3 +1496,28 @@ export function InfoIcon({ size = 16, className = "" }: IconProps) {
   );
 }
 
+export function NodeEditorIcon({ size = 16, className = "" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Nodes */}
+      <rect x="2" y="3" width="6" height="5" rx="1" />
+      <rect x="16" y="3" width="6" height="5" rx="1" />
+      <rect x="9" y="16" width="6" height="5" rx="1" />
+      {/* Connection lines */}
+      <path d="M8 5.5h8" />
+      <path d="M5 8v5.5a2 2 0 002 2h2" />
+      <path d="M19 8v5.5a2 2 0 01-2 2h-2" />
+    </svg>
+  );
+}
+

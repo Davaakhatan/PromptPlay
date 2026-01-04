@@ -1,8 +1,8 @@
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon, SmartphoneIcon, RocketIcon, BrainIcon } from './Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon, SmartphoneIcon, RocketIcon, BrainIcon, NodeEditorIcon } from './Icons';
 
 interface ToolbarProps {
   projectPath: string | null;
-  viewMode: 'game' | 'code';
+  viewMode: 'game' | 'code' | 'nodes';
   isPlaying: boolean;
   loading: boolean;
   isExporting: boolean;
@@ -13,7 +13,7 @@ interface ToolbarProps {
   hasGameSpec: boolean;
   is3DMode?: boolean;
 
-  onViewModeChange: (mode: 'game' | 'code') => void;
+  onViewModeChange: (mode: 'game' | 'code' | 'nodes') => void;
   onTogglePlayPause: () => void;
   onReset: () => void;
   onNewProject: () => void;
@@ -86,6 +86,18 @@ export default function Toolbar({
                 }`}
               >
                 Code
+              </button>
+              <button
+                onClick={() => onViewModeChange('nodes')}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                  viewMode === 'nodes'
+                    ? 'bg-white/10 text-white'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+                title="Visual Script Editor"
+              >
+                <NodeEditorIcon size={12} />
+                Nodes
               </button>
             </div>
 
