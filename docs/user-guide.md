@@ -755,8 +755,54 @@ Now that you understand the basics, try:
 4. **Experiment** with different prompts
 5. **Share** your creations (JSON specs) with friends
 
-**Happy creating! 🎮✨**
+**Happy creating!**
 
 ---
 
-*PromptPlay v1.0 - AI-Powered Game Engine*
+## New in v3.0
+
+### Mobile Export (PWA)
+
+Export your game as a Progressive Web App:
+
+1. Click **File > Mobile Export** in the menu
+2. Choose between **PWA (Mobile)** or **HTML** export
+3. Configure settings:
+   - **Game Title** - Name shown on home screen
+   - **Screen Orientation** - Lock to portrait/landscape or auto-rotate
+   - **Theme Color** - Status bar and splash screen color
+   - **Touch Controls** - Add on-screen D-pad and buttons
+   - **Offline Support** - Works without internet after install
+4. Click **Export** to download the files
+5. Upload to any HTTPS server for full PWA functionality
+
+### One-Click Publishing
+
+Publish your game to popular platforms:
+
+1. Click **File > Publish** in the menu
+2. Select a platform:
+   - **itch.io** - Popular indie game platform
+   - **GitHub Pages** - Free hosting on GitHub
+   - **Mobile PWA** - Install on phones as app
+   - **HTML File** - Single file, share anywhere
+3. Enter game title and description
+4. Click **Export & Publish**
+5. Follow the instructions to complete publishing
+
+### AI Playtesting
+
+Get automated feedback on your game:
+
+1. Click the **AI Playtest** button in the toolbar
+2. Click **Run Playtest** to start analysis
+3. Review results:
+   - **Quality Score** (0-100) - Overall game quality
+   - **Playability Metrics** - Movement, jumping, collisions, goals
+   - **Issues Found** - Critical, warning, and info level issues
+   - **Suggestions** - Recommendations for improvement
+4. Click **Run Again** to re-analyze after making changes
+
+---
+
+*PromptPlay v3.0 - AI-Powered Game Engine*

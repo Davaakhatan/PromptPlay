@@ -2,6 +2,7 @@
 
 > **The AI-First Game Engine** - Create 2D & 3D games by describing them in plain English
 
+[![Version](https://img.shields.io/badge/Version-3.0.0-brightgreen.svg)](https://github.com/Davaakhatan/PromptPlay/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
@@ -297,12 +298,76 @@ PromptPlay/
 - [x] One-Click Publishing (itch.io, GitHub Pages, HTML export)
 - [x] AI Playtesting (automated game analysis and feedback)
 
-### Future (v3.1)
+### v3.1 - Community & Collaboration
 
-- [ ] Community Marketplace
-- [ ] Collaborative Editing
-- [ ] Advanced AI Game Generation
-- [ ] Cloud Save & Sync
+- [ ] Community Marketplace (asset sharing, templates, plugins)
+- [ ] Collaborative Editing (real-time multiplayer editing)
+- [ ] Advanced AI Game Generation (full game from description)
+- [ ] Cloud Save & Sync (automatic backup)
+- [ ] User Profiles & Authentication
+
+### v3.2 - Advanced AI
+
+- [ ] AI-Powered Level Design (procedural generation)
+- [ ] Smart NPC Dialogue System (dynamic conversations)
+- [ ] Procedural Content Generation (dungeons, worlds)
+- [ ] AI Art Generation Integration (Stable Diffusion, DALL-E)
+- [ ] Voice-to-Game Feature (speak and create)
+
+### v4.0 - Visual Scripting (ComfyUI-Style)
+
+- [ ] Node-Based Editor (ComfyUI-inspired workflow)
+- [ ] Visual Logic Builder (connect nodes to create behavior)
+- [ ] Motion & Animation Nodes (keyframe, easing, paths)
+- [ ] Event System Nodes (triggers, conditions, actions)
+- [ ] Custom Node Creation (extend with TypeScript)
+- [ ] Shader Graph Editor (visual shader creation)
+- [ ] Behavior Trees (AI decision making)
+
+### v4.1 - Professional Tools
+
+- [ ] Advanced Particle Editor (GPU particles)
+- [ ] Terrain Editor (3D landscapes)
+- [ ] Water & Weather Systems (rain, snow, wind)
+- [ ] Day/Night Cycle (dynamic lighting)
+- [ ] Spline & Path Editor (curves, rails)
+- [ ] Cutscene Editor (cinematic sequences)
+
+### v4.2 - Performance & Polish
+
+- [ ] GPU Instancing (thousands of objects)
+- [ ] LOD System (Level of Detail)
+- [ ] Occlusion Culling (smart rendering)
+- [ ] Asset Streaming (large worlds)
+- [ ] Memory Optimization (efficient loading)
+- [ ] Profiler & Performance Tools
+
+### v5.0 - Multiplayer & Networking
+
+- [ ] Real-time Multiplayer Support
+- [ ] Lobby System (matchmaking rooms)
+- [ ] Peer-to-Peer & Server Options
+- [ ] Leaderboards & Achievements
+- [ ] Cloud Functions (serverless logic)
+- [ ] Voice Chat Integration
+
+### v5.1 - Monetization & Analytics
+
+- [ ] In-App Purchase Support
+- [ ] Ad Integration (rewarded, banner, interstitial)
+- [ ] Analytics Dashboard (player behavior)
+- [ ] A/B Testing (experiment with features)
+- [ ] Crash Reporting (error tracking)
+- [ ] Revenue Tracking
+
+### v6.0 - Extended Platforms
+
+- [ ] Console Export (Switch, PlayStation, Xbox)
+- [ ] VR/AR Support (WebXR, Oculus, SteamVR)
+- [ ] Steam Integration (achievements, workshop)
+- [ ] Mobile App Stores (iOS App Store, Google Play)
+- [ ] WebGPU Rendering (next-gen graphics)
+- [ ] Native Mobile (React Native, Capacitor)
 
 ---
 

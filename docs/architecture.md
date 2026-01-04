@@ -1049,39 +1049,124 @@ CloudFlare CDN
 
 ---
 
+## v3.0 Architecture Enhancements
+
+### 1. Publishing Service
+
+**Purpose:** Export games to multiple platforms
+
+```typescript
+class PublishService {
+  publish(config: PublishConfig): Promise<PublishResult>;
+  publishAsHTML(): Promise<PublishResult>;
+  publishForItch(): Promise<PublishResult>;
+  publishAsPWA(): Promise<PublishResult>;
+  publishForGitHubPages(): Promise<PublishResult>;
+}
+```
+
+**PWA Features:**
+- Service worker for offline support
+- Web app manifest for installation
+- Touch controls (D-pad, action buttons)
+- Fullscreen mode
+- Responsive scaling
+
+### 2. AI Playtest Service
+
+**Purpose:** Automated game analysis and feedback
+
+```typescript
+class AIPlaytestService {
+  runPlaytest(gameSpec: GameSpec): Promise<PlaytestResult>;
+  analyzeStructure(gameSpec: GameSpec): StructureAnalysis;
+  checkPlayability(gameSpec: GameSpec): PlayabilityMetrics;
+  detectIssues(gameSpec: GameSpec): PlaytestIssue[];
+}
+```
+
+**Analysis Features:**
+- Entity structure analysis (player, platforms, enemies, goals)
+- Playability metrics (movement, jumping, collisions)
+- Issue detection (critical, warning, info)
+- Quality scoring (0-100)
+- Improvement suggestions
+
+### 3. Mobile Export
+
+**Architecture:**
+- PWA package generation (HTML, manifest, service worker)
+- Touch control overlay
+- Orientation locking (portrait/landscape)
+- Offline caching
+
+---
+
 ## Future Architecture Enhancements
 
-### 1. Multiplayer Support
+### v3.1 - Community & Collaboration
+
+**Architecture:**
+- User authentication (OAuth, JWT)
+- Cloud storage (PostgreSQL, S3)
+- Real-time collaboration (WebSocket, CRDT)
+- Marketplace API
+
+### v3.2 - Advanced AI
+
+**Architecture:**
+- Procedural generation engine
+- NPC dialogue system
+- AI art integration (DALL-E, Stable Diffusion)
+- Voice recognition
+
+### v4.0 - Visual Scripting (ComfyUI-Style)
+
+**Architecture:**
+- Node-based graph editor
+- Custom node registry
+- Connection validation
+- Execution engine
+- Shader graph compiler
+
+```typescript
+interface Node {
+  id: string;
+  type: string;
+  inputs: Port[];
+  outputs: Port[];
+  properties: Record<string, any>;
+}
+
+interface Connection {
+  from: { nodeId: string; portId: string };
+  to: { nodeId: string; portId: string };
+}
+
+class NodeGraph {
+  addNode(node: Node): void;
+  connect(from: Port, to: Port): void;
+  execute(): void;
+  compile(): string;
+}
+```
+
+### v5.0 - Multiplayer Support
 
 **Architecture:**
 - WebSocket server for real-time communication
 - Server-authoritative physics
 - Client-side prediction
 - Rollback netcode
+- Lobby system
 
-### 2. Custom Components
-
-**Architecture:**
-- Plugin system for custom components
-- Component registry
-- Runtime component compilation
-- Type checking for custom components
-
-### 3. Visual Editor
+### v6.0 - Extended Platforms
 
 **Architecture:**
-- Drag-and-drop entity placement
-- Visual component inspector
-- Timeline for animation
-- Scene graph visualization
-
-### 4. Asset Pipeline
-
-**Architecture:**
-- Asset upload service
-- Image optimization
-- Sprite sheet generation
-- Audio compression
+- Console SDK integration
+- WebXR for VR/AR
+- Steam SDK integration
+- Mobile app packaging
 
 ---
 

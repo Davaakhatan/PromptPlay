@@ -1,6 +1,6 @@
 {
   "name": "@promptplay/runtime-3d",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "3D runtime for PromptPlay game engine using Three.js",
   "type": "module",
   "main": "dist/index.js",

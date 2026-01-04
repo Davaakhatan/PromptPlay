@@ -3,9 +3,9 @@
 ## Executive Summary
 
 **Product Name:** PromptPlay
-**Version:** 2.0 Desktop
-**Date:** December 2024
-**Status:** Architecture Pivot - Moving to Tauri Desktop
+**Version:** 3.0.0
+**Date:** January 2025
+**Status:** Publishing & Distribution Release
 
 PromptPlay is an **AI-first desktop game engine** that enables users to create 2D games through seamless AI collaboration. Unlike traditional engines where AI assistance is an afterthought, PromptPlay is built from the ground up for AI pair programming. Users can develop games through visual editing, direct coding with AI in the terminal (Claude Code), or conversational development with the built-in AI chat panel.
 
