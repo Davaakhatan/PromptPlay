@@ -17,7 +17,7 @@
 
 ## System Overview
 
-PromptPlay is a modular, AI-powered 2D game engine with a native desktop editor built on Tauri 2.0. The system enables game creation through natural language prompts or a visual scene editor, using an Entity Component System (ECS) runtime.
+PromptPlay is a modular, AI-powered 2D & 3D game engine with a native desktop editor built on Tauri 2.0. The system enables game creation through natural language prompts or a visual scene editor, using an Entity Component System (ECS) runtime.
 
 ### High-Level Architecture
 

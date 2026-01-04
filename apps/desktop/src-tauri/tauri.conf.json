@@ -30,8 +30,8 @@
     "publisher": "PromptPlay",
     "copyright": "Copyright © 2024 PromptPlay",
     "category": "DeveloperTool",
-    "shortDescription": "AI-First 2D Game Engine",
-    "longDescription": "Create 2D games through AI collaboration with visual editing and hot reload support"
+    "shortDescription": "AI-First 2D & 3D Game Engine",
+    "longDescription": "Create 2D & 3D games through AI collaboration with visual editing and hot reload support"
   },
   "plugins": {}
 }

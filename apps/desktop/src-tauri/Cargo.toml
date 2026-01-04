@@ -1,7 +1,7 @@
 [package]
 name = "promptplay-desktop"
 version = "3.0.0"
-description = "PromptPlay - AI-First 2D Game Engine"
+description = "PromptPlay - AI-First 2D & 3D Game Engine"
 authors = ["PromptPlay Team"]
 edition = "2021"
 

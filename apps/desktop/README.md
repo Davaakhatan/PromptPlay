@@ -1,6 +1,6 @@
 # PromptPlay Desktop
 
-AI-First 2D Game Engine built with Tauri 2.0
+AI-First 2D & 3D Game Engine built with Tauri 2.0
 
 ## Development
 

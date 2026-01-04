@@ -71,7 +71,7 @@ impl AIClient {
         let api_key = self.api_key.as_ref().ok_or("API key not set")?;
 
         let system_prompt = format!(
-            r#"You are an AI game development assistant for PromptPlay, a 2D game engine.
+            r#"You are an AI game development assistant for PromptPlay, a 2D & 3D game engine.
 You help users create and modify games by editing the game specification JSON.
 
 Current Game Context:

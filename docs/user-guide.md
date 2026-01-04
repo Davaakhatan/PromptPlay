@@ -2,7 +2,7 @@
 
 ## Welcome to PromptPlay
 
-PromptPlay is an AI-powered 2D game engine with a native desktop editor. Create playable games by describing them in plain English, or use the visual scene editor to build games interactively.
+PromptPlay is an AI-powered 2D & 3D game engine with a native desktop editor. Create playable games by describing them in plain English, or use the visual scene editor to build games interactively.
 
 ---
 
