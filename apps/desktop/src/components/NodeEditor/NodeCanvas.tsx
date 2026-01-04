@@ -165,22 +165,35 @@ function NodeComponent({
           !connectingPort.isOutput &&
           connectingPort.nodeId === node.id &&
           connectingPort.portId === port.id;
+        const canConnect = connectingPort &&
+          connectingPort.isOutput &&
+          connectingPort.nodeId !== node.id &&
+          (connectingPort.portType === port.type || connectingPort.portType === 'any' || port.type === 'any');
 
         return (
           <g key={`in-${port.id}`}>
+            {/* Larger invisible hit area */}
+            <circle
+              cx={0}
+              cy={y}
+              r={12}
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onPortClick(node.id, port.id, false, port.type);
+              }}
+            />
             {/* Port circle */}
             <circle
               cx={0}
               cy={y}
               r={6}
-              fill={isConnecting ? portColor : '#1e1e2e'}
+              fill={isConnecting || canConnect ? portColor : '#1e1e2e'}
               stroke={portColor}
               strokeWidth={2}
-              className="cursor-pointer hover:scale-110 transition-transform"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPortClick(node.id, port.id, false, port.type);
-              }}
+              className="pointer-events-none"
+              style={{ filter: canConnect ? 'drop-shadow(0 0 4px ' + portColor + ')' : 'none' }}
             />
             {/* Port label */}
             <text
@@ -204,22 +217,35 @@ function NodeComponent({
           connectingPort.isOutput &&
           connectingPort.nodeId === node.id &&
           connectingPort.portId === port.id;
+        const canConnect = connectingPort &&
+          !connectingPort.isOutput &&
+          connectingPort.nodeId !== node.id &&
+          (connectingPort.portType === port.type || connectingPort.portType === 'any' || port.type === 'any');
 
         return (
           <g key={`out-${port.id}`}>
+            {/* Larger invisible hit area */}
+            <circle
+              cx={nodeWidth}
+              cy={y}
+              r={12}
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onPortClick(node.id, port.id, true, port.type);
+              }}
+            />
             {/* Port circle */}
             <circle
               cx={nodeWidth}
               cy={y}
               r={6}
-              fill={isConnecting ? portColor : '#1e1e2e'}
+              fill={isConnecting || canConnect ? portColor : '#1e1e2e'}
               stroke={portColor}
               strokeWidth={2}
-              className="cursor-pointer hover:scale-110 transition-transform"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPortClick(node.id, port.id, true, port.type);
-              }}
+              className="pointer-events-none"
+              style={{ filter: canConnect ? 'drop-shadow(0 0 4px ' + portColor + ')' : 'none' }}
             />
             {/* Port label */}
             <text
@@ -469,6 +495,13 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
     });
   }, [graph, onGraphChange]);
 
+  // Check if two port types are compatible
+  const areTypesCompatible = (type1: PortType, type2: PortType): boolean => {
+    if (type1 === type2) return true;
+    if (type1 === 'any' || type2 === 'any') return true;
+    return false;
+  };
+
   // Handle port click for connections
   const handlePortClick = useCallback((nodeId: string, portId: string, isOutput: boolean, portType: PortType) => {
     if (!connectingPort) {
@@ -488,11 +521,23 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
         return;
       }
 
+      // Check type compatibility
+      if (!areTypesCompatible(connectingPort.portType, portType)) {
+        console.log(`Cannot connect: ${connectingPort.portType} is not compatible with ${portType}`);
+        setConnectingPort(null);
+        return;
+      }
+
       // Create connection (always from output to input)
       const fromNodeId = connectingPort.isOutput ? connectingPort.nodeId : nodeId;
       const fromPortId = connectingPort.isOutput ? connectingPort.portId : portId;
       const toNodeId = connectingPort.isOutput ? nodeId : connectingPort.nodeId;
       const toPortId = connectingPort.isOutput ? portId : connectingPort.portId;
+
+      // Remove existing connection to this input (only one connection per input)
+      const filteredConnections = graph.connections.filter(
+        c => !(c.toNodeId === toNodeId && c.toPortId === toPortId)
+      );
 
       const newConnection: Connection = {
         id: `conn_${Date.now()}`,
@@ -504,7 +549,7 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
 
       onGraphChange({
         ...graph,
-        connections: [...graph.connections, newConnection],
+        connections: [...filteredConnections, newConnection],
       });
 
       setConnectingPort(null);
@@ -534,9 +579,15 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
     };
   }, [graph.nodes]);
 
-  // Delete selected node
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC to cancel connection
+      if (e.key === 'Escape') {
+        setConnectingPort(null);
+        setShowPalette(false);
+      }
+      // Delete selected node
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId) {
         onGraphChange({
           ...graph,
@@ -669,9 +720,19 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
       </div>
 
       {/* Help text */}
-      <div className="absolute bottom-4 left-4 text-xs text-gray-500">
-        Right-click to add nodes • Alt+drag or middle-click to pan • Scroll to zoom
+      <div className="absolute bottom-4 left-4 text-xs text-gray-500 space-y-0.5">
+        <div>Right-click to add nodes • Delete/Backspace to remove selected</div>
+        <div>Click port → Click another port to connect (matching colors only)</div>
+        <div>Alt+drag or middle-click to pan • Scroll to zoom</div>
       </div>
+
+      {/* Connection hint */}
+      {connectingPort && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 rounded-lg text-sm text-white">
+          Click a {connectingPort.isOutput ? 'input' : 'output'} port with matching color to connect
+          <span className="ml-2 text-gray-400">(ESC to cancel)</span>
+        </div>
+      )}
     </div>
   );
 }
