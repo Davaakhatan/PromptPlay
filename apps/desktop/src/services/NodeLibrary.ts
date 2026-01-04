@@ -13,6 +13,7 @@ const onStartNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: () => ({}),
 };
 
 const onUpdateNode: NodeDefinition = {
@@ -26,6 +27,7 @@ const onUpdateNode: NodeDefinition = {
     { id: 'flow', name: 'Flow', type: 'flow' },
     { id: 'delta', name: 'Delta Time', type: 'number' },
   ],
+  execute: (inputs, context) => ({ delta: context.deltaTime }),
 };
 
 const onCollisionNode: NodeDefinition = {
@@ -41,6 +43,7 @@ const onCollisionNode: NodeDefinition = {
     { id: 'flow', name: 'Flow', type: 'flow' },
     { id: 'other', name: 'Other Entity', type: 'entity' },
   ],
+  execute: (inputs) => ({ other: inputs.eventData }),
 };
 
 const onKeyPressNode: NodeDefinition = {
@@ -55,6 +58,7 @@ const onKeyPressNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: () => ({}),
 };
 
 // Logic Nodes
@@ -72,6 +76,7 @@ const branchNode: NodeDefinition = {
     { id: 'true', name: 'True', type: 'flow' },
     { id: 'false', name: 'False', type: 'flow' },
   ],
+  execute: (inputs) => ({ condition: Boolean(inputs.condition) }),
 };
 
 const compareNode: NodeDefinition = {
@@ -89,6 +94,11 @@ const compareNode: NodeDefinition = {
     { id: 'greater', name: 'A > B', type: 'boolean' },
     { id: 'less', name: 'A < B', type: 'boolean' },
   ],
+  execute: (inputs) => ({
+    equal: inputs.a === inputs.b,
+    greater: (inputs.a as number) > (inputs.b as number),
+    less: (inputs.a as number) < (inputs.b as number),
+  }),
 };
 
 const andNode: NodeDefinition = {
@@ -104,6 +114,7 @@ const andNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'boolean' },
   ],
+  execute: (inputs) => ({ result: Boolean(inputs.a) && Boolean(inputs.b) }),
 };
 
 const orNode: NodeDefinition = {
@@ -119,6 +130,7 @@ const orNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'boolean' },
   ],
+  execute: (inputs) => ({ result: Boolean(inputs.a) || Boolean(inputs.b) }),
 };
 
 const notNode: NodeDefinition = {
@@ -133,6 +145,7 @@ const notNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'boolean' },
   ],
+  execute: (inputs) => ({ result: !Boolean(inputs.value) }),
 };
 
 // Math Nodes
@@ -149,6 +162,7 @@ const addNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({ result: (inputs.a as number) + (inputs.b as number) }),
 };
 
 const subtractNode: NodeDefinition = {
@@ -164,6 +178,7 @@ const subtractNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({ result: (inputs.a as number) - (inputs.b as number) }),
 };
 
 const multiplyNode: NodeDefinition = {
@@ -179,6 +194,7 @@ const multiplyNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({ result: (inputs.a as number) * (inputs.b as number) }),
 };
 
 const divideNode: NodeDefinition = {
@@ -194,6 +210,7 @@ const divideNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({ result: (inputs.b as number) !== 0 ? (inputs.a as number) / (inputs.b as number) : 0 }),
 };
 
 const clampNode: NodeDefinition = {
@@ -210,6 +227,9 @@ const clampNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({
+    result: Math.max(inputs.min as number, Math.min(inputs.max as number, inputs.value as number))
+  }),
 };
 
 const lerpNode: NodeDefinition = {
@@ -226,6 +246,9 @@ const lerpNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({
+    result: (inputs.a as number) + ((inputs.b as number) - (inputs.a as number)) * (inputs.t as number)
+  }),
 };
 
 const randomNode: NodeDefinition = {
@@ -241,6 +264,9 @@ const randomNode: NodeDefinition = {
   outputs: [
     { id: 'result', name: 'Result', type: 'number' },
   ],
+  execute: (inputs) => ({
+    result: (inputs.min as number) + Math.random() * ((inputs.max as number) - (inputs.min as number))
+  }),
 };
 
 // Entity Nodes
@@ -256,6 +282,7 @@ const getEntityNode: NodeDefinition = {
   outputs: [
     { id: 'entity', name: 'Entity', type: 'entity' },
   ],
+  execute: (inputs, context) => ({ entity: context.getEntity(inputs.name as string) }),
 };
 
 const getPositionNode: NodeDefinition = {
@@ -271,6 +298,10 @@ const getPositionNode: NodeDefinition = {
     { id: 'x', name: 'X', type: 'number' },
     { id: 'y', name: 'Y', type: 'number' },
   ],
+  execute: (inputs) => {
+    const entity = inputs.entity as { transform?: { x: number; y: number } } | null;
+    return { x: entity?.transform?.x ?? 0, y: entity?.transform?.y ?? 0 };
+  },
 };
 
 const setPositionNode: NodeDefinition = {
@@ -288,6 +319,15 @@ const setPositionNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string; transform?: { x: number; y: number } } | null;
+    if (entity?.transform) {
+      entity.transform.x = inputs.x as number;
+      entity.transform.y = inputs.y as number;
+      context.updateEntity(entity.name, entity);
+    }
+    return {};
+  },
 };
 
 const getVelocityNode: NodeDefinition = {
@@ -303,6 +343,10 @@ const getVelocityNode: NodeDefinition = {
     { id: 'vx', name: 'VX', type: 'number' },
     { id: 'vy', name: 'VY', type: 'number' },
   ],
+  execute: (inputs) => {
+    const entity = inputs.entity as { physics?: { velocityX: number; velocityY: number } } | null;
+    return { vx: entity?.physics?.velocityX ?? 0, vy: entity?.physics?.velocityY ?? 0 };
+  },
 };
 
 const setVelocityNode: NodeDefinition = {
@@ -320,6 +364,15 @@ const setVelocityNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string; physics?: { velocityX: number; velocityY: number } } | null;
+    if (entity?.physics) {
+      entity.physics.velocityX = inputs.vx as number;
+      entity.physics.velocityY = inputs.vy as number;
+      context.updateEntity(entity.name, entity);
+    }
+    return {};
+  },
 };
 
 const destroyEntityNode: NodeDefinition = {
@@ -335,6 +388,13 @@ const destroyEntityNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string } | null;
+    if (entity) {
+      context.emit('destroy_entity', entity.name);
+    }
+    return {};
+  },
 };
 
 // Physics Nodes
@@ -353,6 +413,13 @@ const applyForceNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string } | null;
+    if (entity) {
+      context.emit('apply_force', { entity: entity.name, x: inputs.x, y: inputs.y });
+    }
+    return {};
+  },
 };
 
 const applyImpulseNode: NodeDefinition = {
@@ -370,6 +437,13 @@ const applyImpulseNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string } | null;
+    if (entity) {
+      context.emit('apply_impulse', { entity: entity.name, x: inputs.x, y: inputs.y });
+    }
+    return {};
+  },
 };
 
 // Input Nodes
@@ -385,6 +459,10 @@ const getKeyNode: NodeDefinition = {
   outputs: [
     { id: 'pressed', name: 'Pressed', type: 'boolean' },
   ],
+  execute: () => {
+    // Input state would be passed via context in real implementation
+    return { pressed: false };
+  },
 };
 
 const getMousePositionNode: NodeDefinition = {
@@ -398,6 +476,10 @@ const getMousePositionNode: NodeDefinition = {
     { id: 'x', name: 'X', type: 'number' },
     { id: 'y', name: 'Y', type: 'number' },
   ],
+  execute: () => {
+    // Mouse state would be passed via context in real implementation
+    return { x: 0, y: 0 };
+  },
 };
 
 const getAxisNode: NodeDefinition = {
@@ -412,6 +494,10 @@ const getAxisNode: NodeDefinition = {
   outputs: [
     { id: 'value', name: 'Value', type: 'number' },
   ],
+  execute: () => {
+    // Axis state would be passed via context in real implementation
+    return { value: 0 };
+  },
 };
 
 // Animation Nodes
@@ -429,6 +515,13 @@ const playAnimationNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    const entity = inputs.entity as { name: string } | null;
+    if (entity) {
+      context.emit('play_animation', { entity: entity.name, animation: inputs.animation });
+    }
+    return {};
+  },
 };
 
 const tweenNode: NodeDefinition = {
@@ -448,6 +541,10 @@ const tweenNode: NodeDefinition = {
     { id: 'value', name: 'Value', type: 'number' },
     { id: 'complete', name: 'On Complete', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    context.emit('start_tween', { from: inputs.from, to: inputs.to, duration: inputs.duration });
+    return { value: inputs.from };
+  },
 };
 
 // Audio Nodes
@@ -465,6 +562,10 @@ const playSoundNode: NodeDefinition = {
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
   ],
+  execute: (inputs, context) => {
+    context.emit('play_sound', { sound: inputs.sound, volume: inputs.volume });
+    return {};
+  },
 };
 
 // All nodes registry
