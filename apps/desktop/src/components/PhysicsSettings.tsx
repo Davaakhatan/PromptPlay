@@ -381,7 +381,7 @@ export default function PhysicsSettings({
         {expandedSections.has('legend') && (
           <div className="px-3 pb-3 space-y-2">
             <p className="text-[10px] text-text-tertiary mb-2">
-              Press D to toggle debug view:
+              Press F3 to toggle debug view:
             </p>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">

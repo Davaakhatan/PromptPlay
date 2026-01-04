@@ -1,4 +1,4 @@
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner } from './Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon } from './Icons';
 
 interface ToolbarProps {
   projectPath: string | null;
@@ -24,6 +24,8 @@ interface ToolbarProps {
   onToggleAI: () => void;
   onExport: () => void;
   onToggle3DMode?: () => void;
+  onScreenshot?: () => void;
+  onSearch?: () => void;
 }
 
 export default function Toolbar({
@@ -49,6 +51,8 @@ export default function Toolbar({
   onToggleAI,
   onExport,
   onToggle3DMode,
+  onScreenshot,
+  onSearch,
 }: ToolbarProps) {
   return (
     <div className="bg-panel border-b border-subtle h-10 flex items-center justify-between px-2 backdrop-blur-md sticky top-0 z-10">
@@ -203,6 +207,28 @@ export default function Toolbar({
             </button>
 
             <div className="w-px h-4 bg-subtle mx-1" />
+
+            {/* Search */}
+            {hasGameSpec && onSearch && (
+              <button
+                onClick={onSearch}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
+                title="Search Entities (Cmd+K)"
+              >
+                <SearchIcon size={14} />
+              </button>
+            )}
+
+            {/* Screenshot */}
+            {hasGameSpec && onScreenshot && viewMode === 'game' && (
+              <button
+                onClick={onScreenshot}
+                className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
+                title="Take Screenshot"
+              >
+                <CameraIcon size={14} />
+              </button>
+            )}
 
             {/* AI */}
             <button

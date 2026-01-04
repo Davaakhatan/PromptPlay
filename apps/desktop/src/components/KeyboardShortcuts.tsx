@@ -21,7 +21,7 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'View',
     shortcuts: [
       { keys: ['G'], description: 'Toggle grid overlay' },
-      { keys: ['D'], description: 'Toggle debug mode (show colliders)' },
+      { keys: ['F3'], description: 'Toggle debug mode (show colliders)' },
       { keys: ['+', '='], description: 'Zoom in' },
       { keys: ['-'], description: 'Zoom out' },
       { keys: ['F'], description: 'Fit all entities in view' },

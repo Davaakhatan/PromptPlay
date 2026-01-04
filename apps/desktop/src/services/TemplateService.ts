@@ -612,6 +612,144 @@ export function getTemplate(id: string): GameTemplate | undefined {
   return GAME_TEMPLATES.find(t => t.id === id);
 }
 
+// Custom template interface extends GameTemplate with spec data
+export interface CustomTemplate extends GameTemplate {
+  isCustom: true;
+  spec: GameSpec;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Storage key for custom templates in localStorage (will be migrated to file system later)
+const CUSTOM_TEMPLATES_KEY = 'promptplay_custom_templates';
+
+/**
+ * Get all custom templates from storage
+ */
+export function getCustomTemplates(): CustomTemplate[] {
+  try {
+    const stored = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Failed to load custom templates:', e);
+  }
+  return [];
+}
+
+/**
+ * Save a game spec as a custom template
+ */
+export function saveAsTemplate(
+  spec: GameSpec,
+  templateName: string,
+  templateDescription: string,
+  options?: {
+    icon?: string;
+    color?: string;
+    tags?: string[];
+  }
+): CustomTemplate {
+  const now = new Date().toISOString();
+  const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  // Determine genre from spec
+  const genre = spec.metadata?.genre as 'platformer' | 'shooter' | 'puzzle' || 'platformer';
+
+  // Determine difficulty based on entity count
+  const entityCount = spec.entities?.length || 0;
+  const difficulty: 'beginner' | 'intermediate' | 'advanced' =
+    entityCount <= 5 ? 'beginner' :
+    entityCount <= 15 ? 'intermediate' : 'advanced';
+
+  const customTemplate: CustomTemplate = {
+    id,
+    name: templateName,
+    description: templateDescription,
+    genre,
+    icon: options?.icon || '📁',
+    color: options?.color || 'violet',
+    difficulty,
+    tags: options?.tags || ['custom', genre],
+    isCustom: true,
+    spec: {
+      ...spec,
+      metadata: {
+        ...spec.metadata,
+        title: templateName,
+        description: templateDescription,
+      },
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Get existing templates and add new one
+  const existing = getCustomTemplates();
+  existing.push(customTemplate);
+
+  // Save to storage
+  localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(existing));
+
+  return customTemplate;
+}
+
+/**
+ * Delete a custom template by ID
+ */
+export function deleteCustomTemplate(templateId: string): boolean {
+  const templates = getCustomTemplates();
+  const filtered = templates.filter(t => t.id !== templateId);
+
+  if (filtered.length === templates.length) {
+    return false; // Template not found
+  }
+
+  localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(filtered));
+  return true;
+}
+
+/**
+ * Update a custom template
+ */
+export function updateCustomTemplate(
+  templateId: string,
+  updates: Partial<Pick<CustomTemplate, 'name' | 'description' | 'icon' | 'color' | 'tags' | 'spec'>>
+): CustomTemplate | null {
+  const templates = getCustomTemplates();
+  const index = templates.findIndex(t => t.id === templateId);
+
+  if (index === -1) {
+    return null;
+  }
+
+  templates[index] = {
+    ...templates[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
+  return templates[index];
+}
+
+/**
+ * Get a custom template's spec by ID
+ */
+export function getCustomTemplateSpec(templateId: string): GameSpec | null {
+  const templates = getCustomTemplates();
+  const template = templates.find(t => t.id === templateId);
+  return template?.spec || null;
+}
+
+/**
+ * Get all templates (built-in + custom)
+ */
+export function getAllTemplates(): (GameTemplate | CustomTemplate)[] {
+  return [...GAME_TEMPLATES, ...getCustomTemplates()];
+}
+
 /**
  * Suggest template based on description
  */

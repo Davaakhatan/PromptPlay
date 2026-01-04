@@ -238,7 +238,7 @@ PromptPlay/
 | `Cmd/Ctrl + A` | Select All |
 | `Delete/Backspace` | Delete Selected |
 | `Cmd/Ctrl + E` | Export HTML |
-| `D` | Toggle Debug Overlay |
+| `F3` | Toggle Debug Overlay |
 | `Space` | Jump (in game) |
 | `WASD/Arrows` | Move (in game) |
 
@@ -273,10 +273,23 @@ PromptPlay/
 - [x] JSON Schema with 3D Components
 - [x] Game Package Import/Export (.promptplay.json)
 
-### Next (v2.0)
+### Completed (v2.0)
 
-- [ ] Dynamic Template Generation
-- [ ] Voice Input
+- [x] Dynamic Template Generation (Save as Template)
+- [x] Voice Input for AI Chat (Web Speech API)
+- [x] Particle System (fire, smoke, sparkles, explosions, rain, snow, confetti)
+- [x] Screenshot Capture (PNG/JPEG/WebP)
+- [x] Video Recording (WebM)
+- [x] Recent Projects (quick access to recent games)
+- [x] Entity Search (Cmd/Ctrl+K to search entities)
+
+### Completed (v2.1)
+
+- [x] Sound/Music Manager (SFX, BGM, ambient audio)
+- [x] Audio Component (3D spatial audio, volume, loop)
+- [x] Animation Timeline Editor (keyframe animations)
+- [x] Tilemap Editor (tile-based level design)
+- [x] Tilemap Component (tile-based rendering)
 
 ### Future (v3.0)
 - [ ] Community Marketplace

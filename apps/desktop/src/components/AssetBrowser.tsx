@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
 import { fileSystem } from '../services/FileSystem';
 import { ImageIcon, SoundIcon, FolderIcon, RefreshIcon, PlusIcon } from './Icons';
 
@@ -124,6 +125,74 @@ export default function update(entity, dt) {
     }
   };
 
+  // Import sound files
+  const handleImportSounds = async () => {
+    if (!projectPath) return;
+
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [
+          { name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'webm', 'm4a', 'aac', 'flac'] },
+        ],
+      });
+
+      if (!selected) return;
+
+      const files = Array.isArray(selected) ? selected : [selected];
+      setLoading(true);
+
+      for (const srcPath of files) {
+        const fileName = srcPath.split(/[/\\]/).pop();
+        if (fileName) {
+          const destPath = currentPath
+            ? `${projectPath}/${currentPath}/${fileName}`
+            : `${projectPath}/${fileName}`;
+          await fileSystem.copyFile(srcPath, destPath);
+        }
+      }
+
+      await loadAssets(currentPath);
+    } catch (err) {
+      setError(`Failed to import sounds: ${err}`);
+      setLoading(false);
+    }
+  };
+
+  // Import image files
+  const handleImportImages = async () => {
+    if (!projectPath) return;
+
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [
+          { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
+        ],
+      });
+
+      if (!selected) return;
+
+      const files = Array.isArray(selected) ? selected : [selected];
+      setLoading(true);
+
+      for (const srcPath of files) {
+        const fileName = srcPath.split(/[/\\]/).pop();
+        if (fileName) {
+          const destPath = currentPath
+            ? `${projectPath}/${currentPath}/${fileName}`
+            : `${projectPath}/${fileName}`;
+          await fileSystem.copyFile(srcPath, destPath);
+        }
+      }
+
+      await loadAssets(currentPath);
+    } catch (err) {
+      setError(`Failed to import images: ${err}`);
+      setLoading(false);
+    }
+  };
+
   const handleNavigateToFolder = (folderPath: string) => {
     const relativePath = folderPath.replace(projectPath + '/', '');
     setCurrentPath(relativePath);
@@ -230,14 +299,36 @@ export default function update(entity, dt) {
       <div className="px-3 py-2 bg-subtle border-b border-subtle">
         {/* ... header content ... */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleCreateScript}
-            className="flex items-center gap-1.5 px-2 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors shadow-sm"
-            title="Create new script"
-          >
-            <PlusIcon size={12} />
-            <span>New Script</span>
-          </button>
+          {filter === 'all' && (
+            <button
+              onClick={handleCreateScript}
+              className="flex items-center gap-1.5 px-2 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors shadow-sm"
+              title="Create new script"
+            >
+              <PlusIcon size={12} />
+              <span>New Script</span>
+            </button>
+          )}
+          {filter === 'images' && (
+            <button
+              onClick={handleImportImages}
+              className="flex items-center gap-1.5 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 transition-colors shadow-sm"
+              title="Import images"
+            >
+              <PlusIcon size={12} />
+              <span>Import Images</span>
+            </button>
+          )}
+          {filter === 'sounds' && (
+            <button
+              onClick={handleImportSounds}
+              className="flex items-center gap-1.5 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors shadow-sm"
+              title="Import sounds"
+            >
+              <PlusIcon size={12} />
+              <span>Import Sounds</span>
+            </button>
+          )}
           <div className="w-px h-4 bg-subtle mx-1" />
           <button
             onClick={() => loadAssets(currentPath)}

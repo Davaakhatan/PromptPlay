@@ -3,10 +3,11 @@ import { invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { GameSpec } from '@promptplay/shared-types';
-import { AIIcon, SettingsIcon, TrashIcon, ChevronDownIcon } from './Icons';
+import { AIIcon, SettingsIcon, TrashIcon, ChevronDownIcon, MicrophoneIcon, MicrophoneOffIcon } from './Icons';
 import DiffPreview from './DiffPreview';
 import { simulateAIResponse } from '../services/aiDemoSimulator';
 import { chatHistoryService, ChatSession } from '../services/ChatHistoryService';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 
 interface AIPromptPanelProps {
   gameSpec: GameSpec | null;
@@ -47,6 +48,24 @@ export default function AIPromptPanel({
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Voice input hook
+  const {
+    isListening,
+    isSupported: isVoiceSupported,
+    interimTranscript,
+    toggleListening,
+    error: voiceError,
+  } = useVoiceInput({
+    onTranscript: (text, isFinal) => {
+      if (isFinal) {
+        setPrompt(prev => prev + text);
+      }
+    },
+    onError: (error) => {
+      console.error('Voice input error:', error);
+    },
+  });
 
   // Check if API key is configured
   useEffect(() => {
@@ -533,25 +552,56 @@ export default function AIPromptPanel({
 
       {/* Input */}
       <div className="p-3 border-t border-white/10 bg-[#1a1a2e]">
+        {/* Voice error message */}
+        {voiceError && (
+          <div className="mb-2 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+            {voiceError}
+          </div>
+        )}
+        {/* Interim transcript preview */}
+        {isListening && interimTranscript && (
+          <div className="mb-2 px-2 py-1 bg-violet-500/10 border border-violet-500/20 rounded text-xs text-violet-300 italic">
+            {interimTranscript}...
+          </div>
+        )}
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe what you want to change..."
-            className="flex-1 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 placeholder-gray-500"
+            placeholder={isListening ? "Listening..." : "Describe what you want to change..."}
+            className={`flex-1 px-3 py-2 bg-white/5 border rounded-lg text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 placeholder-gray-500 ${
+              isListening ? 'border-violet-500 bg-violet-500/10' : 'border-white/20'
+            }`}
             rows={2}
             disabled={isLoading}
           />
           <div className="flex flex-col gap-1">
-            <button
-              onClick={handleSubmit}
-              disabled={!prompt.trim() || isLoading}
-              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20 transition-all"
-            >
-              Send
-            </button>
+            <div className="flex gap-1">
+              {/* Voice input button */}
+              {isVoiceSupported && (
+                <button
+                  onClick={toggleListening}
+                  disabled={isLoading}
+                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                    isListening
+                      ? 'bg-red-500 text-white hover:bg-red-400 animate-pulse'
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title={isListening ? 'Stop listening' : 'Start voice input'}
+                >
+                  {isListening ? <MicrophoneOffIcon size={16} /> : <MicrophoneIcon size={16} />}
+                </button>
+              )}
+              <button
+                onClick={handleSubmit}
+                disabled={!prompt.trim() || isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20 transition-all"
+              >
+                Send
+              </button>
+            </div>
             {messages.length > 0 && (
               <button
                 onClick={handleClearChat}

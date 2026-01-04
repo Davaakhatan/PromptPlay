@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -19,15 +19,20 @@ import ErrorDisplay from './components/ErrorDisplay';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import PhysicsSettings from './components/PhysicsSettings';
 import ScriptRunner from './components/ScriptRunner';
+import { SaveAsTemplateModal } from './components/SaveAsTemplateModal';
 import Toolbar from './components/Toolbar';
+import { EntitySearch, useEntitySearchShortcut } from './components/EntitySearch';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useHistoryState } from './hooks/useHistoryState';
 import { useEntityOperations } from './hooks/useEntityOperations';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon } from './components/Icons';
+import { addRecentProject } from './services/RecentProjectsService';
+import { screenCapture } from './services/ScreenCaptureService';
+import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
+import TilemapEditor, { Tilemap } from './components/TilemapEditor';
 
 type ViewMode = 'game' | 'code';
-type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets';
+type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
 type RightPanelMode = 'inspector' | 'json' | 'physics' | 'scripts';
 
 function App() {
@@ -53,6 +58,16 @@ function App() {
   const [showGrid, setShowGrid] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [is3DMode, setIs3DMode] = useState(false);
+  const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false);
+  const [showEntitySearch, setShowEntitySearch] = useState(false);
+  const [currentTilemap, setCurrentTilemap] = useState<Tilemap | null>(null);
+
+  // Entity search shortcut (Cmd/Ctrl+K)
+  useEntitySearchShortcut(() => {
+    if (gameSpec) {
+      setShowEntitySearch(true);
+    }
+  });
 
   // History management
   const {
@@ -387,21 +402,27 @@ function App() {
     onFileChanged: handleFileChanged,
   });
 
-  const openProject = useCallback(async () => {
+  const openProject = useCallback(async (path?: string) => {
     let gameJsonStr = '';
     try {
       setLoading(true);
       setError(null);
 
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: 'Open Game Project',
-      });
+      let selected = path;
 
-      if (!selected || typeof selected !== 'string') {
-        setLoading(false);
-        return;
+      // If no path provided, show dialog
+      if (!selected) {
+        const dialogResult = await open({
+          directory: true,
+          multiple: false,
+          title: 'Open Game Project',
+        });
+
+        if (!dialogResult || typeof dialogResult !== 'string') {
+          setLoading(false);
+          return;
+        }
+        selected = dialogResult;
       }
 
       setProjectPath(selected);
@@ -420,6 +441,15 @@ function App() {
         setActiveSceneId(null);
       }
       initializeHistory(spec);
+
+      // Track in recent projects
+      const projectName = spec.metadata?.title || selected.split('/').pop() || 'Untitled';
+      addRecentProject({
+        path: selected,
+        name: projectName,
+        genre: spec.metadata?.genre,
+        entityCount: spec.entities?.length || 0,
+      });
     } catch (err) {
       console.error('Failed to open project:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -1064,6 +1094,12 @@ function App() {
     };
   }, []);
 
+  // Memoize the 3D spec to prevent unnecessary re-renders
+  const game3DSpec = useMemo(() => {
+    if (!gameSpec) return null;
+    return convertTo3DSpec(gameSpec);
+  }, [gameSpec, convertTo3DSpec]);
+
   // Export game as standalone HTML
   const exportGame = useCallback(async () => {
     if (!gameSpec) return;
@@ -1201,6 +1237,11 @@ function App() {
         case 'save_as':
           if (gameSpec) {
             saveProjectAs();
+          }
+          break;
+        case 'save_as_template':
+          if (gameSpec) {
+            setShowSaveAsTemplateModal(true);
           }
           break;
         case 'import_game':
@@ -1434,6 +1475,16 @@ function App() {
               >
                 <ImageIcon size={16} />
               </button>
+              <button
+                onClick={() => setLeftPanelMode('tilemap')}
+                className={`p-1.5 rounded transition-colors ${leftPanelMode === 'tilemap'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'
+                  }`}
+                title="Tilemap Editor"
+              >
+                <GridIcon size={16} />
+              </button>
             </div>
             <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">
               {leftPanelMode}
@@ -1506,6 +1557,15 @@ function App() {
               }}
             />
           )}
+          {leftPanelMode === 'tilemap' && (
+            <TilemapEditor
+              tilemap={currentTilemap}
+              onTilemapChange={(tilemap) => {
+                setCurrentTilemap(tilemap);
+                setHasUnsavedChanges(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Footer Info */}
@@ -1546,6 +1606,17 @@ function App() {
           onToggleAI={() => setShowAIPanel(prev => !prev)}
           onExport={exportGame}
           onToggle3DMode={() => setIs3DMode(prev => !prev)}
+          onSearch={() => setShowEntitySearch(true)}
+          onScreenshot={async () => {
+            const canvas = document.querySelector('canvas');
+            if (canvas) {
+              const saved = await screenCapture.copyToClipboard(canvas);
+              if (saved) {
+                setNotification('Screenshot saved!');
+                setTimeout(() => setNotification(null), 3000);
+              }
+            }
+          }}
         />
 
         {/* Main Content Area */}
@@ -1579,9 +1650,9 @@ function App() {
             />
           )}
 
-          {projectPath && viewMode === 'game' && is3DMode && gameSpec && (
+          {projectPath && viewMode === 'game' && is3DMode && game3DSpec && (
             <GameCanvas3D
-              gameSpec={convertTo3DSpec(gameSpec)}
+              gameSpec={game3DSpec}
               isPlaying={isPlaying}
               selectedEntities={selectedEntities}
               onEntitySelect={handleEntitySelect}
@@ -1768,6 +1839,33 @@ function App() {
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
       />
+
+      {/* Save as Template Modal */}
+      {gameSpec && (
+        <SaveAsTemplateModal
+          isOpen={showSaveAsTemplateModal}
+          onClose={() => setShowSaveAsTemplateModal(false)}
+          gameSpec={gameSpec}
+          onSaved={(templateName) => {
+            setNotification(`Template "${templateName}" saved successfully!`);
+            setTimeout(() => setNotification(null), 3000);
+          }}
+        />
+      )}
+
+      {/* Entity Search (Cmd/Ctrl+K) */}
+      {gameSpec && (
+        <EntitySearch
+          entities={gameSpec.entities || []}
+          onSelect={(entityName) => {
+            setSelectedEntity(entityName);
+            setLeftPanelMode('entities');
+          }}
+          selectedEntity={selectedEntity}
+          isOpen={showEntitySearch}
+          onClose={() => setShowEntitySearch(false)}
+        />
+      )}
     </div>
   );
 }

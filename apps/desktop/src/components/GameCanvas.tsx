@@ -178,15 +178,19 @@ export default function GameCanvas({
         }
       }
 
-      if (e.key === 'd' || e.key === 'D') {
-        if (runtimeRef.current) {
-          runtimeRef.current.toggleDebug();
+      // Debug and grid toggles only when NOT playing (to avoid conflict with WASD)
+      if (!isPlaying) {
+        // Toggle debug with F3 (was D, but conflicts with WASD movement)
+        if (e.key === 'F3') {
+          if (runtimeRef.current) {
+            runtimeRef.current.toggleDebug();
+          }
+          onDebugToggle?.();
         }
-        onDebugToggle?.();
-      }
-      // Toggle grid with G key
-      if (e.key === 'g' || e.key === 'G') {
-        onGridToggle?.();
+        // Toggle grid with G key
+        if (e.key === 'g' || e.key === 'G') {
+          onGridToggle?.();
+        }
       }
       // Zoom controls
       if (e.key === '=' || e.key === '+') {
@@ -903,7 +907,7 @@ export default function GameCanvas({
                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                 : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
                 }`}
-              title="Toggle Debug (D)"
+              title="Toggle Debug (F3)"
             >
               <DebugIcon size={16} />
             </button>
@@ -976,7 +980,7 @@ export default function GameCanvas({
                 </span>
               </>
             )}
-            <span className="mr-3">D: Debug</span>
+            <span className="mr-3">F3: Debug</span>
             <span className="mr-3">+/-: Zoom</span>
             <span>F: Fit All</span>
           </div>

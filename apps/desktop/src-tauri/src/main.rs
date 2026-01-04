@@ -28,6 +28,7 @@ fn main() {
             let close_project = MenuItem::with_id(app, "close_project", "Close Project", true, Some("CmdOrCtrl+W"))?;
             let save = MenuItem::with_id(app, "save", "Save", true, Some("CmdOrCtrl+S"))?;
             let save_as = MenuItem::with_id(app, "save_as", "Save As...", true, Some("CmdOrCtrl+Shift+S"))?;
+            let save_as_template = MenuItem::with_id(app, "save_as_template", "Save as Template...", true, None::<&str>)?;
             let import_game = MenuItem::with_id(app, "import_game", "Import Game...", true, Some("CmdOrCtrl+I"))?;
             let export_html = MenuItem::with_id(app, "export_html", "Export as HTML...", true, Some("CmdOrCtrl+E"))?;
             let export_zip = MenuItem::with_id(app, "export_zip", "Export as ZIP...", true, None::<&str>)?;
@@ -44,6 +45,7 @@ fn main() {
                     &PredefinedMenuItem::separator(app)?,
                     &save,
                     &save_as,
+                    &save_as_template,
                     &PredefinedMenuItem::separator(app)?,
                     &import_game,
                     &export_html,
@@ -87,7 +89,7 @@ fn main() {
 
             // ==================== VIEW MENU ====================
             let toggle_grid = MenuItem::with_id(app, "toggle_grid", "Toggle Grid", true, Some("G"))?;
-            let toggle_debug = MenuItem::with_id(app, "toggle_debug", "Toggle Physics Debug", true, Some("P"))?;
+            let toggle_debug = MenuItem::with_id(app, "toggle_debug", "Toggle Physics Debug", true, Some("F3"))?;
             let toggle_2d_3d = MenuItem::with_id(app, "toggle_2d_3d", "Switch 2D/3D Mode", true, Some("CmdOrCtrl+Shift+M"))?;
             let zoom_in = MenuItem::with_id(app, "zoom_in", "Zoom In", true, Some("CmdOrCtrl+="))?;
             let zoom_out = MenuItem::with_id(app, "zoom_out", "Zoom Out", true, Some("CmdOrCtrl+-"))?;
@@ -230,6 +232,7 @@ fn main() {
                     "close_project" => { let _ = window.emit("menu-event", "close_project"); }
                     "save" => { let _ = window.emit("menu-event", "save"); }
                     "save_as" => { let _ = window.emit("menu-event", "save_as"); }
+                    "save_as_template" => { let _ = window.emit("menu-event", "save_as_template"); }
                     "import_game" => { let _ = window.emit("menu-event", "import_game"); }
                     "export_html" => { let _ = window.emit("menu-event", "export_html"); }
                     "export_zip" => { let _ = window.emit("menu-event", "export_zip"); }

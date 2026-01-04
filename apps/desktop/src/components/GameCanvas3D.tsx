@@ -35,6 +35,12 @@ export function GameCanvas3D({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
 
+  // Keep gameSpec in a ref to avoid reloading during play
+  const gameSpecRef = useRef(gameSpec);
+  useEffect(() => {
+    gameSpecRef.current = gameSpec;
+  }, [gameSpec]);
+
   // Selection visualization
   const selectionBoxesRef = useRef<Map<string, THREE.BoxHelper>>(new Map());
 
@@ -99,19 +105,23 @@ export function GameCanvas3D({
   }, [showGrid, showAxes]);
 
   // Handle play/stop state changes
+  // Use ref for gameSpec to avoid reloading when gameSpec reference changes during play
   useEffect(() => {
     const game = game3DRef.current;
-    if (!game || !gameSpec) return;
+    if (!game) return;
 
     if (isPlaying) {
       // Load the spec and start the game loop
-      game.loadSpec(gameSpec);
-      game.start();
+      const spec = gameSpecRef.current;
+      if (spec) {
+        game.loadSpec(spec);
+        game.start();
+      }
     } else {
       // Stop the game loop
       game.stop();
     }
-  }, [isPlaying, gameSpec]);
+  }, [isPlaying]); // Only trigger on play state change, not gameSpec changes
 
   // Handle resize
   useEffect(() => {
