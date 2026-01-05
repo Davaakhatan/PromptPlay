@@ -346,7 +346,8 @@ PromptPlay/
 - [x] Shader Graph Types & Nodes (27 shader nodes)
 - [x] Shader Graph Compiler (GLSL code generation)
 - [x] Shader Graph Editor UI (visual editor with real-time preview)
-- [ ] Behavior Trees (AI decision making)
+- [x] Behavior Trees (AI decision making with 19 node types)
+- [x] Behavior Tree Editor (visual tree editor)
 - [ ] State Machine Nodes
 
 ### v4.1 - Professional Tools
