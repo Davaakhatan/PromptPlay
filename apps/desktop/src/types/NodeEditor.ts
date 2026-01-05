@@ -11,7 +11,7 @@ export interface Port {
 
 export interface NodeDefinition {
   type: string;
-  category: 'events' | 'logic' | 'math' | 'entities' | 'physics' | 'input' | 'animation' | 'audio' | 'custom';
+  category: 'events' | 'logic' | 'math' | 'entities' | 'physics' | 'input' | 'animation' | 'audio' | 'motion' | 'custom';
   title: string;
   description: string;
   icon?: string;
@@ -79,5 +79,6 @@ export const CATEGORY_COLORS: Record<NodeDefinition['category'], string> = {
   input: '#ec4899',
   animation: '#14b8a6',
   audio: '#f97316',
+  motion: '#06b6d4',
   custom: '#6b7280',
 };

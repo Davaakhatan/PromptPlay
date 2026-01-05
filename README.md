@@ -97,6 +97,7 @@ While traditional game engines require years of learning, PromptPlay lets anyone
 - **Entity Nodes** - Get Entity, Set Position, Set Velocity, Destroy
 - **Physics Nodes** - Apply Force, Apply Impulse
 - **Animation Nodes** - Play Animation, Tween
+- **Motion Nodes** - Easing (8 types), Spring, Smooth Damp, Bezier Curves
 - **Audio Nodes** - Play Sound
 - **Undo/Redo** - Full history support with Ctrl+Z/Ctrl+Shift+Z
 
@@ -332,9 +333,12 @@ PromptPlay/
 - [ ] AI Art Generation Integration (Stable Diffusion, DALL-E)
 - [ ] Voice-to-Game Feature (speak and create)
 
-### v4.0 - Advanced Visual Scripting
+### v4.0 - Advanced Visual Scripting (In Progress)
 
-- [ ] Motion & Animation Nodes (keyframe, easing, paths)
+- [x] Motion Nodes - Easing (8 types: quad, cubic, elastic, bounce)
+- [x] Motion Nodes - Physics (spring, smooth damp, move towards)
+- [x] Motion Nodes - Paths (bezier curves, vector interpolation)
+- [x] Motion Nodes - Timing (timer, delay, keyframe lerp)
 - [ ] Custom Node Creation (extend with TypeScript)
 - [ ] Node Groups & Subgraphs
 - [ ] Shader Graph Editor (visual shader creation)

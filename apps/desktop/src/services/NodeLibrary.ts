@@ -547,6 +547,442 @@ const tweenNode: NodeDefinition = {
   },
 };
 
+// Motion Nodes - Easing Functions
+const easeInQuadNode: NodeDefinition = {
+  type: 'ease_in_quad',
+  category: 'motion',
+  title: 'Ease In Quad',
+  description: 'Quadratic ease-in curve',
+  icon: '⤵',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    return { result: t * t };
+  },
+};
+
+const easeOutQuadNode: NodeDefinition = {
+  type: 'ease_out_quad',
+  category: 'motion',
+  title: 'Ease Out Quad',
+  description: 'Quadratic ease-out curve',
+  icon: '⤴',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    return { result: t * (2 - t) };
+  },
+};
+
+const easeInOutQuadNode: NodeDefinition = {
+  type: 'ease_in_out_quad',
+  category: 'motion',
+  title: 'Ease In Out Quad',
+  description: 'Quadratic ease-in-out curve',
+  icon: '↔',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    return { result: t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t };
+  },
+};
+
+const easeInCubicNode: NodeDefinition = {
+  type: 'ease_in_cubic',
+  category: 'motion',
+  title: 'Ease In Cubic',
+  description: 'Cubic ease-in curve',
+  icon: '⤵',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    return { result: t * t * t };
+  },
+};
+
+const easeOutCubicNode: NodeDefinition = {
+  type: 'ease_out_cubic',
+  category: 'motion',
+  title: 'Ease Out Cubic',
+  description: 'Cubic ease-out curve',
+  icon: '⤴',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    const t1 = t - 1;
+    return { result: t1 * t1 * t1 + 1 };
+  },
+};
+
+const easeInOutCubicNode: NodeDefinition = {
+  type: 'ease_in_out_cubic',
+  category: 'motion',
+  title: 'Ease In Out Cubic',
+  description: 'Cubic ease-in-out curve',
+  icon: '↔',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    return { result: t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1 };
+  },
+};
+
+const easeOutElasticNode: NodeDefinition = {
+  type: 'ease_out_elastic',
+  category: 'motion',
+  title: 'Ease Out Elastic',
+  description: 'Elastic overshoot ease-out',
+  icon: '🌀',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const t = inputs.t as number;
+    if (t === 0 || t === 1) return { result: t };
+    const p = 0.3;
+    return { result: Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1 };
+  },
+};
+
+const easeOutBounceNode: NodeDefinition = {
+  type: 'ease_out_bounce',
+  category: 'motion',
+  title: 'Ease Out Bounce',
+  description: 'Bouncing ease-out',
+  icon: '⚾',
+  inputs: [
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'number' },
+  ],
+  execute: (inputs) => {
+    let t = inputs.t as number;
+    const n1 = 7.5625;
+    const d1 = 2.75;
+    if (t < 1 / d1) {
+      return { result: n1 * t * t };
+    } else if (t < 2 / d1) {
+      t -= 1.5 / d1;
+      return { result: n1 * t * t + 0.75 };
+    } else if (t < 2.5 / d1) {
+      t -= 2.25 / d1;
+      return { result: n1 * t * t + 0.9375 };
+    } else {
+      t -= 2.625 / d1;
+      return { result: n1 * t * t + 0.984375 };
+    }
+  },
+};
+
+// Motion Nodes - Keyframe & Interpolation
+const keyframeLerpNode: NodeDefinition = {
+  type: 'keyframe_lerp',
+  category: 'motion',
+  title: 'Keyframe Lerp',
+  description: 'Interpolate between keyframe values with easing',
+  icon: '📊',
+  inputs: [
+    { id: 'from', name: 'From', type: 'number', defaultValue: 0 },
+    { id: 'to', name: 'To', type: 'number', defaultValue: 100 },
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
+    { id: 'eased_t', name: 'Eased T', type: 'number' },
+  ],
+  outputs: [
+    { id: 'value', name: 'Value', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const from = inputs.from as number;
+    const to = inputs.to as number;
+    const t = (inputs.eased_t !== undefined ? inputs.eased_t : inputs.t) as number;
+    return { value: from + (to - from) * t };
+  },
+};
+
+const timerNode: NodeDefinition = {
+  type: 'timer',
+  category: 'motion',
+  title: 'Timer',
+  description: 'Track elapsed time with duration',
+  icon: '⏱',
+  inputs: [
+    { id: 'flow', name: 'Flow', type: 'flow' },
+    { id: 'duration', name: 'Duration', type: 'number', defaultValue: 1 },
+    { id: 'loop', name: 'Loop', type: 'boolean', defaultValue: false },
+  ],
+  outputs: [
+    { id: 'flow', name: 'Flow', type: 'flow' },
+    { id: 't', name: 'T (0-1)', type: 'number' },
+    { id: 'elapsed', name: 'Elapsed', type: 'number' },
+    { id: 'complete', name: 'On Complete', type: 'flow' },
+  ],
+  execute: (inputs, context) => {
+    const duration = inputs.duration as number || 1;
+    const loop = inputs.loop as boolean;
+    context.emit('start_timer', { duration, loop });
+    return { t: 0, elapsed: 0 };
+  },
+};
+
+const delayNode: NodeDefinition = {
+  type: 'delay',
+  category: 'motion',
+  title: 'Delay',
+  description: 'Delay execution by specified time',
+  icon: '⏳',
+  inputs: [
+    { id: 'flow', name: 'Flow', type: 'flow' },
+    { id: 'seconds', name: 'Seconds', type: 'number', defaultValue: 1 },
+  ],
+  outputs: [
+    { id: 'flow', name: 'Then', type: 'flow' },
+  ],
+  execute: (inputs, context) => {
+    context.emit('delay', { seconds: inputs.seconds });
+    return {};
+  },
+};
+
+// Motion Nodes - Path Following
+const makeVector2Node: NodeDefinition = {
+  type: 'make_vector2',
+  category: 'motion',
+  title: 'Make Vector2',
+  description: 'Create a 2D vector from X and Y',
+  icon: '📍',
+  inputs: [
+    { id: 'x', name: 'X', type: 'number', defaultValue: 0 },
+    { id: 'y', name: 'Y', type: 'number', defaultValue: 0 },
+  ],
+  outputs: [
+    { id: 'vector', name: 'Vector', type: 'vector2' },
+  ],
+  execute: (inputs) => ({ vector: { x: inputs.x, y: inputs.y } }),
+};
+
+const breakVector2Node: NodeDefinition = {
+  type: 'break_vector2',
+  category: 'motion',
+  title: 'Break Vector2',
+  description: 'Get X and Y from a 2D vector',
+  icon: '📍',
+  inputs: [
+    { id: 'vector', name: 'Vector', type: 'vector2' },
+  ],
+  outputs: [
+    { id: 'x', name: 'X', type: 'number' },
+    { id: 'y', name: 'Y', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const vec = inputs.vector as { x: number; y: number } | null;
+    return { x: vec?.x ?? 0, y: vec?.y ?? 0 };
+  },
+};
+
+const lerpVector2Node: NodeDefinition = {
+  type: 'lerp_vector2',
+  category: 'motion',
+  title: 'Lerp Vector2',
+  description: 'Interpolate between two vectors',
+  icon: '↗',
+  inputs: [
+    { id: 'a', name: 'A', type: 'vector2' },
+    { id: 'b', name: 'B', type: 'vector2' },
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0.5 },
+  ],
+  outputs: [
+    { id: 'result', name: 'Result', type: 'vector2' },
+  ],
+  execute: (inputs) => {
+    const a = inputs.a as { x: number; y: number } || { x: 0, y: 0 };
+    const b = inputs.b as { x: number; y: number } || { x: 0, y: 0 };
+    const t = inputs.t as number;
+    return {
+      result: {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+      }
+    };
+  },
+};
+
+const bezierCurveNode: NodeDefinition = {
+  type: 'bezier_curve',
+  category: 'motion',
+  title: 'Bezier Curve',
+  description: 'Quadratic bezier curve interpolation',
+  icon: '〰',
+  inputs: [
+    { id: 'start', name: 'Start', type: 'vector2' },
+    { id: 'control', name: 'Control', type: 'vector2' },
+    { id: 'end', name: 'End', type: 'vector2' },
+    { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0.5 },
+  ],
+  outputs: [
+    { id: 'point', name: 'Point', type: 'vector2' },
+  ],
+  execute: (inputs) => {
+    const start = inputs.start as { x: number; y: number } || { x: 0, y: 0 };
+    const control = inputs.control as { x: number; y: number } || { x: 0, y: 0 };
+    const end = inputs.end as { x: number; y: number } || { x: 0, y: 0 };
+    const t = inputs.t as number;
+    const t2 = t * t;
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    return {
+      point: {
+        x: mt2 * start.x + 2 * mt * t * control.x + t2 * end.x,
+        y: mt2 * start.y + 2 * mt * t * control.y + t2 * end.y,
+      }
+    };
+  },
+};
+
+// Motion Nodes - Physics-based Motion
+const springNode: NodeDefinition = {
+  type: 'spring',
+  category: 'motion',
+  title: 'Spring',
+  description: 'Spring physics - move towards target with bounce',
+  icon: '🔄',
+  inputs: [
+    { id: 'current', name: 'Current', type: 'number' },
+    { id: 'target', name: 'Target', type: 'number' },
+    { id: 'velocity', name: 'Velocity', type: 'number', defaultValue: 0 },
+    { id: 'stiffness', name: 'Stiffness', type: 'number', defaultValue: 100 },
+    { id: 'damping', name: 'Damping', type: 'number', defaultValue: 10 },
+    { id: 'mass', name: 'Mass', type: 'number', defaultValue: 1 },
+  ],
+  outputs: [
+    { id: 'value', name: 'Value', type: 'number' },
+    { id: 'new_velocity', name: 'New Velocity', type: 'number' },
+  ],
+  execute: (inputs, context) => {
+    const current = inputs.current as number;
+    const target = inputs.target as number;
+    const velocity = inputs.velocity as number;
+    const stiffness = inputs.stiffness as number;
+    const damping = inputs.damping as number;
+    const mass = inputs.mass as number || 1;
+    const dt = context.deltaTime || 1/60;
+
+    const displacement = current - target;
+    const springForce = -stiffness * displacement;
+    const dampingForce = -damping * velocity;
+    const acceleration = (springForce + dampingForce) / mass;
+
+    const newVelocity = velocity + acceleration * dt;
+    const newValue = current + newVelocity * dt;
+
+    return { value: newValue, new_velocity: newVelocity };
+  },
+};
+
+const smoothDampNode: NodeDefinition = {
+  type: 'smooth_damp',
+  category: 'motion',
+  title: 'Smooth Damp',
+  description: 'Smoothly interpolate to target (like Unity SmoothDamp)',
+  icon: '〜',
+  inputs: [
+    { id: 'current', name: 'Current', type: 'number' },
+    { id: 'target', name: 'Target', type: 'number' },
+    { id: 'velocity', name: 'Velocity', type: 'number', defaultValue: 0 },
+    { id: 'smooth_time', name: 'Smooth Time', type: 'number', defaultValue: 0.3 },
+    { id: 'max_speed', name: 'Max Speed', type: 'number', defaultValue: 1000 },
+  ],
+  outputs: [
+    { id: 'value', name: 'Value', type: 'number' },
+    { id: 'new_velocity', name: 'New Velocity', type: 'number' },
+  ],
+  execute: (inputs, context) => {
+    const current = inputs.current as number;
+    const target = inputs.target as number;
+    let velocity = inputs.velocity as number;
+    const smoothTime = Math.max(0.0001, inputs.smooth_time as number);
+    const maxSpeed = inputs.max_speed as number;
+    const dt = context.deltaTime || 1/60;
+
+    const omega = 2 / smoothTime;
+    const x = omega * dt;
+    const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+
+    let change = current - target;
+    const maxChange = maxSpeed * smoothTime;
+    change = Math.max(-maxChange, Math.min(maxChange, change));
+
+    const temp = (velocity + omega * change) * dt;
+    velocity = (velocity - omega * temp) * exp;
+    let value = target + (change + temp) * exp;
+
+    if ((target - current > 0) === (value > target)) {
+      value = target;
+      velocity = (value - target) / dt;
+    }
+
+    return { value, new_velocity: velocity };
+  },
+};
+
+const moveTowardsNode: NodeDefinition = {
+  type: 'move_towards',
+  category: 'motion',
+  title: 'Move Towards',
+  description: 'Move value towards target by max delta',
+  icon: '→',
+  inputs: [
+    { id: 'current', name: 'Current', type: 'number' },
+    { id: 'target', name: 'Target', type: 'number' },
+    { id: 'max_delta', name: 'Max Delta', type: 'number', defaultValue: 1 },
+  ],
+  outputs: [
+    { id: 'value', name: 'Value', type: 'number' },
+  ],
+  execute: (inputs) => {
+    const current = inputs.current as number;
+    const target = inputs.target as number;
+    const maxDelta = inputs.max_delta as number;
+
+    if (Math.abs(target - current) <= maxDelta) {
+      return { value: target };
+    }
+    return { value: current + Math.sign(target - current) * maxDelta };
+  },
+};
+
 // Audio Nodes
 const playSoundNode: NodeDefinition = {
   type: 'play_sound',
@@ -606,6 +1042,28 @@ export const NODE_LIBRARY: Record<string, NodeDefinition> = {
   // Animation
   play_animation: playAnimationNode,
   tween: tweenNode,
+  // Motion - Easing
+  ease_in_quad: easeInQuadNode,
+  ease_out_quad: easeOutQuadNode,
+  ease_in_out_quad: easeInOutQuadNode,
+  ease_in_cubic: easeInCubicNode,
+  ease_out_cubic: easeOutCubicNode,
+  ease_in_out_cubic: easeInOutCubicNode,
+  ease_out_elastic: easeOutElasticNode,
+  ease_out_bounce: easeOutBounceNode,
+  // Motion - Keyframe & Timing
+  keyframe_lerp: keyframeLerpNode,
+  timer: timerNode,
+  delay: delayNode,
+  // Motion - Vectors & Paths
+  make_vector2: makeVector2Node,
+  break_vector2: breakVector2Node,
+  lerp_vector2: lerpVector2Node,
+  bezier_curve: bezierCurveNode,
+  // Motion - Physics
+  spring: springNode,
+  smooth_damp: smoothDampNode,
+  move_towards: moveTowardsNode,
   // Audio
   play_sound: playSoundNode,
 };
@@ -617,5 +1075,5 @@ export function getNodesByCategory(category: NodeDefinition['category']): NodeDe
 
 // Get all categories
 export function getCategories(): NodeDefinition['category'][] {
-  return ['events', 'logic', 'math', 'entities', 'physics', 'input', 'animation', 'audio', 'custom'];
+  return ['events', 'logic', 'math', 'entities', 'physics', 'input', 'animation', 'motion', 'audio', 'custom'];
 }

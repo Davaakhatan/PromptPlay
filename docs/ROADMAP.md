@@ -196,27 +196,29 @@
 
 ---
 
-### v4.0 - Advanced Visual Scripting
+### v4.0 - Advanced Visual Scripting (In Progress)
 
 **Theme:** Extended Node-Based Programming
 **Target:** Q4 2025
 
-| Phase | Feature | Description | Priority |
-|-------|---------|-------------|----------|
-| 4.0.1 | Motion nodes - keyframe | Keyframe animation nodes | P0 |
-| 4.0.2 | Motion nodes - easing | Easing function nodes | P0 |
-| 4.0.3 | Motion nodes - path | Follow path nodes | P1 |
-| 4.0.4 | Motion nodes - physics | Spring, damping nodes | P1 |
-| 4.0.5 | Custom node API | TypeScript node definition | P1 |
-| 4.0.6 | Node presets | Save/load node configurations | P2 |
-| 4.0.7 | Node groups | Group nodes into subgraphs | P1 |
-| 4.0.8 | Node comments | Add comments to node groups | P2 |
-| 4.0.9 | Shader graph - setup | Visual shader editor | P2 |
-| 4.0.10 | Shader graph - nodes | Color, texture, math nodes | P2 |
-| 4.0.11 | Shader graph - preview | Real-time shader preview | P2 |
-| 4.0.12 | Behavior trees | AI decision making system | P1 |
-| 4.0.13 | Behavior tree editor | Visual tree editor | P1 |
-| 4.0.14 | State machine nodes | FSM visual editor | P1 |
+| Phase | Feature | Description | Status |
+|-------|---------|-------------|--------|
+| 4.0.1 | Motion nodes - keyframe | Keyframe animation nodes | ✅ |
+| 4.0.2 | Motion nodes - easing | Easing function nodes (8 types) | ✅ |
+| 4.0.3 | Motion nodes - path | Bezier curves, vector interpolation | ✅ |
+| 4.0.4 | Motion nodes - physics | Spring, smooth damp, move towards | ✅ |
+| 4.0.5 | Motion nodes - timing | Timer, delay nodes | ✅ |
+| 4.0.6 | Motion nodes - vectors | Make/break vector2, lerp vector2 | ✅ |
+| 4.0.7 | Custom node API | TypeScript node definition | 🔲 |
+| 4.0.8 | Node presets | Save/load node configurations | 🔲 |
+| 4.0.9 | Node groups | Group nodes into subgraphs | 🔲 |
+| 4.0.10 | Node comments | Add comments to node groups | 🔲 |
+| 4.0.11 | Shader graph - setup | Visual shader editor | 🔲 |
+| 4.0.12 | Shader graph - nodes | Color, texture, math nodes | 🔲 |
+| 4.0.13 | Shader graph - preview | Real-time shader preview | 🔲 |
+| 4.0.14 | Behavior trees | AI decision making system | 🔲 |
+| 4.0.15 | Behavior tree editor | Visual tree editor | 🔲 |
+| 4.0.16 | State machine nodes | FSM visual editor | 🔲 |
 
 ---
 
