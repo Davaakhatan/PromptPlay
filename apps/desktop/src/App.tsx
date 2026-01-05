@@ -44,6 +44,11 @@ import type { StateMachine } from './types/StateMachine';
 import { createDefaultShaderGraph } from './services/ShaderGraphCompiler';
 import { createDefaultBehaviorTree } from './services/BehaviorTreeLibrary';
 import { createDefaultStateMachine } from './services/StateMachineLibrary';
+import { UserMenu } from './components/UserMenu';
+import { AuthDialog } from './components/AuthDialog';
+import { CloudProjectsDialog } from './components/CloudProjectsDialog';
+import { MarketplaceDialog } from './components/MarketplaceDialog';
+import { CollaboratorsPanel } from './components/CollaboratorsPanel';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -84,6 +89,12 @@ function App() {
   const [shaderGraph, setShaderGraph] = useState<ShaderGraph | null>(null);
   const [behaviorTree, setBehaviorTree] = useState<BehaviorTree | null>(null);
   const [stateMachine, setStateMachine] = useState<StateMachine | null>(null);
+
+  // v3.1 Cloud & Community features
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showCloudProjects, setShowCloudProjects] = useState(false);
+  const [showMarketplace, setShowMarketplace] = useState(false);
+  const [showCollaborators, setShowCollaborators] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1790,9 +1801,7 @@ function App() {
           }
           break;
         case 'ai_playtest':
-          // TODO: Implement AI playtest
-          setNotification('AI Playtest - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setShowAIPlaytest(true);
           break;
         case 'game_settings':
           setRightPanelMode('physics');
@@ -1800,14 +1809,16 @@ function App() {
 
         // ==================== WINDOW MENU ====================
         case 'community_gallery':
-          // TODO: Show community gallery
-          setNotification('Community Gallery - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setShowCloudProjects(true);
           break;
         case 'marketplace':
-          // TODO: Show marketplace
-          setNotification('Asset Marketplace - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          setShowMarketplace(true);
+          break;
+        case 'collaborators':
+          setShowCollaborators(!showCollaborators);
+          break;
+        case 'cloud_auth':
+          setShowAuthDialog(true);
           break;
 
         // ==================== HELP MENU ====================
@@ -2064,7 +2075,10 @@ function App() {
 
       {/* Center Panel - Game Canvas / Code Editor */}
       <main className="flex-1 flex flex-col">
-        <Toolbar
+        {/* Toolbar Row with UserMenu */}
+        <div className="flex items-center">
+          <div className="flex-1">
+            <Toolbar
           projectPath={projectPath}
           viewMode={viewMode}
           isPlaying={isPlaying}
@@ -2102,6 +2116,44 @@ function App() {
           onPublish={() => setShowPublishDialog(true)}
           onAIPlaytest={() => setShowAIPlaytest(true)}
         />
+          </div>
+          {/* User Menu & Cloud Actions */}
+          <div className="flex items-center gap-2 px-3 h-10 bg-panel border-b border-subtle">
+            <button
+              onClick={() => setShowCollaborators(!showCollaborators)}
+              className={`p-1.5 rounded transition-colors ${showCollaborators ? 'bg-green-500/20 text-green-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
+              title="Collaborators"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowCloudProjects(true)}
+              className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-white/10 transition-colors"
+              title="Cloud Projects"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowMarketplace(true)}
+              className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-white/10 transition-colors"
+              title="Asset Marketplace"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </button>
+            <div className="w-px h-5 bg-subtle mx-1" />
+            <UserMenu
+              onOpenAuth={() => setShowAuthDialog(true)}
+              onOpenProfile={() => setShowAuthDialog(true)}
+              onOpenCloudProjects={() => setShowCloudProjects(true)}
+            />
+          </div>
+        </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden">
@@ -2471,6 +2523,38 @@ function App() {
         onClose={() => setShowAIPlaytest(false)}
         gameSpec={gameSpec}
       />
+
+      {/* v3.1 Cloud & Community Dialogs */}
+      <AuthDialog
+        isOpen={showAuthDialog}
+        onClose={() => setShowAuthDialog(false)}
+      />
+
+      <CloudProjectsDialog
+        isOpen={showCloudProjects}
+        onClose={() => setShowCloudProjects(false)}
+        currentGameSpec={gameSpec}
+        onLoadProject={(spec, name) => {
+          setGameSpec(spec);
+          setProjectPath(null);
+          setNotification(`Loaded project: ${name}`);
+          setTimeout(() => setNotification(null), 3000);
+        }}
+      />
+
+      <MarketplaceDialog
+        isOpen={showMarketplace}
+        onClose={() => setShowMarketplace(false)}
+      />
+
+      {/* Collaborators Panel (side panel, always present when game is loaded) */}
+      {showCollaborators && (
+        <CollaboratorsPanel
+          isOpen={showCollaborators}
+          onClose={() => setShowCollaborators(false)}
+          projectId={projectPath || 'default'}
+        />
+      )}
     </div>
   );
 }

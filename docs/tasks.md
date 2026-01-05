@@ -876,3 +876,113 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 2. Game export system
 3. UI/UX polish
 4. Beta testing and launch
+
+---
+
+## Work Package 13: AI-Powered Visual Script Generation (Future)
+
+### WP13.1: Code Pattern Detection
+**Priority:** P2 | **Effort:** 5 days | **Status:** Planned
+
+- [ ] Analyze game code/scripts using AST parsing
+- [ ] Detect state machine patterns (state variables, transitions)
+- [ ] Detect behavior tree patterns (if/else chains, AI decisions)
+- [ ] Detect node graph patterns (event handlers, data flow)
+- [ ] Detect shader-like patterns (math operations, color manipulations)
+
+**Deliverables:**
+- Code pattern detection engine
+- Pattern classification system
+
+---
+
+### WP13.2: Auto-Generate Node Graph from Code
+**Priority:** P2 | **Effort:** 4 days | **Status:** Planned
+
+- [ ] Parse event handlers (onUpdate, onCollision, etc.)
+- [ ] Convert if/else chains to branch nodes
+- [ ] Convert function calls to action nodes
+- [ ] Map variables to get/set nodes
+- [ ] Generate connections based on data flow
+- [ ] Position nodes using auto-layout algorithm
+
+**Deliverables:**
+- Code → Node Graph converter
+- Auto-layout for generated nodes
+
+---
+
+### WP13.3: Auto-Generate State Machine from Code
+**Priority:** P2 | **Effort:** 4 days | **Status:** Planned
+
+- [ ] Detect state enum/string variables
+- [ ] Detect switch/case or if/else state checks
+- [ ] Extract state transition conditions
+- [ ] Map to StateMachine states and transitions
+- [ ] Detect enter/exit/update actions per state
+
+**Deliverables:**
+- Code → State Machine converter
+- Automatic state detection
+
+---
+
+### WP13.4: Auto-Generate Behavior Tree from Code
+**Priority:** P2 | **Effort:** 4 days | **Status:** Planned
+
+- [ ] Detect AI decision patterns (conditions → actions)
+- [ ] Detect priority-based logic (try A, else try B)
+- [ ] Detect sequence patterns (do A then B then C)
+- [ ] Map to Selector/Sequence/Condition/Action nodes
+- [ ] Build tree hierarchy from nested conditions
+
+**Deliverables:**
+- Code → Behavior Tree converter
+- AI pattern recognition
+
+---
+
+### WP13.5: Auto-Generate Shader Graph from Code
+**Priority:** P2 | **Effort:** 4 days | **Status:** Planned
+
+- [ ] Detect material/color manipulation code
+- [ ] Detect math operations (sin, cos, lerp, etc.)
+- [ ] Detect UV coordinate usage
+- [ ] Detect time-based animations
+- [ ] Map to shader nodes (math, texture, output)
+
+**Deliverables:**
+- Code → Shader Graph converter
+- Visual shader from procedural code
+
+---
+
+### WP13.6: AI-Assisted Pattern Detection
+**Priority:** P2 | **Effort:** 5 days | **Status:** Planned
+
+- [ ] Use Claude API to analyze code semantics
+- [ ] AI suggests which visual editor to use
+- [ ] AI explains detected patterns to user
+- [ ] AI helps refine generated visual scripts
+- [ ] Bidirectional sync: visual changes → code updates
+
+**Deliverables:**
+- AI-enhanced code analysis
+- Smart suggestions for visual scripting
+
+---
+
+### WP13 Summary
+
+| Feature | Input | Output |
+|---------|-------|--------|
+| **Node Graph Generation** | Event handlers, conditionals | Flow-based visual script |
+| **State Machine Generation** | State variables, transitions | State diagram |
+| **Behavior Tree Generation** | AI decision code | Hierarchical behavior tree |
+| **Shader Graph Generation** | Material/color code | Node-based shader |
+
+**Use Cases:**
+1. Import existing game code → Auto-generate visual scripts
+2. Write code in Monaco → See visual representation update live
+3. AI analyzes your code and suggests visual script improvements
+4. Beginners can learn visual scripting by seeing code equivalents
