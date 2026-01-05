@@ -340,6 +340,7 @@ PromptPlay/
 - [x] Motion Nodes - Paths (bezier curves, vector interpolation)
 - [x] Motion Nodes - Timing (timer, delay, keyframe lerp)
 - [x] Custom Node API (extend with TypeScript)
+- [x] Node Presets (save/load node configurations)
 - [ ] Node Groups & Subgraphs
 - [ ] Shader Graph Editor (visual shader creation)
 - [ ] Behavior Trees (AI decision making)

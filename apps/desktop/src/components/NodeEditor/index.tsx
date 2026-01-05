@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { NodeGraph } from '../../types/NodeEditor';
+import type { NodeGraph, NodeInstance, Connection } from '../../types/NodeEditor';
 import { NODE_LIBRARY } from '../../services/NodeLibrary';
 import { useNodeGraphHistory } from '../../hooks/useNodeGraphHistory';
+import { NodePresetService, BUILT_IN_PRESETS, type NodePreset } from '../../services/NodePresetService';
 import NodeCanvas from './NodeCanvas';
 
 interface NodeEditorProps {
@@ -25,8 +26,35 @@ function createDefaultGraph(): NodeGraph {
 export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose, onSave }: NodeEditorProps) {
   const [graph, setGraph] = useState<NodeGraph>(initialGraph || createDefaultGraph());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<string | null>(null);
+  const [showPresetMenu, setShowPresetMenu] = useState(false);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [presetDescription, setPresetDescription] = useState('');
+  const [userPresets, setUserPresets] = useState<NodePreset[]>([]);
   const isInitialized = useRef(false);
+  const presetMenuRef = useRef<HTMLDivElement>(null);
+
+  // Load user presets
+  useEffect(() => {
+    setUserPresets(NodePresetService.getAllPresets());
+    const unsubscribe = NodePresetService.subscribe(() => {
+      setUserPresets(NodePresetService.getAllPresets());
+    });
+    return unsubscribe;
+  }, []);
+
+  // Close preset menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
+        setShowPresetMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const {
     canUndo,
@@ -131,6 +159,107 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
     showNotification('Saved');
   }, [onSave, showNotification]);
 
+  // Insert a preset into the graph
+  const handleInsertPreset = useCallback((preset: NodePreset) => {
+    const { nodes, connections } = NodePresetService.instantiatePreset(preset.id, {
+      position: { x: graph.viewport.x + 300, y: graph.viewport.y + 200 },
+    });
+
+    const newGraph: NodeGraph = {
+      ...graph,
+      nodes: [...graph.nodes, ...nodes],
+      connections: [...graph.connections, ...connections],
+    };
+
+    handleGraphChange(newGraph, `Insert preset: ${preset.name}`);
+    setShowPresetMenu(false);
+    showNotification(`Inserted: ${preset.name}`);
+  }, [graph, handleGraphChange, showNotification]);
+
+  // Insert a built-in preset
+  const handleInsertBuiltInPreset = useCallback((preset: NodePreset) => {
+    const idPrefix = `preset_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const idMap = new Map<string, string>();
+
+    // Create new nodes with unique IDs
+    const nodes: NodeInstance[] = preset.nodes.map(node => {
+      const newId = `${idPrefix}_${node.id}`;
+      idMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        position: {
+          x: node.position.x + graph.viewport.x + 300,
+          y: node.position.y + graph.viewport.y + 200,
+        },
+        data: { ...node.data },
+      };
+    });
+
+    // Create new connections with updated node IDs
+    const connections: Connection[] = preset.connections.map(conn => ({
+      id: `${idPrefix}_${conn.id}`,
+      fromNodeId: idMap.get(conn.fromNodeId) || conn.fromNodeId,
+      fromPortId: conn.fromPortId,
+      toNodeId: idMap.get(conn.toNodeId) || conn.toNodeId,
+      toPortId: conn.toPortId,
+    }));
+
+    const newGraph: NodeGraph = {
+      ...graph,
+      nodes: [...graph.nodes, ...nodes],
+      connections: [...graph.connections, ...connections],
+    };
+
+    handleGraphChange(newGraph, `Insert preset: ${preset.name}`);
+    setShowPresetMenu(false);
+    showNotification(`Inserted: ${preset.name}`);
+  }, [graph, handleGraphChange, showNotification]);
+
+  // Save selected nodes as a preset
+  const handleSaveAsPreset = useCallback(() => {
+    if (selectedNodeIds.size === 0 && !selectedNodeId) {
+      showNotification('Select nodes to save as preset');
+      return;
+    }
+
+    const nodeIdsToSave = selectedNodeIds.size > 0
+      ? Array.from(selectedNodeIds)
+      : selectedNodeId ? [selectedNodeId] : [];
+
+    const nodesToSave = graph.nodes.filter(n => nodeIdsToSave.includes(n.id));
+    const connectionsToSave = graph.connections.filter(
+      c => nodeIdsToSave.includes(c.fromNodeId) && nodeIdsToSave.includes(c.toNodeId)
+    );
+
+    if (nodesToSave.length === 0) {
+      showNotification('No nodes selected');
+      return;
+    }
+
+    try {
+      const preset = NodePresetService.createPreset(
+        presetName || 'My Preset',
+        nodesToSave,
+        connectionsToSave,
+        { description: presetDescription }
+      );
+      showNotification(`Saved preset: ${preset.name}`);
+      setShowSavePresetModal(false);
+      setPresetName('');
+      setPresetDescription('');
+    } catch (e) {
+      showNotification('Failed to save preset');
+    }
+  }, [selectedNodeIds, selectedNodeId, graph, presetName, presetDescription, showNotification]);
+
+  // Delete a user preset
+  const handleDeletePreset = useCallback((presetId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    NodePresetService.deletePreset(presetId);
+    showNotification('Preset deleted');
+  }, [showNotification]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -216,6 +345,89 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
 
           <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
 
+          {/* Presets Dropdown */}
+          <div className="relative" ref={presetMenuRef}>
+            <button
+              onClick={() => setShowPresetMenu(!showPresetMenu)}
+              className="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded flex items-center gap-1.5"
+              title="Node Presets"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Presets
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Preset dropdown menu */}
+            {showPresetMenu && (
+              <div className="absolute right-0 top-full mt-1 w-72 bg-[#1e1e2e] border border-[#3f3f5a] rounded-lg shadow-xl z-50 overflow-hidden">
+                {/* Save as Preset */}
+                <button
+                  onClick={() => {
+                    setShowPresetMenu(false);
+                    setShowSavePresetModal(true);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 border-b border-[#3f3f5a]"
+                >
+                  <span className="text-lg">+</span>
+                  Save Selection as Preset...
+                </button>
+
+                {/* Built-in Presets */}
+                <div className="px-3 py-1.5 text-xs text-gray-500 bg-[#0f0f1a]">Templates</div>
+                {BUILT_IN_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    onClick={() => handleInsertBuiltInPreset(preset)}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2"
+                  >
+                    <span className="text-lg">{preset.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{preset.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                    </div>
+                  </button>
+                ))}
+
+                {/* User Presets */}
+                {userPresets.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs text-gray-500 bg-[#0f0f1a]">My Presets</div>
+                    {userPresets.map(preset => (
+                      <button
+                        key={preset.id}
+                        onClick={() => handleInsertPreset(preset)}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 group"
+                      >
+                        <span className="text-lg">{preset.icon || '📦'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{preset.name}</div>
+                          {preset.description && (
+                            <div className="text-xs text-gray-500 truncate">{preset.description}</div>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => handleDeletePreset(preset.id, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-400"
+                          title="Delete preset"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
+
           {/* Graph name input */}
           <input
             type="text"
@@ -253,6 +465,67 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
           nodeId={selectedNodeId}
           onGraphChange={handleGraphChangeWithAction}
         />
+      )}
+
+      {/* Save Preset Modal */}
+      {showSavePresetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1e1e2e] border border-[#3f3f5a] rounded-lg shadow-xl w-96 p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Save as Preset</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="My Preset"
+                  className="w-full px-3 py-2 bg-[#2a2a3e] border border-[#3f3f5a] rounded text-white focus:outline-none focus:border-blue-500"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Description (optional)</label>
+                <textarea
+                  value={presetDescription}
+                  onChange={(e) => setPresetDescription(e.target.value)}
+                  placeholder="What does this preset do?"
+                  rows={2}
+                  className="w-full px-3 py-2 bg-[#2a2a3e] border border-[#3f3f5a] rounded text-white focus:outline-none focus:border-blue-500 resize-none"
+                />
+              </div>
+
+              <div className="text-xs text-gray-500">
+                {selectedNodeIds.size > 0
+                  ? `${selectedNodeIds.size} nodes selected`
+                  : selectedNodeId
+                    ? '1 node selected'
+                    : 'No nodes selected'}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowSavePresetModal(false);
+                  setPresetName('');
+                  setPresetDescription('');
+                }}
+                className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAsPreset}
+                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"
+              >
+                Save Preset
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
