@@ -163,6 +163,16 @@ PromptPlay/
 │       │   │   └── ...
 │       │   ├── hooks/           # Reusable logic
 │       │   └── services/        # Core services
+│       │       ├── NetworkManager    # WebSocket/WebRTC
+│       │       ├── LobbySystem       # Room management
+│       │       ├── Matchmaking       # Queue & ELO
+│       │       ├── Leaderboards      # Scores & achievements
+│       │       ├── StateSync         # Entity sync
+│       │       ├── GPUInstancing     # Batch rendering
+│       │       ├── LODSystem         # Level of detail
+│       │       ├── OcclusionCulling  # Smart rendering
+│       │       ├── AssetStreaming    # Progressive loading
+│       │       └── MemoryOptimizer   # Resource management
 │       └── src-tauri/           # Rust Backend
 │           └── src/
 │               ├── commands.rs  # File, AI, export
@@ -333,7 +343,7 @@ PromptPlay/
 - [ ] AI Art Generation Integration (Stable Diffusion, DALL-E)
 - [ ] Voice-to-Game Feature (speak and create)
 
-### v4.0 - Advanced Visual Scripting (In Progress)
+### Completed (v4.0) - Professional Tools
 
 - [x] Motion Nodes - Easing (8 types: quad, cubic, elastic, bounce)
 - [x] Motion Nodes - Physics (spring, smooth damp, move towards)
@@ -349,33 +359,29 @@ PromptPlay/
 - [x] Behavior Trees (AI decision making with 19 node types)
 - [x] Behavior Tree Editor (visual tree editor)
 - [x] State Machine Nodes (FSM with visual editor, presets)
+- [x] PBR Material System (Phong, Lambert, Toon, Physical)
+- [x] Advanced Particle Editor (GPU particles, 12 effect types)
+- [x] Terrain Editor (3D landscapes with texture painting)
+- [x] Water & Weather Systems (rain, snow, fog, wind)
+- [x] Day/Night Cycle (dynamic sun position, colors, shadows)
 
-### v4.1 - Professional Tools
+### Completed (v4.1) - Performance & Polish
 
-- [ ] Advanced Particle Editor (GPU particles)
-- [ ] Terrain Editor (3D landscapes)
-- [ ] Water & Weather Systems (rain, snow, wind)
-- [ ] Day/Night Cycle (dynamic lighting)
-- [ ] Spline & Path Editor (curves, rails)
-- [ ] Cutscene Editor (cinematic sequences)
+- [x] GPU Instancing (thousands of objects with batching)
+- [x] LOD System (automatic level of detail switching)
+- [x] Occlusion Culling (frustum, distance, size culling)
+- [x] Asset Streaming (priority-based loading, caching)
+- [x] Memory Optimization (object pooling, GC hints)
+- [x] Performance Panel (real-time stats and controls)
 
-### v4.2 - Performance & Polish
+### Completed (v5.0) - Multiplayer & Networking
 
-- [ ] GPU Instancing (thousands of objects)
-- [ ] LOD System (Level of Detail)
-- [ ] Occlusion Culling (smart rendering)
-- [ ] Asset Streaming (large worlds)
-- [ ] Memory Optimization (efficient loading)
-- [ ] Profiler & Performance Tools
-
-### v5.0 - Multiplayer & Networking
-
-- [ ] Real-time Multiplayer Support
-- [ ] Lobby System (matchmaking rooms)
-- [ ] Peer-to-Peer & Server Options
-- [ ] Leaderboards & Achievements
-- [ ] Cloud Functions (serverless logic)
-- [ ] Voice Chat Integration
+- [x] Real-time Multiplayer Support (WebSocket + WebRTC)
+- [x] Network Manager (connection, RPC, peer-to-peer)
+- [x] Lobby System (room creation, chat, host migration)
+- [x] Matchmaking (queue management, ELO rating, rank tiers)
+- [x] Leaderboards & Achievements (scores, rankings, unlocks)
+- [x] State Synchronization (client prediction, interpolation, delta compression)
 
 ### v5.1 - Monetization & Analytics
 
