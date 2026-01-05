@@ -1068,12 +1068,54 @@ export const NODE_LIBRARY: Record<string, NodeDefinition> = {
   play_sound: playSoundNode,
 };
 
-// Get nodes by category
+// Get nodes by category (includes custom nodes)
 export function getNodesByCategory(category: NodeDefinition['category']): NodeDefinition[] {
-  return Object.values(NODE_LIBRARY).filter(node => node.category === category);
+  const builtIn = Object.values(NODE_LIBRARY).filter(node => node.category === category);
+
+  // Import custom nodes dynamically to avoid circular dependency
+  if (category === 'custom') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { CustomNodeRegistry } = require('./CustomNodeRegistry');
+      return [...builtIn, ...CustomNodeRegistry.getAll()];
+    } catch {
+      return builtIn;
+    }
+  }
+
+  return builtIn;
 }
 
 // Get all categories
 export function getCategories(): NodeDefinition['category'][] {
   return ['events', 'logic', 'math', 'entities', 'physics', 'input', 'animation', 'motion', 'audio', 'custom'];
+}
+
+// Get a node definition by type (checks both built-in and custom)
+export function getNodeDefinition(type: string): NodeDefinition | undefined {
+  if (NODE_LIBRARY[type]) {
+    return NODE_LIBRARY[type];
+  }
+
+  // Check custom nodes
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CustomNodeRegistry } = require('./CustomNodeRegistry');
+    return CustomNodeRegistry.get(type);
+  } catch {
+    return undefined;
+  }
+}
+
+// Get all node definitions (built-in + custom)
+export function getAllNodes(): NodeDefinition[] {
+  const builtIn = Object.values(NODE_LIBRARY);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { CustomNodeRegistry } = require('./CustomNodeRegistry');
+    return [...builtIn, ...CustomNodeRegistry.getAll()];
+  } catch {
+    return builtIn;
+  }
 }

@@ -339,7 +339,7 @@ PromptPlay/
 - [x] Motion Nodes - Physics (spring, smooth damp, move towards)
 - [x] Motion Nodes - Paths (bezier curves, vector interpolation)
 - [x] Motion Nodes - Timing (timer, delay, keyframe lerp)
-- [ ] Custom Node Creation (extend with TypeScript)
+- [x] Custom Node API (extend with TypeScript)
 - [ ] Node Groups & Subgraphs
 - [ ] Shader Graph Editor (visual shader creation)
 - [ ] Behavior Trees (AI decision making)

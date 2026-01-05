@@ -209,7 +209,7 @@
 | 4.0.4 | Motion nodes - physics | Spring, smooth damp, move towards | ✅ |
 | 4.0.5 | Motion nodes - timing | Timer, delay nodes | ✅ |
 | 4.0.6 | Motion nodes - vectors | Make/break vector2, lerp vector2 | ✅ |
-| 4.0.7 | Custom node API | TypeScript node definition | 🔲 |
+| 4.0.7 | Custom node API | TypeScript node definition | ✅ |
 | 4.0.8 | Node presets | Save/load node configurations | 🔲 |
 | 4.0.9 | Node groups | Group nodes into subgraphs | 🔲 |
 | 4.0.10 | Node comments | Add comments to node groups | 🔲 |
