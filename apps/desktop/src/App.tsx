@@ -49,6 +49,7 @@ import { AuthDialog } from './components/AuthDialog';
 import { CloudProjectsDialog } from './components/CloudProjectsDialog';
 import { MarketplaceDialog } from './components/MarketplaceDialog';
 import { CollaboratorsPanel } from './components/CollaboratorsPanel';
+import { AIToolsPanel } from './components/AIToolsPanel';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -95,6 +96,9 @@ function App() {
   const [showCloudProjects, setShowCloudProjects] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
+
+  // v3.2 AI Tools
+  const [showAITools, setShowAITools] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1820,6 +1824,9 @@ function App() {
         case 'cloud_auth':
           setShowAuthDialog(true);
           break;
+        case 'ai_tools':
+          setShowAITools(!showAITools);
+          break;
 
         // ==================== HELP MENU ====================
         case 'getting_started':
@@ -2144,6 +2151,15 @@ function App() {
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowAITools(!showAITools)}
+              className={`p-1.5 rounded transition-colors ${showAITools ? 'bg-purple-500/20 text-purple-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
+              title="AI Tools (Level Design, NPCs, Procedural, Art, Voice)"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </button>
             <div className="w-px h-5 bg-subtle mx-1" />
@@ -2555,6 +2571,24 @@ function App() {
           projectId={projectPath || 'default'}
         />
       )}
+
+      {/* AI Tools Panel (v3.2 - Level Design, NPCs, Procedural, Art, Voice) */}
+      <AIToolsPanel
+        gameSpec={gameSpec}
+        isOpen={showAITools}
+        onClose={() => setShowAITools(false)}
+        onApplyChanges={(entities) => {
+          if (gameSpec) {
+            const existingEntities = gameSpec.entities || [];
+            setGameSpec({
+              ...gameSpec,
+              entities: [...existingEntities, ...entities],
+            });
+            setHasUnsavedChanges(true);
+          }
+        }}
+        onNotification={setNotification}
+      />
     </div>
   );
 }
