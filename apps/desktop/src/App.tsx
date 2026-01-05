@@ -54,6 +54,7 @@ import { ProfessionalToolsPanel } from './components/ProfessionalToolsPanel';
 import { PerformancePanel } from './components/PerformancePanel';
 import { MultiplayerPanel } from './components/MultiplayerPanel';
 import { MonetizationPanel } from './components/MonetizationPanel';
+import { ExtendedPlatformsPanel } from './components/ExtendedPlatformsPanel';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -115,6 +116,9 @@ function App() {
 
   // v5.1 Monetization & Analytics
   const [showMonetization, setShowMonetization] = useState(false);
+
+  // v6.0 Extended Platforms
+  const [showExtendedPlatforms, setShowExtendedPlatforms] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1855,6 +1859,9 @@ function App() {
         case 'monetization':
           setShowMonetization(!showMonetization);
           break;
+        case 'extended_platforms':
+          setShowExtendedPlatforms(!showExtendedPlatforms);
+          break;
 
         // ==================== HELP MENU ====================
         case 'getting_started':
@@ -2228,6 +2235,15 @@ function App() {
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowExtendedPlatforms(!showExtendedPlatforms)}
+              className={`p-1.5 rounded transition-colors ${showExtendedPlatforms ? 'bg-violet-500/20 text-violet-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
+              title="Extended Platforms (Console, VR/AR, Steam, Mobile, WebGPU)"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </button>
             <div className="w-px h-5 bg-subtle mx-1" />
@@ -2697,6 +2713,13 @@ function App() {
       <MonetizationPanel
         isOpen={showMonetization}
         onClose={() => setShowMonetization(false)}
+        onNotification={setNotification}
+      />
+
+      {/* Extended Platforms Panel (v6.0 - Console, VR/AR, Steam, Mobile, WebGPU) */}
+      <ExtendedPlatformsPanel
+        isOpen={showExtendedPlatforms}
+        onClose={() => setShowExtendedPlatforms(false)}
         onNotification={setNotification}
       />
     </div>

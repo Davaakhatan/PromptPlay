@@ -383,23 +383,31 @@ PromptPlay/
 - [x] Leaderboards & Achievements (scores, rankings, unlocks)
 - [x] State Synchronization (client prediction, interpolation, delta compression)
 
-### v5.1 - Monetization & Analytics
+### Completed (v5.1) - Monetization & Analytics
 
-- [ ] In-App Purchase Support
-- [ ] Ad Integration (rewarded, banner, interstitial)
-- [ ] Analytics Dashboard (player behavior)
-- [ ] A/B Testing (experiment with features)
-- [ ] Crash Reporting (error tracking)
-- [ ] Revenue Tracking
+- [x] In-App Purchase Support (virtual currencies, products, subscriptions)
+- [x] Ad Integration (rewarded, banner, interstitial with mediation)
+- [x] Analytics Dashboard (events, funnels, retention, cohorts)
+- [x] A/B Testing (experiments, variants, statistical significance)
+- [x] Crash Reporting (error tracking, stack traces, breadcrumbs)
+- [x] Revenue Tracking (forecasting, metrics, ARPU, LTV)
 
-### v6.0 - Extended Platforms
+### Completed (v6.0) - Extended Platforms
 
-- [ ] Console Export (Switch, PlayStation, Xbox)
-- [ ] VR/AR Support (WebXR, Oculus, SteamVR)
-- [ ] Steam Integration (achievements, workshop)
-- [ ] Mobile App Stores (iOS App Store, Google Play)
-- [ ] WebGPU Rendering (next-gen graphics)
-- [ ] Native Mobile (React Native, Capacitor)
+- [x] Console Export (Nintendo Switch, PlayStation 5, Xbox Series X|S)
+- [x] VR/AR Support (Meta Quest, SteamVR, WebXR, Apple Vision Pro, PICO)
+- [x] Steam Integration (achievements, cloud saves, workshop, leaderboards)
+- [x] Mobile App Stores (iOS App Store, Google Play)
+- [x] WebGPU Rendering (compute shaders, PBR, next-gen graphics)
+- [x] Extended Platforms Panel (unified export interface)
+
+### v7.0 - Future
+
+- [ ] Native Mobile Build (React Native, Capacitor)
+- [ ] Console DevKit Integration
+- [ ] Cloud Gaming Support (Stadia-like streaming)
+- [ ] Plugin Marketplace
+- [ ] Advanced AI Co-pilot (full game generation)
 
 ---
 
