@@ -193,8 +193,10 @@ export function AIToolsPanel({ gameSpec, isOpen, onClose, onApplyChanges, onNoti
       });
       setGeneratedArt(prev => [result.url || result.base64 || '', ...prev].slice(0, 12));
       onNotification('Generated art asset');
+      setTimeout(() => onNotification(''), 2000);
     } catch (err) {
       onNotification(`Art generation unavailable - configure API key in settings`);
+      setTimeout(() => onNotification(''), 3000);
       // Add placeholder
       setGeneratedArt(prev => ['placeholder', ...prev].slice(0, 12));
     }

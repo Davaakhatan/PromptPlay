@@ -1,6 +1,28 @@
 /**
  * AI Art Generator Service
  * Integrates with AI image generation APIs to create game assets
+ *
+ * ## API Integration Requirements
+ *
+ * To enable real AI image generation, configure one of these environment variables:
+ *
+ * ### Stability AI (Recommended for game assets)
+ * - VITE_STABILITY_API_KEY: Get from https://platform.stability.ai/
+ * - Supports: SDXL, custom sizes, negative prompts
+ *
+ * ### Replicate
+ * - VITE_REPLICATE_API_KEY: Get from https://replicate.com/
+ * - Supports: Various models including SDXL
+ *
+ * ### OpenAI DALL-E 3
+ * - VITE_OPENAI_API_KEY: Get from https://platform.openai.com/
+ * - High quality but limited size options
+ *
+ * ## Demo Mode
+ * When no API key is configured, the service runs in Demo Mode:
+ * - Returns placeholder images with "DEMO" watermark
+ * - All GeneratedArt objects have isDemoMode: true
+ * - Use isDemoMode() method to check current status
  */
 
 export interface ArtGenerationConfig {
@@ -40,6 +62,7 @@ export interface GeneratedArt {
   style: ArtStyle;
   size: ImageSize;
   timestamp: number;
+  isDemoMode: boolean; // True when using placeholder images (no API configured)
   metadata: {
     model: string;
     seed?: number;
@@ -180,6 +203,22 @@ class AIArtGeneratorService {
   }
 
   /**
+   * Check if service is running in demo mode (no API configured)
+   * When true, all generated images will be placeholders
+   */
+  isDemoMode(): boolean {
+    return !this.isAvailable();
+  }
+
+  /**
+   * Get demo mode status message for UI display
+   */
+  getDemoModeMessage(): string | null {
+    if (!this.isDemoMode()) return null;
+    return 'AI Art is in Demo Mode. Configure an API key (Stability AI, Replicate, or OpenAI) to generate real images.';
+  }
+
+  /**
    * Get list of available providers
    */
   getProviders(): AIProvider[] {
@@ -246,13 +285,14 @@ class AIArtGeneratorService {
       });
 
       const generatedArt: GeneratedArt = {
-        id: `art_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `art_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         url: result.url || '',
         base64: result.base64,
         prompt: config.prompt,
         style: config.style,
         size: config.size,
         timestamp: Date.now(),
+        isDemoMode: false, // Real API response
         metadata: {
           model: provider.model,
           seed: config.seed,
@@ -577,6 +617,7 @@ class AIArtGeneratorService {
 
   /**
    * Generate a placeholder image for development/demo
+   * Returns isDemoMode: true to indicate this is not a real AI-generated image
    */
   private generatePlaceholder(config: ArtGenerationConfig): GeneratedArt {
     return {
@@ -586,8 +627,9 @@ class AIArtGeneratorService {
       style: config.style,
       size: config.size,
       timestamp: Date.now(),
+      isDemoMode: true, // Placeholder - no API configured
       metadata: {
-        model: 'placeholder',
+        model: 'demo-placeholder',
       },
     };
   }
@@ -633,12 +675,24 @@ class AIArtGeneratorService {
       ctx.stroke();
     }
 
-    // Add text
+    // Add "DEMO" label at top
+    ctx.fillStyle = 'rgba(255,100,100,0.9)';
+    ctx.font = `bold ${Math.min(width, height) / 6}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('DEMO', width / 2, height * 0.1);
+
+    // Add size text
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = `${Math.min(width, height) / 8}px sans-serif`;
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${width}x${height}`, width / 2, height / 2);
+
+    // Add "No API" text at bottom
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = `${Math.min(width, height) / 10}px sans-serif`;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('No API Key', width / 2, height * 0.9);
 
     return canvas.toDataURL('image/png');
   }

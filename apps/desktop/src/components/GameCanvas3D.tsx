@@ -35,6 +35,12 @@ export function GameCanvas3D({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
 
+  // Drag plane and offset for 3D dragging
+  const dragPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
+  const dragOffsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const dragStartPosRef = useRef<THREE.Vector3>(new THREE.Vector3());
+
   // Keep gameSpec in a ref to avoid reloading during play
   const gameSpecRef = useRef(gameSpec);
   useEffect(() => {
@@ -312,31 +318,174 @@ export function GameCanvas3D({
   // Handle mouse down for dragging
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (event.button !== 0 || !selectedEntities.size) return;
+      if (event.button !== 0 || !selectedEntities.size || !gameSpec || !game3DRef.current) return;
 
-      // Check if clicking on selected entity
-      // For now, simplified - just track drag state
-      setIsDragging(false);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const renderer = game3DRef.current.renderer;
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), renderer.camera);
+
+      // Check if clicking on a selected entity
+      const meshes: THREE.Object3D[] = [];
+      const entityIndexMap = new Map<THREE.Object3D, number>();
+
+      gameSpec.entities.forEach((_, index) => {
+        try {
+          const mesh = renderer.getMesh(index);
+          if (mesh) {
+            meshes.push(mesh);
+            entityIndexMap.set(mesh, index);
+          }
+        } catch {
+          // Skip invalid meshes
+        }
+      });
+
+      const intersects = raycaster.intersectObjects(meshes, true);
+
+      if (intersects.length > 0) {
+        const intersected = intersects[0].object;
+        let entityId = intersected.userData?.entityId;
+
+        // Check parent if not found
+        if (entityId === undefined && intersected.parent) {
+          entityId = intersected.parent.userData?.entityId;
+        }
+
+        // Also check our map
+        if (entityId === undefined) {
+          entityIndexMap.forEach((idx, mesh) => {
+            if (intersected === mesh || intersected.parent === mesh) {
+              entityId = idx;
+            }
+          });
+        }
+
+        if (entityId !== undefined && gameSpec.entities[entityId]) {
+          const entityName = gameSpec.entities[entityId].name;
+
+          // Only start dragging if clicking on already selected entity
+          if (selectedEntities.has(entityName)) {
+            const entity = gameSpec.entities[entityId];
+            const t = entity.components.transform3d;
+
+            if (t) {
+              // Create drag plane perpendicular to camera view
+              const cameraDirection = new THREE.Vector3();
+              renderer.camera.getWorldDirection(cameraDirection);
+
+              const entityPos = new THREE.Vector3(t.x, t.y, t.z);
+              dragPlaneRef.current.setFromNormalAndCoplanarPoint(cameraDirection, entityPos);
+
+              // Calculate offset from entity center to click point
+              const intersectPoint = new THREE.Vector3();
+              raycaster.ray.intersectPlane(dragPlaneRef.current, intersectPoint);
+
+              dragOffsetRef.current.copy(entityPos).sub(intersectPoint);
+              dragStartPosRef.current.copy(entityPos);
+
+              setDraggedEntity(entityName);
+              setIsDragging(true);
+
+              // Disable orbit controls during drag
+              if (controlsRef.current) {
+                controlsRef.current.enabled = false;
+              }
+            }
+          }
+        }
+      }
     },
-    [selectedEntities]
+    [selectedEntities, gameSpec]
   );
 
   // Handle mouse move for dragging
   const handleMouseMove = useCallback(
-    (_event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!isDragging || !draggedEntity || !onEntityTransformChange) return;
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDragging || !draggedEntity || !onEntityTransformChange || !game3DRef.current) return;
 
-      // Transform dragging would go here
-      // This requires more complex 3D position calculation
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const renderer = game3DRef.current.renderer;
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), renderer.camera);
+
+      // Find intersection with drag plane
+      const intersectPoint = new THREE.Vector3();
+      const hasIntersect = raycaster.ray.intersectPlane(dragPlaneRef.current, intersectPoint);
+
+      if (hasIntersect) {
+        // Add the offset to get the new entity position
+        const newPosition = intersectPoint.add(dragOffsetRef.current);
+
+        // Update entity transform
+        onEntityTransformChange(draggedEntity, {
+          x: newPosition.x,
+          y: newPosition.y,
+          z: newPosition.z,
+        });
+
+        // Update the mesh position immediately for visual feedback
+        if (gameSpec) {
+          const entityIndex = gameSpec.entities.findIndex((e) => e.name === draggedEntity);
+          if (entityIndex >= 0) {
+            renderer.updateMeshTransform(
+              entityIndex,
+              { x: newPosition.x, y: newPosition.y, z: newPosition.z },
+              undefined,
+              undefined
+            );
+
+            // Update selection box to follow the mesh
+            const selectionBox = selectionBoxesRef.current.get(draggedEntity);
+            if (selectionBox) {
+              selectionBox.update();
+            }
+          }
+        }
+      }
     },
-    [isDragging, draggedEntity, onEntityTransformChange]
+    [isDragging, draggedEntity, onEntityTransformChange, gameSpec]
   );
 
   // Handle mouse up
   const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      // Re-enable orbit controls after drag
+      if (controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
+    }
     setIsDragging(false);
     setDraggedEntity(null);
-  }, []);
+  }, [isDragging]);
+
+  // Handle global mouse up to catch releases outside canvas
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        if (controlsRef.current) {
+          controlsRef.current.enabled = true;
+        }
+        setIsDragging(false);
+        setDraggedEntity(null);
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isDragging]);
 
   return (
     <div
@@ -354,7 +503,7 @@ export function GameCanvas3D({
         }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        className="w-full h-full outline-none"
+        className={`w-full h-full outline-none ${isDragging ? 'cursor-grabbing' : ''}`}
       />
 
       {/* Toolbar overlay */}

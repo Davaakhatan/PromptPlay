@@ -1543,6 +1543,50 @@ function App() {
     return convertTo3DSpec(gameSpec);
   }, [gameSpec, convertTo3DSpec]);
 
+  // Handle 3D entity transform changes (convert back to 2D coordinates)
+  const handle3DEntityTransformChange = useCallback(
+    (entityName: string, transform: { x: number; y: number; z: number }) => {
+      if (!gameSpec) return;
+
+      const scale = 50; // Same scale used in convertTo3DSpec
+      const worldHeight = gameSpec.config?.worldBounds?.height || 600;
+      const worldWidth = gameSpec.config?.worldBounds?.width || 800;
+
+      // Convert 3D coordinates back to 2D pixel coordinates
+      // Reverse of: x3d = (x2d / scale) - (worldWidth / scale / 2)
+      // Reverse of: y3d = ((worldHeight - y2d) / scale) - 0.5
+      const x2D = (transform.x * scale) + (worldWidth / 2);
+      const y2D = worldHeight - ((transform.y + 0.5) * scale);
+
+      // Update the entity's transform component
+      const updatedEntities = gameSpec.entities?.map((entity) => {
+        if (entity.name === entityName && entity.components?.transform) {
+          return {
+            ...entity,
+            components: {
+              ...entity.components,
+              transform: {
+                ...entity.components.transform,
+                x: x2D,
+                y: y2D,
+              },
+            },
+          };
+        }
+        return entity;
+      });
+
+      const updatedSpec = {
+        ...gameSpec,
+        entities: updatedEntities,
+      };
+
+      setGameSpec(updatedSpec);
+      setHasUnsavedChanges(true);
+    },
+    [gameSpec]
+  );
+
   // Export game as standalone HTML
   const exportGame = useCallback(async () => {
     if (!gameSpec) return;
@@ -2292,6 +2336,7 @@ function App() {
               isPlaying={isPlaying}
               selectedEntities={selectedEntities}
               onEntitySelect={handleEntitySelect}
+              onEntityTransformChange={handle3DEntityTransformChange}
               showGrid={showGrid}
               showAxes={true}
             />

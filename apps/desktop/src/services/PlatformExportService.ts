@@ -1,6 +1,41 @@
 /**
  * Platform Export Service - v6.0
  * Export games to Console, VR/AR, Steam, and Mobile App Stores
+ *
+ * ## SIMULATION MODE
+ *
+ * This service currently runs in **Simulation Mode**. Export operations
+ * demonstrate the workflow but do not produce actual platform builds.
+ *
+ * ### To Enable Real Exports:
+ *
+ * **Console Platforms (Nintendo Switch, PlayStation, Xbox):**
+ * - Requires official developer program membership
+ * - Requires platform-specific SDK and DevKit hardware
+ * - Contact: Nintendo Developer Portal, PlayStation Partners, Xbox Developer Program
+ *
+ * **Steam/SteamVR:**
+ * - Requires Steamworks account ($100 app fee)
+ * - Download Steam SDK from partner.steamgames.com
+ * - Configure STEAM_SDK_PATH environment variable
+ *
+ * **iOS App Store:**
+ * - Requires Apple Developer Account ($99/year)
+ * - Requires macOS with Xcode installed
+ * - Configure signing certificates in Xcode
+ *
+ * **Google Play:**
+ * - Requires Google Play Console account ($25 one-time)
+ * - Configure Android SDK and signing keystore
+ * - Set ANDROID_HOME environment variable
+ *
+ * **VR Platforms (Meta Quest, PICO, Apple Vision):**
+ * - Requires respective developer accounts
+ * - Platform-specific SDK integration needed
+ *
+ * **WebXR:**
+ * - No special requirements - exports work in simulation
+ * - Real export produces deployable web build
  */
 
 export type Platform =
@@ -62,6 +97,7 @@ export interface ExportResult {
   errors?: string[];
   warnings?: string[];
   artifacts?: string[];
+  isSimulationMode: boolean; // True when SDK/tools not configured for real export
 }
 
 export interface SteamConfig {
@@ -264,6 +300,108 @@ class PlatformExportService {
     }
   }
 
+  /**
+   * Check if service is running in simulation mode
+   * Currently always true - real exports require platform SDK setup
+   */
+  isSimulationMode(): boolean {
+    // TODO: Check for actual SDK presence (STEAM_SDK_PATH, ANDROID_HOME, Xcode, etc.)
+    return true;
+  }
+
+  /**
+   * Get simulation mode status message for UI display
+   */
+  getSimulationModeMessage(): string {
+    return 'Platform Export is in Simulation Mode. Configure platform SDKs and developer accounts to enable real exports.';
+  }
+
+  /**
+   * Get setup requirements for a specific platform
+   */
+  getSetupGuide(platform: Platform): string[] {
+    const guides: Record<Platform, string[]> = {
+      'nintendo-switch': [
+        '1. Apply for Nintendo Developer Program at developer.nintendo.com',
+        '2. Wait for approval (can take several weeks)',
+        '3. Download Nintendo SDK and DevKit tools',
+        '4. Obtain DevKit hardware for testing',
+        '5. Configure SDK path in environment variables',
+      ],
+      'playstation': [
+        '1. Apply at partners.playstation.com',
+        '2. Complete company verification process',
+        '3. Download PS5 SDK after approval',
+        '4. Obtain DevKit or TestKit hardware',
+        '5. Set up PlayStation Development Environment',
+      ],
+      'xbox': [
+        '1. Join Xbox Developer Program (free tier available)',
+        '2. Download GDK from developer.microsoft.com',
+        '3. Enable Developer Mode on retail Xbox (optional)',
+        '4. Configure Visual Studio with GDK extensions',
+        '5. Set up Partner Center account for publishing',
+      ],
+      'steam': [
+        '1. Create Steamworks account at partner.steamgames.com',
+        '2. Pay $100 app credit fee per game',
+        '3. Download Steamworks SDK',
+        '4. Set STEAM_SDK_PATH environment variable',
+        '5. Configure app in Steamworks dashboard',
+      ],
+      'ios-appstore': [
+        '1. Enroll in Apple Developer Program ($99/year)',
+        '2. Install Xcode on macOS',
+        '3. Create signing certificates and provisioning profiles',
+        '4. Configure App Store Connect listing',
+        '5. Set up TestFlight for beta testing',
+      ],
+      'google-play': [
+        '1. Create Google Play Console account ($25 one-time)',
+        '2. Install Android Studio and SDK',
+        '3. Generate release signing keystore',
+        '4. Set ANDROID_HOME environment variable',
+        '5. Configure Play Console listing',
+      ],
+      'meta-quest': [
+        '1. Create Meta Developer account',
+        '2. Download Meta Quest SDK',
+        '3. Enable Developer Mode on Quest device',
+        '4. Configure adb for device connection',
+        '5. Submit to App Lab or Quest Store',
+      ],
+      'steamvr': [
+        '1. Complete Steam setup (see Steam guide)',
+        '2. Download OpenVR SDK',
+        '3. Configure VR manifest file',
+        '4. Test with SteamVR runtime',
+        '5. Add VR-specific Steamworks settings',
+      ],
+      'webxr': [
+        '1. No special SDK required',
+        '2. Ensure HTTPS hosting for production',
+        '3. Test with WebXR-compatible browser',
+        '4. Configure XR session options',
+        '5. Deploy to web server',
+      ],
+      'pico': [
+        '1. Register at developer.pico-interactive.com',
+        '2. Download PICO SDK',
+        '3. Enable Developer Mode on device',
+        '4. Configure Android SDK for PICO',
+        '5. Submit to PICO Store',
+      ],
+      'apple-vision': [
+        '1. Enroll in Apple Developer Program',
+        '2. Install Xcode with visionOS SDK',
+        '3. Use Reality Composer Pro for 3D content',
+        '4. Test with visionOS Simulator or device',
+        '5. Submit to visionOS App Store',
+      ],
+    };
+    return guides[platform] || ['No setup guide available for this platform'];
+  }
+
   // Get platforms by category
   getPlatformsByCategory(category: PlatformConfig['category']): PlatformConfig[] {
     return this.platforms.filter(p => p.category === category);
@@ -305,6 +443,7 @@ class PlatformExportService {
         success: false,
         platform: config.platform,
         errors: validation.errors,
+        isSimulationMode: true,
       };
     }
 
@@ -336,10 +475,11 @@ class PlatformExportService {
       outputPath: `/exports/${config.platform}/${config.appName}-${config.version}`,
       buildSize: Math.floor(Math.random() * 500 + 100) * 1024 * 1024, // 100-600 MB
       buildTime: Math.floor(Math.random() * 120 + 30) * 1000, // 30-150 seconds
-      warnings: [],
+      warnings: ['Export ran in Simulation Mode - no actual build produced'],
       artifacts: [
         `${config.appName}-${config.version}.${this.getExtension(config.platform)}`,
       ],
+      isSimulationMode: true, // Currently always simulation - real exports require SDK setup
     };
 
     this.emit('export-completed', result);

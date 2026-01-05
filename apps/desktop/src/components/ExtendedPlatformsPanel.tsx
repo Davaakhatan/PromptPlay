@@ -54,11 +54,13 @@ export function ExtendedPlatformsPanel({ isOpen, onClose, onNotification }: Exte
     };
 
     const handleCompleted = (data: unknown) => {
-      const result = data as { success: boolean; platform: Platform };
+      const result = data as { success: boolean; platform: Platform; isSimulationMode?: boolean; warnings?: string[] };
       setExporting(false);
       setExportProgress(0);
       if (result.success) {
-        onNotification(`Successfully exported to ${result.platform}!`);
+        const simWarning = result.isSimulationMode ? ' (Simulation Mode)' : '';
+        onNotification(`Export complete for ${result.platform}${simWarning}`);
+        setTimeout(() => onNotification(''), 3000);
       }
     };
 
@@ -414,6 +416,21 @@ export function ExtendedPlatformsPanel({ isOpen, onClose, onNotification }: Exte
             </button>
           ))}
         </div>
+
+        {/* Simulation Mode Banner */}
+        {platformExportService.isSimulationMode() && activeTab !== 'webgpu' && (
+          <div className="mx-4 mt-3 bg-amber-500/20 border border-amber-500/30 rounded-lg p-3 flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-sm text-amber-400 font-medium">Simulation Mode</p>
+              <p className="text-xs text-amber-300/70 mt-1">
+                Exports will demonstrate the workflow but won't produce actual builds. Configure platform SDKs and developer accounts to enable real exports.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">

@@ -986,3 +986,167 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 2. Write code in Monaco → See visual representation update live
 3. AI analyzes your code and suggests visual script improvements
 4. Beginners can learn visual scripting by seeing code equivalents
+
+---
+
+## Work Package 14: Debug & Fix (v3.0.0 Polish)
+
+### Priority 1: Critical Issues
+
+#### WP14.1: 3D Entity Dragging
+**File:** `apps/desktop/src/components/GameCanvas3D.tsx`
+**Status:** ✅ Complete
+
+- [x] Implement raycasting for 3D object selection
+- [x] Add drag plane calculation based on camera orientation
+- [x] Update entity position during drag with proper 3D math
+- [x] Handle depth/Z-axis constraints
+- [x] Add global mouse up handler
+- [x] Add cursor styling during drag
+
+---
+
+#### WP14.2: AI Art Generation Mock Indicator
+**File:** `apps/desktop/src/services/AIArtGenerator.ts`
+**Status:** ✅ Complete
+
+- [x] Add clear "Demo Mode" indicator when returning placeholders
+- [x] Document API integration requirements
+- [x] Add loading states for image generation
+- [x] Implement proper error handling (auto-dismiss notifications)
+
+---
+
+#### WP14.3: Platform Export Documentation
+**File:** `apps/desktop/src/services/PlatformExportService.ts`
+**Status:** ✅ Complete
+
+- [x] Add "Simulation Mode" indicator to mock exports
+- [x] Document actual requirements for each platform
+- [x] Add progress reporting for real export steps
+- [x] Create platform-specific setup guides (getSetupGuide method)
+
+---
+
+### Priority 2: High Priority Features
+
+#### WP14.4: Node Editor Execution Logic
+**File:** `apps/desktop/src/components/NodeEditor.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Implement actual node execution logic
+- [ ] Add proper data flow between nodes
+- [ ] Implement all node types (math, logic, events, actions)
+- [ ] Add runtime execution engine
+- [ ] Connect to game runtime
+
+---
+
+#### WP14.5: WebGPU Renderer Integration
+**File:** `apps/desktop/src/services/WebGPURenderer.ts`
+**Status:** ⏳ Pending
+
+- [ ] Add WebGPU context initialization in GameCanvas3D
+- [ ] Implement fallback to WebGL when WebGPU unavailable
+- [ ] Connect compute shaders for particle systems
+- [ ] Add performance comparison tools
+
+---
+
+#### WP14.6: Tilemap Editor Painting
+**File:** `apps/desktop/src/components/TilemapEditor.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Fix tile painting on canvas
+- [ ] Add tile selection from tileset
+- [ ] Implement flood fill tool
+- [ ] Add layer management
+- [ ] Fix tileset import/loading
+
+---
+
+### Priority 3: Medium Priority Enhancements
+
+#### WP14.7: Animation Timeline Improvements
+**File:** `apps/desktop/src/components/AnimationTimeline.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Add easing curve editor
+- [ ] Implement multi-track editing
+- [ ] Add keyframe copy/paste
+- [ ] Fix playback synchronization
+
+---
+
+#### WP14.8: Terrain Editor Fix
+**File:** `apps/desktop/src/components/TerrainEditor.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Implement heightmap generation
+- [ ] Add brush-based terrain sculpting
+- [ ] Implement texture painting
+- [ ] Add terrain LOD system
+
+---
+
+#### WP14.9: Shader Editor Enhancement
+**File:** `apps/desktop/src/components/ShaderEditor.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Add real-time shader preview
+- [ ] Implement error highlighting
+- [ ] Add uniform controls
+- [ ] Support both GLSL and WGSL
+
+---
+
+### Priority 4: Polish & Code Quality
+
+#### WP14.10: AI Chat Context
+**File:** `apps/desktop/src/components/AIChat.tsx`
+**Status:** ⏳ Pending
+
+- [ ] Pass current scene state to AI
+- [ ] Include entity hierarchy in prompts
+- [ ] Add ability to reference specific entities
+
+---
+
+#### WP14.11: Video Recording Quality
+**File:** `apps/desktop/src/services/VideoRecorder.ts`
+**Status:** ⏳ Pending
+
+- [ ] Add resolution selection
+- [ ] Add framerate options
+- [ ] Implement format selection (MP4, WebM)
+- [ ] Add audio recording option
+
+---
+
+#### WP14.12: TypeScript Strict Mode
+**Files:** Various
+**Status:** ⏳ Pending
+
+- [ ] Enable stricter TypeScript settings
+- [ ] Fix all `any` types in event handlers
+- [ ] Add proper null checks
+- [ ] Fix implicit any in service callbacks
+
+---
+
+### WP14 Summary
+
+| Task | Priority | Status |
+|------|----------|--------|
+| 3D Entity Dragging | Critical | ✅ Complete |
+| AI Art Mock Indicator | Critical | ✅ Complete |
+| Platform Export Docs | Critical | ✅ Complete |
+| Node Editor Logic | High | ⏳ In Progress |
+| WebGPU Integration | High | ⏳ Pending |
+| Tilemap Editor | High | ⏳ Pending |
+| Animation Timeline | Medium | ⏳ Pending |
+| Terrain Editor | Medium | ⏳ Pending |
+| Shader Editor | Medium | ⏳ Pending |
+| AI Chat Context | Low | ⏳ Pending |
+| Video Recording | Low | ⏳ Pending |
+| TypeScript Strict | Low | ⏳ Pending |
