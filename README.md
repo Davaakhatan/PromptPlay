@@ -343,7 +343,9 @@ PromptPlay/
 - [x] Node Presets (save/load node configurations)
 - [x] Node Groups (group nodes with Ctrl+G)
 - [x] Node Comments (add notes with Ctrl+M)
-- [ ] Shader Graph Editor (visual shader creation)
+- [x] Shader Graph Types & Nodes (27 shader nodes)
+- [x] Shader Graph Compiler (GLSL code generation)
+- [ ] Shader Graph Editor UI (visual editor)
 - [ ] Behavior Trees (AI decision making)
 - [ ] State Machine Nodes
 

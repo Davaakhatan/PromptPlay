@@ -213,8 +213,8 @@
 | 4.0.8 | Node presets | Save/load node configurations | ✅ |
 | 4.0.9 | Node groups | Group nodes into subgraphs | ✅ |
 | 4.0.10 | Node comments | Add comments to node groups | ✅ |
-| 4.0.11 | Shader graph - setup | Visual shader editor | 🔲 |
-| 4.0.12 | Shader graph - nodes | Color, texture, math nodes | 🔲 |
+| 4.0.11 | Shader graph - setup | Visual shader editor | ✅ |
+| 4.0.12 | Shader graph - nodes | Color, texture, math nodes | ✅ |
 | 4.0.13 | Shader graph - preview | Real-time shader preview | 🔲 |
 | 4.0.14 | Behavior trees | AI decision making system | 🔲 |
 | 4.0.15 | Behavior tree editor | Visual tree editor | 🔲 |
