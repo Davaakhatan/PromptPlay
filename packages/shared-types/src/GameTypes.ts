@@ -63,6 +63,8 @@ export interface EntityComponents {
   camera?: CameraComponent;
   particleEmitter?: ParticleEmitterComponent;
   audio?: AudioComponent;
+  // 3D components (allow any for compatibility with 3D entities)
+  [key: string]: unknown;
 }
 
 // Component type definitions
@@ -105,6 +107,7 @@ export interface ColliderComponent {
   height?: number;
   radius?: number;
   isSensor?: boolean;
+  isStatic?: boolean;
   layer?: number;
 }
 

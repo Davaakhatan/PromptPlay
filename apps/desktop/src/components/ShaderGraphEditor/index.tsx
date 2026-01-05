@@ -1,11 +1,24 @@
 // Shader Graph Editor - Visual shader creation tool with real-time preview
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { ShaderGraph, ShaderNodeInstance, ShaderConnection, CompiledShader } from '../../types/ShaderGraph';
-import { SHADER_NODE_LIBRARY, SHADER_CATEGORIES, getShaderNodeDefinition } from '../../services/ShaderNodeLibrary';
+import type { ShaderGraph, ShaderNodeInstance, CompiledShader } from '../../types/ShaderGraph';
+import { getShaderNodeDefinition, getAllShaderNodes } from '../../services/ShaderNodeLibrary';
 import { ShaderGraphCompiler, createDefaultShaderGraph } from '../../services/ShaderGraphCompiler';
 import ShaderNodeCanvas from './ShaderNodeCanvas';
 import ShaderPreview from './ShaderPreview';
+import type { ShaderNodeDefinition } from '../../types/ShaderGraph';
+import { useUndoRedo, useUndoRedoKeyboard } from '../../hooks/useUndoRedo';
+
+// Category colors for visual display
+const CATEGORY_COLORS: Record<string, { color: string; name: string }> = {
+  input: { color: '#22c55e', name: 'Input' },
+  output: { color: '#ef4444', name: 'Output' },
+  math: { color: '#3b82f6', name: 'Math' },
+  color: { color: '#f59e0b', name: 'Color' },
+  texture: { color: '#8b5cf6', name: 'Texture' },
+  vector: { color: '#06b6d4', name: 'Vector' },
+  utility: { color: '#6b7280', name: 'Utility' },
+};
 
 interface ShaderGraphEditorProps {
   graph?: ShaderGraph | null;
@@ -20,7 +33,17 @@ export default function ShaderGraphEditor({
   onClose,
   onSave
 }: ShaderGraphEditorProps) {
-  const [graph, setGraph] = useState<ShaderGraph>(initialGraph || createDefaultShaderGraph());
+  // Get initial graph (create default if none provided)
+  const effectiveInitialGraph = useMemo(() => {
+    return initialGraph || createDefaultShaderGraph();
+  }, []); // Only compute once on mount
+
+  // Undo/Redo state management
+  const [{ current: graph, canUndo, canRedo }, { set: setGraph, undo, redo, reset }] = useUndoRedo<ShaderGraph>(
+    effectiveInitialGraph,
+    { maxHistorySize: 50, debounceMs: 300 }
+  );
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [showNodePalette, setShowNodePalette] = useState(false);
@@ -29,6 +52,23 @@ export default function ShaderGraphEditor({
   const [compileError, setCompileError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const paletteRef = useRef<HTMLDivElement>(null);
+
+  // Sync with parent when initial graph is provided (restore saved state)
+  useEffect(() => {
+    if (initialGraph) {
+      reset(initialGraph);
+    }
+  }, [initialGraph, reset]);
+
+  // Sync initial graph back to parent if none was provided
+  useEffect(() => {
+    if (!initialGraph && onGraphChange) {
+      onGraphChange(effectiveInitialGraph);
+    }
+  }, []); // Only on mount
+
+  // Keyboard shortcuts for undo/redo
+  useUndoRedoKeyboard(undo, redo, canUndo, canRedo);
 
   // Compile shader when graph changes
   useEffect(() => {
@@ -101,10 +141,11 @@ export default function ShaderGraphEditor({
 
   // Filter nodes by search
   const filteredNodes = useMemo(() => {
-    if (!paletteSearch) return SHADER_NODE_LIBRARY;
+    const allNodes = getAllShaderNodes();
+    if (!paletteSearch) return allNodes;
     const search = paletteSearch.toLowerCase();
-    return SHADER_NODE_LIBRARY.filter(
-      node => node.title.toLowerCase().includes(search) ||
+    return allNodes.filter(
+      (node: ShaderNodeDefinition) => node.title.toLowerCase().includes(search) ||
               node.type.toLowerCase().includes(search) ||
               node.category.toLowerCase().includes(search)
     );
@@ -112,7 +153,7 @@ export default function ShaderGraphEditor({
 
   // Group filtered nodes by category
   const groupedNodes = useMemo(() => {
-    const groups: Record<string, typeof SHADER_NODE_LIBRARY> = {};
+    const groups: Record<string, ShaderNodeDefinition[]> = {};
     for (const node of filteredNodes) {
       if (!groups[node.category]) {
         groups[node.category] = [];
@@ -226,9 +267,9 @@ export default function ShaderGraphEditor({
                       <div className="px-3 py-1.5 text-xs text-gray-500 bg-[#0f0f1a] uppercase tracking-wide flex items-center gap-2">
                         <span
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: SHADER_CATEGORIES[category as keyof typeof SHADER_CATEGORIES]?.color || '#888' }}
+                          style={{ backgroundColor: CATEGORY_COLORS[category]?.color || '#888' }}
                         />
-                        {SHADER_CATEGORIES[category as keyof typeof SHADER_CATEGORIES]?.name || category}
+                        {CATEGORY_COLORS[category]?.name || category}
                       </div>
                       {nodes.map(node => (
                         <button

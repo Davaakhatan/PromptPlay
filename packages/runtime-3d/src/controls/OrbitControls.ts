@@ -7,6 +7,7 @@ import * as THREE from 'three';
 export class OrbitControls {
   public enabled = true;
   public target = new THREE.Vector3(0, 0, 0);
+  private disposed = false;
 
   // Rotation limits
   public minPolarAngle = 0;
@@ -84,7 +85,7 @@ export class OrbitControls {
    * Update camera position from spherical coordinates
    */
   update(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.disposed) return;
 
     const offset = new THREE.Vector3();
 
@@ -110,8 +111,23 @@ export class OrbitControls {
       Math.min(this.maxDistance, this.spherical.radius)
     );
 
+    // Protect against NaN values
+    if (!Number.isFinite(this.spherical.radius) || !Number.isFinite(this.spherical.theta) || !Number.isFinite(this.spherical.phi)) {
+      this.spherical.set(10, Math.PI / 4, Math.PI / 4);
+      this.sphericalDelta.set(0, 0, 0);
+      this.panOffset.set(0, 0, 0);
+      this.scale = 1;
+      console.warn('OrbitControls: Reset due to invalid spherical coordinates');
+    }
+
     // Apply pan
     this.target.add(this.panOffset);
+
+    // Protect against NaN in target
+    if (!Number.isFinite(this.target.x) || !Number.isFinite(this.target.y) || !Number.isFinite(this.target.z)) {
+      this.target.set(0, 0, 0);
+      console.warn('OrbitControls: Reset target due to invalid coordinates');
+    }
 
     // Update camera position
     offset.setFromSpherical(this.spherical);
@@ -221,7 +237,10 @@ export class OrbitControls {
   // Event handlers
   private onMouseDown(event: MouseEvent): void {
     if (!this.enabled) return;
-    event.preventDefault();
+    // Don't prevent default on left click to allow focus management
+    if (event.button !== 0) {
+      event.preventDefault();
+    }
 
     switch (event.button) {
       case 0: // Left mouse
@@ -333,9 +352,21 @@ export class OrbitControls {
   }
 
   /**
+   * Check if controls are disposed
+   */
+  isDisposed(): boolean {
+    return this.disposed;
+  }
+
+  /**
    * Dispose of event listeners
    */
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.enabled = false;
+    this.state = 'none';
+
     this.domElement.removeEventListener('mousedown', this.onMouseDown);
     this.domElement.removeEventListener('wheel', this.onWheel);
     this.domElement.removeEventListener('touchstart', this.onTouchStart);

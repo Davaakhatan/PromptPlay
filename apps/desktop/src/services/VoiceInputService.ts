@@ -19,11 +19,15 @@ export interface VoiceInputResult {
 export type VoiceInputCallback = (result: VoiceInputResult) => void;
 export type VoiceErrorCallback = (error: string) => void;
 
+// Type for the Speech Recognition API (browser-specific)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionInstance = any;
+
 /**
  * Service for voice input using Web Speech API
  */
 export class VoiceInputService {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: SpeechRecognitionInstance = null;
   private isListening = false;
   private onResult: VoiceInputCallback | null = null;
   private onError: VoiceErrorCallback | null = null;
@@ -34,10 +38,9 @@ export class VoiceInputService {
    * Check if speech recognition is supported
    */
   static isSupported(): boolean {
-    return !!(
-      window.SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition: typeof SpeechRecognition }).webkitSpeechRecognition
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any;
+    return !!(win.SpeechRecognition || win.webkitSpeechRecognition);
   }
 
   /**
@@ -49,9 +52,9 @@ export class VoiceInputService {
       return false;
     }
 
-    const SpeechRecognitionAPI =
-      window.SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition: typeof SpeechRecognition }).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any;
+    const SpeechRecognitionAPI = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     this.recognition = new SpeechRecognitionAPI();
     this.recognition.lang = options.language || 'en-US';
@@ -60,7 +63,8 @@ export class VoiceInputService {
     this.recognition.maxAlternatives = options.maxAlternatives ?? 1;
 
     // Set up event handlers
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.recognition.onresult = (event: any) => {
       const result = event.results[event.results.length - 1];
       const transcript = result[0].transcript;
       const confidence = result[0].confidence;
@@ -71,7 +75,8 @@ export class VoiceInputService {
       }
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.recognition.onerror = (event: any) => {
       const errorMessages: Record<string, string> = {
         'no-speech': 'No speech was detected. Please try again.',
         'audio-capture': 'No microphone was found.',
@@ -129,7 +134,7 @@ export class VoiceInputService {
     this.onError = onError || null;
 
     try {
-      this.recognition!.start();
+      this.recognition.start();
       return true;
     } catch (error) {
       console.error('Failed to start speech recognition:', error);

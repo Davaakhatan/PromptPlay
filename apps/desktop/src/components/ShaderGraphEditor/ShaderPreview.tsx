@@ -1,6 +1,6 @@
 // Shader Preview - Real-time 3D preview of compiled shaders
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import type { CompiledShader } from '../../types/ShaderGraph';
 

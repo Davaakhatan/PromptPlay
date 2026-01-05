@@ -4,7 +4,7 @@ import type { GameSpec } from '@promptplay/shared-types';
 interface UseKeyboardShortcutsOptions {
   gameSpec: GameSpec | null;
   projectPath: string | null;
-  viewMode: 'game' | 'code';
+  viewMode: 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
   selectedEntity: string | null;
   selectedEntities: Set<string>;
   clipboardEntity: any;

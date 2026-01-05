@@ -28,15 +28,24 @@ import { useEntityOperations } from './hooks/useEntityOperations';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { addRecentProject } from './services/RecentProjectsService';
 import { screenCapture } from './services/ScreenCaptureService';
-import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon, NodeEditorIcon } from './components/Icons';
+import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
 import TilemapEditor, { Tilemap } from './components/TilemapEditor';
 import MobileExportDialog from './components/MobileExportDialog';
 import PublishDialog from './components/PublishDialog';
 import AIPlaytestPanel from './components/AIPlaytestPanel';
 import NodeEditor, { createDefaultGraph } from './components/NodeEditor';
+import ShaderGraphEditor from './components/ShaderGraphEditor';
+import BehaviorTreeEditor from './components/BehaviorTreeEditor';
+import StateMachineEditor from './components/StateMachineEditor';
 import type { NodeGraph } from './types/NodeEditor';
+import type { ShaderGraph } from './types/ShaderGraph';
+import type { BehaviorTree } from './types/BehaviorTree';
+import type { StateMachine } from './types/StateMachine';
+import { createDefaultShaderGraph } from './services/ShaderGraphCompiler';
+import { createDefaultBehaviorTree } from './services/BehaviorTreeLibrary';
+import { createDefaultStateMachine } from './services/StateMachineLibrary';
 
-type ViewMode = 'game' | 'code' | 'nodes';
+type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
 type RightPanelMode = 'inspector' | 'json' | 'physics' | 'scripts';
 
@@ -72,6 +81,9 @@ function App() {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [nodeGraph, setNodeGraph] = useState<NodeGraph | null>(null);
+  const [shaderGraph, setShaderGraph] = useState<ShaderGraph | null>(null);
+  const [behaviorTree, setBehaviorTree] = useState<BehaviorTree | null>(null);
+  const [stateMachine, setStateMachine] = useState<StateMachine | null>(null);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -453,14 +465,33 @@ function App() {
       }
       initializeHistory(spec);
 
-      // Load node graph if exists
+      // Load visual scripting data if exists
       try {
         const nodesJsonStr = await invoke<string>('read_file', { path: `${selected}/scripts/nodes.json` });
-        const loadedGraph = JSON.parse(nodesJsonStr) as NodeGraph;
-        setNodeGraph(loadedGraph);
+        setNodeGraph(JSON.parse(nodesJsonStr) as NodeGraph);
       } catch {
-        // No node graph file, start fresh
         setNodeGraph(null);
+      }
+
+      try {
+        const shadersJsonStr = await invoke<string>('read_file', { path: `${selected}/scripts/shaders.json` });
+        setShaderGraph(JSON.parse(shadersJsonStr) as ShaderGraph);
+      } catch {
+        setShaderGraph(null);
+      }
+
+      try {
+        const behaviorJsonStr = await invoke<string>('read_file', { path: `${selected}/scripts/behavior.json` });
+        setBehaviorTree(JSON.parse(behaviorJsonStr) as BehaviorTree);
+      } catch {
+        setBehaviorTree(null);
+      }
+
+      try {
+        const statesJsonStr = await invoke<string>('read_file', { path: `${selected}/scripts/states.json` });
+        setStateMachine(JSON.parse(statesJsonStr) as StateMachine);
+      } catch {
+        setStateMachine(null);
       }
 
       // Track in recent projects
@@ -547,6 +578,322 @@ function App() {
     }
   };
 
+  // Restore demo game entities
+  const restoreDemo = useCallback(() => {
+    const demoEntities: EntitySpec[] = [
+      {
+        name: 'player',
+        components: {
+          transform: { x: 100, y: 400, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 32, height: 48, tint: 0x4488ff },
+          velocity: { vx: 0, vy: 0 },
+          collider: { type: 'box' as const, width: 32, height: 48 },
+          input: { moveSpeed: 150, jumpForce: -300 },
+        },
+        tags: ['player'],
+      },
+      {
+        name: 'ground',
+        components: {
+          transform: { x: 400, y: 580, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 800, height: 40, tint: 0x664422 },
+          collider: { type: 'box' as const, width: 800, height: 40 },
+        },
+        tags: ['ground', 'platform', 'static'],
+      },
+      {
+        name: 'platform1',
+        components: {
+          transform: { x: 200, y: 450, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 150, height: 20, tint: 0x886644 },
+          collider: { type: 'box' as const, width: 150, height: 20 },
+        },
+        tags: ['platform', 'static'],
+      },
+      {
+        name: 'platform2',
+        components: {
+          transform: { x: 500, y: 350, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 150, height: 20, tint: 0x886644 },
+          collider: { type: 'box' as const, width: 150, height: 20 },
+        },
+        tags: ['platform', 'static'],
+      },
+      {
+        name: 'coin1',
+        components: {
+          transform: { x: 200, y: 410, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 20, height: 20, tint: 0xffdd00 },
+          collider: { type: 'box' as const, width: 20, height: 20 },
+        },
+        tags: ['collectible', 'coin'],
+      },
+      {
+        name: 'coin2',
+        components: {
+          transform: { x: 500, y: 310, rotation: 0, scaleX: 1, scaleY: 1 },
+          sprite: { texture: 'default', width: 20, height: 20, tint: 0xffdd00 },
+          collider: { type: 'box' as const, width: 20, height: 20 },
+        },
+        tags: ['collectible', 'coin'],
+      },
+    ];
+
+    const newSpec: GameSpec = {
+      version: '1.0.0',
+      metadata: {
+        title: gameSpec?.metadata?.title || 'Demo Game',
+        genre: 'platformer',
+        description: 'A platformer demo game',
+      },
+      config: {
+        gravity: { x: 0, y: 1 },
+        worldBounds: { width: 800, height: 600 },
+      },
+      entities: demoEntities,
+      systems: ['input', 'physics', 'collision', 'render'],
+    };
+
+    pushHistory(newSpec, 'Restore demo game');
+    setGameSpec(newSpec);
+    setHasUnsavedChanges(true);
+    setSelectedEntities(new Set());
+
+    // Initialize sample visual scripts for the demo
+    // Node Graph - Simple player control script
+    setNodeGraph({
+      id: 'demo_graph',
+      name: 'Player Controller',
+      nodes: [
+        {
+          id: 'event_1',
+          type: 'on_update',
+          position: { x: 100, y: 100 },
+          data: {},
+        },
+        {
+          id: 'input_1',
+          type: 'get_key',
+          position: { x: 100, y: 250 },
+          data: { key: 'Space' },
+        },
+        {
+          id: 'branch_1',
+          type: 'branch',
+          position: { x: 300, y: 150 },
+          data: {},
+        },
+        {
+          id: 'velocity_1',
+          type: 'set_velocity',
+          position: { x: 500, y: 100 },
+          data: { vx: 0, vy: -300 },
+        },
+        {
+          id: 'get_entity_1',
+          type: 'get_entity',
+          position: { x: 300, y: 300 },
+          data: { name: 'player' },
+        },
+      ],
+      connections: [
+        {
+          id: 'conn_1',
+          fromNodeId: 'event_1',
+          fromPortId: 'flow',
+          toNodeId: 'branch_1',
+          toPortId: 'flow',
+        },
+        {
+          id: 'conn_2',
+          fromNodeId: 'input_1',
+          fromPortId: 'pressed',
+          toNodeId: 'branch_1',
+          toPortId: 'condition',
+        },
+        {
+          id: 'conn_3',
+          fromNodeId: 'branch_1',
+          fromPortId: 'true',
+          toNodeId: 'velocity_1',
+          toPortId: 'flow',
+        },
+        {
+          id: 'conn_4',
+          fromNodeId: 'get_entity_1',
+          fromPortId: 'entity',
+          toNodeId: 'velocity_1',
+          toPortId: 'entity',
+        },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    // Shader Graph - Simple color shader
+    setShaderGraph({
+      id: 'demo_shader',
+      name: 'Player Material',
+      nodes: [
+        {
+          id: 'output_1',
+          type: 'shader_output',
+          position: { x: 500, y: 200 },
+          data: {},
+        },
+        {
+          id: 'color_1',
+          type: 'shader_color',
+          position: { x: 100, y: 150 },
+          data: { r: 0.27, g: 0.53, b: 1.0, a: 1.0 },
+        },
+        {
+          id: 'fresnel_1',
+          type: 'shader_fresnel',
+          position: { x: 100, y: 300 },
+          data: { power: 2.0 },
+        },
+        {
+          id: 'mix_1',
+          type: 'shader_mix',
+          position: { x: 300, y: 200 },
+          data: {},
+        },
+      ],
+      connections: [
+        {
+          id: 'conn_1',
+          fromNodeId: 'color_1',
+          fromPortId: 'rgb',
+          toNodeId: 'mix_1',
+          toPortId: 'a',
+        },
+        {
+          id: 'conn_2',
+          fromNodeId: 'fresnel_1',
+          fromPortId: 'factor',
+          toNodeId: 'mix_1',
+          toPortId: 'factor',
+        },
+        {
+          id: 'conn_3',
+          fromNodeId: 'mix_1',
+          fromPortId: 'result',
+          toNodeId: 'output_1',
+          toPortId: 'color',
+        },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    // Behavior Tree - Simple AI patrol behavior
+    setBehaviorTree({
+      id: 'demo_bt',
+      name: 'Enemy AI',
+      rootId: 'root_1',
+      nodes: [
+        {
+          id: 'root_1',
+          type: 'bt_selector',
+          position: { x: 300, y: 50 },
+          data: {},
+        },
+        {
+          id: 'seq_1',
+          type: 'bt_sequence',
+          position: { x: 150, y: 150 },
+          data: {},
+        },
+        {
+          id: 'seq_2',
+          type: 'bt_sequence',
+          position: { x: 450, y: 150 },
+          data: {},
+        },
+        {
+          id: 'cond_1',
+          type: 'bt_condition',
+          position: { x: 100, y: 280 },
+          data: { condition: 'playerNearby', threshold: 100 },
+        },
+        {
+          id: 'action_1',
+          type: 'bt_action',
+          position: { x: 200, y: 280 },
+          data: { action: 'chase', target: 'player', speed: 50 },
+        },
+        {
+          id: 'action_2',
+          type: 'bt_action',
+          position: { x: 450, y: 280 },
+          data: { action: 'patrol', speed: 30 },
+        },
+      ],
+      connections: [
+        { id: 'conn_1', parentId: 'root_1', childId: 'seq_1', order: 0 },
+        { id: 'conn_2', parentId: 'root_1', childId: 'seq_2', order: 1 },
+        { id: 'conn_3', parentId: 'seq_1', childId: 'cond_1', order: 0 },
+        { id: 'conn_4', parentId: 'seq_1', childId: 'action_1', order: 1 },
+        { id: 'conn_5', parentId: 'seq_2', childId: 'action_2', order: 0 },
+      ],
+      blackboard: { playerDistance: 0, isChasing: false },
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    // State Machine - Player animation states
+    setStateMachine({
+      id: 'demo_sm',
+      name: 'Player Animation',
+      states: [
+        { id: 'state_idle', name: 'Idle', position: { x: 150, y: 200 }, isInitial: true, color: '#6b7280' },
+        { id: 'state_walk', name: 'Walk', position: { x: 400, y: 200 }, color: '#f59e0b' },
+        { id: 'state_jump', name: 'Jump', position: { x: 275, y: 50 }, color: '#10b981' },
+        { id: 'state_fall', name: 'Fall', position: { x: 275, y: 350 }, color: '#ef4444' },
+      ],
+      transitions: [
+        {
+          id: 'trans_1', fromStateId: 'state_idle', toStateId: 'state_walk',
+          conditions: [{ id: 'c1', type: 'parameter', parameter: 'speed', operator: 'greater', value: 0 }],
+          conditionMode: 'all', priority: 0,
+        },
+        {
+          id: 'trans_2', fromStateId: 'state_walk', toStateId: 'state_idle',
+          conditions: [{ id: 'c2', type: 'parameter', parameter: 'speed', operator: 'equals', value: 0 }],
+          conditionMode: 'all', priority: 0,
+        },
+        {
+          id: 'trans_3', fromStateId: 'state_idle', toStateId: 'state_jump',
+          conditions: [{ id: 'c3', type: 'trigger', parameter: 'jump', operator: 'equals', value: true }],
+          conditionMode: 'all', priority: 1,
+        },
+        {
+          id: 'trans_4', fromStateId: 'state_walk', toStateId: 'state_jump',
+          conditions: [{ id: 'c4', type: 'trigger', parameter: 'jump', operator: 'equals', value: true }],
+          conditionMode: 'all', priority: 1,
+        },
+        {
+          id: 'trans_5', fromStateId: 'state_jump', toStateId: 'state_fall',
+          conditions: [{ id: 'c5', type: 'parameter', parameter: 'velocityY', operator: 'less', value: 0 }],
+          conditionMode: 'all', priority: 0,
+        },
+        {
+          id: 'trans_6', fromStateId: 'state_fall', toStateId: 'state_idle',
+          conditions: [{ id: 'c6', type: 'parameter', parameter: 'isGrounded', operator: 'equals', value: 1 }],
+          conditionMode: 'all', priority: 0,
+        },
+      ],
+      parameters: [
+        { id: 'param_speed', name: 'speed', type: 'float', defaultValue: 0 },
+        { id: 'param_velocityY', name: 'velocityY', type: 'float', defaultValue: 0 },
+        { id: 'param_isGrounded', name: 'isGrounded', type: 'bool', defaultValue: true },
+        { id: 'param_jump', name: 'jump', type: 'trigger', defaultValue: false },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    setNotification('Demo game restored with visual scripts!');
+    setTimeout(() => setNotification(null), 2000);
+  }, [gameSpec, pushHistory]);
+
   // Save project to disk
   const saveProject = async () => {
     if (!gameSpec || !projectPath) return;
@@ -560,19 +907,42 @@ function App() {
         content: gameJsonContent,
       });
 
+      // Ensure scripts directory exists for visual scripting data
+      try {
+        await invoke('create_directory', { path: `${projectPath}/scripts` });
+      } catch {
+        // Directory may already exist
+      }
+
       // Save node graph if exists
       if (nodeGraph) {
-        const nodesJsonPath = `${projectPath}/scripts/nodes.json`;
-        const nodesJsonContent = JSON.stringify(nodeGraph, null, 2);
-        // Ensure scripts directory exists
-        try {
-          await invoke('create_directory', { path: `${projectPath}/scripts` });
-        } catch {
-          // Directory may already exist
-        }
         await invoke('write_file', {
-          path: nodesJsonPath,
-          content: nodesJsonContent,
+          path: `${projectPath}/scripts/nodes.json`,
+          content: JSON.stringify(nodeGraph, null, 2),
+        });
+      }
+
+      // Save shader graph if exists
+      if (shaderGraph) {
+        await invoke('write_file', {
+          path: `${projectPath}/scripts/shaders.json`,
+          content: JSON.stringify(shaderGraph, null, 2),
+        });
+      }
+
+      // Save behavior tree if exists
+      if (behaviorTree) {
+        await invoke('write_file', {
+          path: `${projectPath}/scripts/behavior.json`,
+          content: JSON.stringify(behaviorTree, null, 2),
+        });
+      }
+
+      // Save state machine if exists
+      if (stateMachine) {
+        await invoke('write_file', {
+          path: `${projectPath}/scripts/states.json`,
+          content: JSON.stringify(stateMachine, null, 2),
         });
       }
 
@@ -657,7 +1027,7 @@ function App() {
               sprite: { texture: 'default', width: 32, height: 32, tint: 0x4488ff },
               velocity: { vx: 0, vy: 0 },
               collider: { type: 'box', width: 32, height: 32 },
-              input: { moveSpeed: 200, jumpForce: 400 },
+              input: { moveSpeed: 150, jumpForce: -300 },
             },
             tags: ['player'],
           },
@@ -728,7 +1098,7 @@ function App() {
                 sprite: { texture: 'default', width: 32, height: 48, tint: 0x4488ff },
                 velocity: { vx: 0, vy: 0 },
                 collider: { type: 'box', width: 32, height: 48 },
-                input: { moveSpeed: 200, jumpForce: -400 },
+                input: { moveSpeed: 150, jumpForce: -300 },
               },
               tags: ['player'],
             },
@@ -793,7 +1163,7 @@ function App() {
                 sprite: { texture: 'default', width: 40, height: 40, tint: 0x44aaff },
                 velocity: { vx: 0, vy: 0 },
                 collider: { type: 'box', width: 40, height: 40 },
-                input: { moveSpeed: 300, jumpForce: 0 },
+                input: { moveSpeed: 150, jumpForce: 0 },
               },
               tags: ['player'],
             },
@@ -915,7 +1285,7 @@ function App() {
                 sprite: { texture: 'default', width: 32, height: 32, tint: 0x4488ff },
                 velocity: { vx: 0, vy: 0 },
                 collider: { type: 'box', width: 32, height: 32 },
-                input: { moveSpeed: 200, jumpForce: -400 },
+                input: { moveSpeed: 150, jumpForce: -300 },
               },
               tags: ['player'],
             },
@@ -1109,8 +1479,9 @@ function App() {
 
             // Scale moveSpeed from pixels/s to 3D units/s (divide by scale factor)
             const moveSpeed3D = rawMoveSpeed / scale;
-            // Scale jumpForce and ensure positive (2D negative = jump up, 3D positive = jump up)
-            const jumpForce3D = Math.abs(rawJumpForce) / (scale / 4); // /20 for good feel with gravity -20
+            // Scale jumpForce: divide by scale to convert from pixels to 3D units
+            // With gravity -20 and jumpForce ~8-10, we get a reasonable ~1.5-2.5 unit jump height
+            const jumpForce3D = Math.abs(rawJumpForce) / scale;
 
             components.input3d = {
               moveSpeed: Math.max(moveSpeed3D, 2), // Minimum 2 m/s
@@ -1379,6 +1750,24 @@ function App() {
             setNodeGraph(createDefaultGraph());
           }
           break;
+        case 'show_shaders':
+          setViewMode('shaders');
+          if (!shaderGraph) {
+            setShaderGraph(createDefaultShaderGraph());
+          }
+          break;
+        case 'show_behavior_trees':
+          setViewMode('behavior');
+          if (!behaviorTree) {
+            setBehaviorTree(createDefaultBehaviorTree());
+          }
+          break;
+        case 'show_state_machines':
+          setViewMode('states');
+          if (!stateMachine) {
+            setStateMachine(createDefaultStateMachine());
+          }
+          break;
         case 'show_ai':
           setShowAIPanel(true);
           break;
@@ -1394,6 +1783,11 @@ function App() {
           break;
         case 'restart_game':
           resetGame();
+          break;
+        case 'restore_demo':
+          if (projectPath) {
+            restoreDemo();
+          }
           break;
         case 'ai_playtest':
           // TODO: Implement AI playtest
@@ -1467,12 +1861,16 @@ function App() {
       <aside className={`${leftPanelCollapsed ? 'w-10' : 'w-64'} bg-panel border-r border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
         {/* Collapse Toggle Button */}
         <button
-          onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-          className="absolute top-1/2 -translate-y-1/2 -right-3 z-10 w-6 h-12 bg-panel border border-subtle rounded-r-md flex items-center justify-center hover:bg-white/5 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setLeftPanelCollapsed(!leftPanelCollapsed);
+          }}
+          className="absolute top-1/2 -translate-y-1/2 -right-4 z-50 w-8 h-16 bg-[#1e1e2e] border border-[#3f3f5a] rounded-r-lg flex items-center justify-center hover:bg-[#2a2a3e] transition-colors shadow-lg cursor-pointer"
           title={leftPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+          style={{ pointerEvents: 'auto' }}
         >
-          <svg className={`w-3 h-3 text-text-secondary transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         {/* Panel Mode Tabs */}
@@ -1765,6 +2163,42 @@ function App() {
               onSave={saveProject}
             />
           )}
+
+          {projectPath && viewMode === 'shaders' && (
+            <ShaderGraphEditor
+              graph={shaderGraph}
+              onGraphChange={(graph) => {
+                setShaderGraph(graph);
+                setHasUnsavedChanges(true);
+              }}
+              onClose={() => setViewMode('game')}
+              onSave={saveProject}
+            />
+          )}
+
+          {projectPath && viewMode === 'behavior' && (
+            <BehaviorTreeEditor
+              tree={behaviorTree}
+              onTreeChange={(tree) => {
+                setBehaviorTree(tree);
+                setHasUnsavedChanges(true);
+              }}
+              onClose={() => setViewMode('game')}
+              onSave={saveProject}
+            />
+          )}
+
+          {projectPath && viewMode === 'states' && (
+            <StateMachineEditor
+              machine={stateMachine}
+              onMachineChange={(sm: StateMachine) => {
+                setStateMachine(sm);
+                setHasUnsavedChanges(true);
+              }}
+              onClose={() => setViewMode('game')}
+              onSave={saveProject}
+            />
+          )}
         </div>
       </main>
 
@@ -1772,11 +2206,15 @@ function App() {
       <aside className={`${rightPanelCollapsed ? 'w-10' : 'w-80'} bg-panel border-l border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
         {/* Collapse Toggle Button */}
         <button
-          onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-          className="absolute top-1/2 -translate-y-1/2 -left-3 z-10 w-6 h-12 bg-panel border border-subtle rounded-l-md flex items-center justify-center hover:bg-white/5 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setRightPanelCollapsed(!rightPanelCollapsed);
+          }}
+          className="absolute top-1/2 -translate-y-1/2 -left-4 z-50 w-8 h-16 bg-[#1e1e2e] border border-[#3f3f5a] rounded-l-lg flex items-center justify-center hover:bg-[#2a2a3e] transition-colors shadow-lg cursor-pointer"
           title={rightPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+          style={{ pointerEvents: 'auto' }}
         >
-          <svg className={`w-3 h-3 text-text-secondary transition-transform ${rightPanelCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${rightPanelCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>

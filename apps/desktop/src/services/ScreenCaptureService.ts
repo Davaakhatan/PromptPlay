@@ -5,55 +5,7 @@
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
-// GIF encoder using canvas frames
-class SimpleGifEncoder {
-  private frames: ImageData[] = [];
-  private delays: number[] = [];
-  private width: number;
-  private height: number;
-
-  constructor(width: number, height: number) {
-    this.width = width;
-    this.height = height;
-  }
-
-  addFrame(imageData: ImageData, delay: number = 100): void {
-    this.frames.push(imageData);
-    this.delays.push(delay);
-  }
-
-  // Creates a simple animated image sequence as individual frames
-  // For a full GIF, we'd need gif.js or similar library
-  async encode(): Promise<Blob> {
-    // Create a canvas to combine frames into a strip for now
-    // In production, use gif.js for proper GIF encoding
-    const canvas = document.createElement('canvas');
-    canvas.width = this.width;
-    canvas.height = this.height;
-    const ctx = canvas.getContext('2d')!;
-
-    // For now, return the last frame as PNG
-    // Full GIF encoding would require gif.js library
-    if (this.frames.length > 0) {
-      ctx.putImageData(this.frames[this.frames.length - 1], 0, 0);
-    }
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob || new Blob());
-      }, 'image/png');
-    });
-  }
-
-  getFrameCount(): number {
-    return this.frames.length;
-  }
-
-  clear(): void {
-    this.frames = [];
-    this.delays = [];
-  }
-}
+// Note: GIF encoder placeholder removed - use gif.js library for production GIF encoding
 
 export interface CaptureOptions {
   format: 'png' | 'jpeg' | 'webp';

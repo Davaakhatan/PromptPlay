@@ -51,6 +51,9 @@ export class InputSystem implements ISystem {
         this.physics.setVelocity(eid, vx, jumpForce);
       }
     }
+
+    // Clear pressed/released states for next frame
+    this.inputManager.update();
   }
 
   cleanup?(world: any): void {

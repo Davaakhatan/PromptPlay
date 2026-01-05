@@ -94,7 +94,8 @@ export type CollaborationEventHandler = (event: CollaborationEvent) => void;
  * Real-time multiplayer editing and version control
  */
 export class CollaborationService {
-  private baseUrl = 'wss://collab.promptplay.dev'; // Placeholder
+  // Placeholder URL for production WebSocket server
+  // private baseUrl = 'wss://collab.promptplay.dev';
   private ws: WebSocket | null = null;
   private projectId: string | null = null;
   private userId: string | null = null;
@@ -102,8 +103,7 @@ export class CollaborationService {
   private collaborators: Map<string, Collaborator> = new Map();
   private operationQueue: Operation[] = [];
   private versions: ProjectVersion[] = [];
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  // Reconnection attempts reserved for production WebSocket implementation
 
   /**
    * Initialize the service with user info
@@ -140,7 +140,6 @@ export class CollaborationService {
     this.projectId = null;
     this.collaborators.clear();
     this.operationQueue = [];
-    this.reconnectAttempts = 0;
   }
 
   /**
@@ -371,7 +370,7 @@ export class CollaborationService {
       {
         id: 'ver-1',
         name: 'Initial version',
-        gameSpec: { version: '1.0', metadata: { title: 'Demo' }, config: { gravity: { x: 0, y: 1 }, worldBounds: { width: 800, height: 600 } }, entities: [], systems: [] },
+        gameSpec: { version: '1.0', metadata: { title: 'Demo', genre: 'platformer', description: '' }, config: { gravity: { x: 0, y: 1 }, worldBounds: { width: 800, height: 600 } }, entities: [], systems: [] },
         author: { id: 'system', name: 'System' },
         createdAt: new Date(Date.now() - 3600000),
         isAutoSave: false,
@@ -379,7 +378,7 @@ export class CollaborationService {
       {
         id: 'ver-2',
         name: 'Auto-save',
-        gameSpec: { version: '1.0', metadata: { title: 'Demo' }, config: { gravity: { x: 0, y: 1 }, worldBounds: { width: 800, height: 600 } }, entities: [], systems: [] },
+        gameSpec: { version: '1.0', metadata: { title: 'Demo', genre: 'platformer', description: '' }, config: { gravity: { x: 0, y: 1 }, worldBounds: { width: 800, height: 600 } }, entities: [], systems: [] },
         author: { id: 'system', name: 'System' },
         createdAt: new Date(Date.now() - 1800000),
         isAutoSave: true,
@@ -387,24 +386,8 @@ export class CollaborationService {
     ];
   }
 
-  /**
-   * Handle WebSocket reconnection
-   */
-  private handleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-
-    setTimeout(() => {
-      if (this.projectId) {
-        this.connect(this.projectId);
-      }
-    }, delay);
-  }
+  // Reconnection logic reserved for production WebSocket implementation
+  // private handleReconnect(): void { ... }
 
   /**
    * Check if connected

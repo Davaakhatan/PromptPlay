@@ -6,10 +6,8 @@ import type {
   Transition,
   TransitionCondition,
   StateAction,
-  Parameter,
   StateMachineContext,
   StateMachineRuntime,
-  ParameterType,
 } from '../types/StateMachine';
 
 /**
@@ -158,7 +156,7 @@ export class StateMachineExecutor {
   /**
    * Evaluate a single condition
    */
-  private evaluateCondition(condition: TransitionCondition, context: StateMachineContext): boolean {
+  private evaluateCondition(condition: TransitionCondition, _context: StateMachineContext): boolean {
     switch (condition.type) {
       case 'parameter': {
         const value = this.parameters[condition.parameter || ''];

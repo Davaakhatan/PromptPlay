@@ -5,6 +5,7 @@ import type { StateMachine, State, Transition, Parameter, ParameterType } from '
 import { STATE_COLORS, PARAMETER_COLORS, OPERATOR_LABELS } from '../../types/StateMachine';
 import { createDefaultStateMachine, STATE_MACHINE_PRESETS, validateStateMachine } from '../../services/StateMachineLibrary';
 import StateMachineCanvas from './StateMachineCanvas';
+import { useUndoRedo, useUndoRedoKeyboard } from '../../hooks/useUndoRedo';
 
 interface StateMachineEditorProps {
   machine?: StateMachine | null;
@@ -19,7 +20,17 @@ export default function StateMachineEditor({
   onClose,
   onSave
 }: StateMachineEditorProps) {
-  const [machine, setMachine] = useState<StateMachine>(initialMachine || createDefaultStateMachine());
+  // Get initial machine (create default if none provided)
+  const effectiveInitialMachine = useMemo(() => {
+    return initialMachine || createDefaultStateMachine();
+  }, []); // Only compute once on mount
+
+  // Undo/Redo state management
+  const [{ current: machine, canUndo, canRedo }, { set: setMachine, undo, redo, reset }] = useUndoRedo<StateMachine>(
+    effectiveInitialMachine,
+    { maxHistorySize: 50, debounceMs: 300 }
+  );
+
   const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
   const [selectedTransitionId, setSelectedTransitionId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -27,6 +38,23 @@ export default function StateMachineEditor({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'states' | 'parameters'>('states');
   const presetMenuRef = useRef<HTMLDivElement>(null);
+
+  // Sync with parent when initial machine is provided (restore saved state)
+  useEffect(() => {
+    if (initialMachine) {
+      reset(initialMachine);
+    }
+  }, [initialMachine, reset]);
+
+  // Sync initial machine back to parent if none was provided
+  useEffect(() => {
+    if (!initialMachine && onMachineChange) {
+      onMachineChange(effectiveInitialMachine);
+    }
+  }, []); // Only on mount
+
+  // Keyboard shortcuts for undo/redo
+  useUndoRedoKeyboard(undo, redo, canUndo, canRedo);
 
   // Validate on machine change
   useEffect(() => {
@@ -477,10 +505,13 @@ function TransitionInspector({
       {/* Conditions list */}
       <div className="pt-4 border-t border-[#3f3f5a]">
         <div className="text-xs text-gray-500 mb-2">Conditions</div>
-        {transition.conditions.map((cond, i) => (
+        {transition.conditions.map((cond) => (
           <div key={cond.id} className="mb-2 p-2 bg-[#0f0f1a] rounded text-xs">
             <div className="text-gray-300">
-              {cond.parameter} {OPERATOR_LABELS[cond.operator]} {String(cond.value)}
+              {cond.type === 'trigger'
+                ? `[Trigger] ${cond.parameter}`
+                : `${cond.parameter} ${cond.operator ? OPERATOR_LABELS[cond.operator] : ''} ${String(cond.value ?? '')}`
+              }
             </div>
           </div>
         ))}

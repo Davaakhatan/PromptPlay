@@ -1,8 +1,8 @@
 // Behavior Tree Canvas - Visual canvas for behavior tree nodes
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { BehaviorTree, BehaviorNodeInstance, BehaviorConnection, BehaviorNodeType } from '../../types/BehaviorTree';
-import { getBehaviorNodeDefinition, BEHAVIOR_CATEGORIES } from '../../services/BehaviorTreeLibrary';
+import type { BehaviorTree, BehaviorNodeInstance, BehaviorConnection } from '../../types/BehaviorTree';
+import { getBehaviorNodeDefinition } from '../../services/BehaviorTreeLibrary';
 
 interface BehaviorTreeCanvasProps {
   tree: BehaviorTree;
@@ -144,17 +144,6 @@ export default function BehaviorTreeCanvas({
       connections: tree.connections.filter(c => c.id !== connId),
     });
   }, [tree, onTreeChange]);
-
-  // Get node children sorted by order
-  const getChildren = useCallback((nodeId: string): BehaviorNodeInstance[] => {
-    const childConnections = tree.connections
-      .filter(c => c.parentId === nodeId)
-      .sort((a, b) => a.order - b.order);
-
-    return childConnections
-      .map(c => tree.nodes.find(n => n.id === c.childId))
-      .filter((n): n is BehaviorNodeInstance => n !== undefined);
-  }, [tree]);
 
   // Calculate node position with child connector
   const getNodeBottomCenter = (node: BehaviorNodeInstance): { x: number; y: number } => {

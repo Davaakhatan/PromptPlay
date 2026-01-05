@@ -1521,3 +1521,83 @@ export function NodeEditorIcon({ size = 16, className = "" }: IconProps) {
   );
 }
 
+export function ShaderIcon({ size = 16, className = "" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Gradient/shader representation */}
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M9 21V9" />
+      <circle cx="15" cy="15" r="3" />
+    </svg>
+  );
+}
+
+export function BehaviorTreeIcon({ size = 16, className = "" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Root node */}
+      <circle cx="12" cy="4" r="2" />
+      {/* Child nodes */}
+      <circle cx="6" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="18" cy="12" r="2" />
+      {/* Leaf nodes */}
+      <circle cx="6" cy="20" r="2" />
+      <circle cx="18" cy="20" r="2" />
+      {/* Connections */}
+      <path d="M12 6v4" />
+      <path d="M6 14v4" />
+      <path d="M18 14v4" />
+      <path d="M12 6l-6 4" />
+      <path d="M12 6l6 4" />
+    </svg>
+  );
+}
+
+export function StateMachineIcon({ size = 16, className = "" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* States */}
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="12" r="3" />
+      {/* Transition arrows */}
+      <path d="M9 10l6-3" />
+      <path d="M9 14l6 3" />
+      {/* Arrow heads */}
+      <path d="M15 7l-1 2" />
+      <path d="M15 17l-1-2" />
+    </svg>
+  );
+}
+

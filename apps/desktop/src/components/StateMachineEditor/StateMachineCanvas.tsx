@@ -137,15 +137,6 @@ export default function StateMachineCanvas({
     onStateSelect(null);
   }, [onTransitionSelect, onStateSelect]);
 
-  // Delete transition
-  const handleTransitionDelete = useCallback((transitionId: string) => {
-    onMachineChange({
-      ...machine,
-      transitions: machine.transitions.filter(t => t.id !== transitionId),
-    });
-    onTransitionSelect(null);
-  }, [machine, onMachineChange, onTransitionSelect]);
-
   // Get state center position
   const getStateCenter = (state: State): { x: number; y: number } => ({
     x: state.position.x + 70,
@@ -176,7 +167,6 @@ export default function StateMachineCanvas({
     // Calculate control points for curved line
     const midX = (adjustedFrom.x + adjustedTo.x) / 2;
     const midY = (adjustedFrom.y + adjustedTo.y) / 2;
-    const cpOffset = 30;
     const cpX = midX + nx * 2;
     const cpY = midY + ny * 2;
 

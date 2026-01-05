@@ -33,6 +33,11 @@ export interface EntityComponents {
     input?: InputComponent;
     health?: HealthComponent;
     aiBehavior?: AIBehaviorComponent;
+    animation?: AnimationComponent;
+    camera?: CameraComponent;
+    particleEmitter?: ParticleEmitterComponent;
+    audio?: AudioComponent;
+    [key: string]: unknown;
 }
 export interface TransformComponent {
     x: number;
@@ -57,6 +62,7 @@ export interface ColliderComponent {
     height?: number;
     radius?: number;
     isSensor?: boolean;
+    isStatic?: boolean;
     layer?: number;
 }
 export interface InputComponent {
@@ -73,5 +79,41 @@ export interface AIBehaviorComponent {
     speed: number;
     detectionRadius: number;
     targetEntity?: number;
+}
+export interface AnimationComponent {
+    currentState?: string;
+    states?: AnimationState[];
+    spriteSheet?: string;
+    frameWidth?: number;
+    frameHeight?: number;
+    currentFrame?: number;
+}
+export interface CameraComponent {
+    followTarget?: string;
+    zoom?: number;
+    bounds?: { x: number; y: number; width: number; height: number };
+}
+export interface ParticleEmitterComponent {
+    preset?: string;
+    emitRate?: number;
+    maxParticles?: number;
+    minLifetime?: number;
+    maxLifetime?: number;
+    isEmitting?: boolean;
+}
+export interface AudioComponent {
+    source: string;
+    volume?: number;
+    pitch?: number;
+    isPlaying?: boolean;
+    loop?: boolean;
+    spatial?: boolean;
+}
+export interface AnimationState {
+    name: string;
+    frameStart: number;
+    frameEnd: number;
+    frameDuration: number;
+    loop: boolean;
 }
 //# sourceMappingURL=GameTypes.d.ts.map

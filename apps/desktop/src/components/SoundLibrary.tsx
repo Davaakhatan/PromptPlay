@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { soundManager, SoundAsset, SOUND_PRESETS } from '../services/SoundManagerService';
+import { soundManager, SoundAsset } from '../services/SoundManagerService';
 import { PlayIcon, PauseIcon, TrashIcon, VolumeIcon, MusicIcon } from './Icons';
 
 interface SoundLibraryProps {
@@ -25,7 +25,7 @@ function AmbientIcon({ size = 16, className = '' }: { size?: number; className?:
   );
 }
 
-export function SoundLibrary({ projectPath, onSoundSelect }: SoundLibraryProps) {
+export function SoundLibrary({ projectPath: _projectPath, onSoundSelect }: SoundLibraryProps) {
   const [sounds, setSounds] = useState<SoundAsset[]>([]);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'sfx' | 'music' | 'ambient'>('all');

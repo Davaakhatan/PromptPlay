@@ -286,23 +286,25 @@ export function EntitySearch({
 
 // Helper to get entity color based on type
 function getEntityColor(entity: EntitySpec): string {
-  if (entity.components?.input || entity.components?.input3d) {
+  const c = entity.components as Record<string, unknown>;
+  if (c?.input || c?.input3d) {
     return '#22c55e'; // Green for player
   }
-  if (entity.components?.rigidbody || entity.components?.rigidbody3d) {
-    if (entity.components?.rigidbody?.type === 'static' ||
-        entity.components?.rigidbody3d?.type === 'static') {
+  if (c?.rigidbody || c?.rigidbody3d) {
+    const rb = c.rigidbody as { type?: string } | undefined;
+    const rb3d = c.rigidbody3d as { type?: string } | undefined;
+    if (rb?.type === 'static' || rb3d?.type === 'static') {
       return '#6b7280'; // Gray for static
     }
     return '#3b82f6'; // Blue for dynamic
   }
-  if (entity.components?.light) {
+  if (c?.light) {
     return '#fbbf24'; // Yellow for lights
   }
-  if (entity.components?.particleEmitter) {
+  if (c?.particleEmitter) {
     return '#f97316'; // Orange for particles
   }
-  if (entity.components?.sprite || entity.components?.mesh) {
+  if (c?.sprite || c?.mesh) {
     return '#8b5cf6'; // Purple for visuals
   }
   return '#6b7280'; // Default gray
@@ -310,22 +312,23 @@ function getEntityColor(entity: EntitySpec): string {
 
 // Helper to get entity icon based on type
 function getEntityIcon(entity: EntitySpec): string {
-  if (entity.components?.input || entity.components?.input3d) {
+  const c = entity.components as Record<string, unknown>;
+  if (c?.input || c?.input3d) {
     return '🎮';
   }
-  if (entity.components?.light) {
+  if (c?.light) {
     return '💡';
   }
-  if (entity.components?.particleEmitter) {
+  if (c?.particleEmitter) {
     return '✨';
   }
-  if (entity.components?.camera || entity.components?.camera3d) {
+  if (c?.camera || c?.camera3d) {
     return '📷';
   }
-  if (entity.components?.model3d) {
+  if (c?.model3d) {
     return '🎲';
   }
-  if (entity.components?.rigidbody || entity.components?.rigidbody3d) {
+  if (c?.rigidbody || c?.rigidbody3d) {
     return '⚪';
   }
   return '📦';

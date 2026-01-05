@@ -2,7 +2,8 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { ShaderGraph, ShaderNodeInstance, ShaderConnection, ShaderPortType } from '../../types/ShaderGraph';
-import { getShaderNodeDefinition, SHADER_PORT_COLORS } from '../../services/ShaderNodeLibrary';
+import { SHADER_PORT_COLORS, SHADER_CATEGORY_COLORS } from '../../types/ShaderGraph';
+import { getShaderNodeDefinition } from '../../services/ShaderNodeLibrary';
 
 interface ShaderNodeCanvasProps {
   graph: ShaderGraph;
@@ -348,7 +349,7 @@ function ShaderNode({
       <div
         className="px-3 py-2 flex items-center gap-2 cursor-move border-b"
         style={{
-          backgroundColor: definition.color || '#2a2a3e',
+          backgroundColor: SHADER_CATEGORY_COLORS[definition.category] || '#2a2a3e',
           borderColor: 'rgba(255,255,255,0.1)',
         }}
       >
@@ -359,7 +360,7 @@ function ShaderNode({
       {/* Ports */}
       <div className="py-2">
         {/* Inputs */}
-        {definition.inputs.map((port, i) => {
+        {definition.inputs.map((port) => {
           const connected = hasConnection(port.id, false);
           const isCompatible = !connectingPort ||
             (connectingPort.isOutput && connectingPort.nodeId !== node.id);
@@ -385,7 +386,7 @@ function ShaderNode({
         })}
 
         {/* Outputs */}
-        {definition.outputs.map((port, i) => {
+        {definition.outputs.map((port) => {
           const connected = hasConnection(port.id, true);
           const isCompatible = !connectingPort ||
             (!connectingPort.isOutput && connectingPort.nodeId !== node.id);

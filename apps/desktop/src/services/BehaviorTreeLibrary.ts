@@ -60,7 +60,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'composite',
     title: 'Random Selector',
     description: 'Randomly selects one child to run.',
-    icon: '🎲',
+    icon: 'R?',
     color: '#3b82f6',
     inputs: [],
     outputs: [],
@@ -72,7 +72,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'composite',
     title: 'Random Sequence',
     description: 'Runs all children in random order.',
-    icon: '🔀',
+    icon: 'R>',
     color: '#3b82f6',
     inputs: [],
     outputs: [],
@@ -122,7 +122,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'decorator',
     title: 'Repeater',
     description: 'Repeats child execution N times.',
-    icon: '🔁',
+    icon: 'Rp',
     color: '#8b5cf6',
     inputs: [
       { id: 'count', name: 'Repeat Count', type: 'number', defaultValue: 3 },
@@ -164,7 +164,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'decorator',
     title: 'Cooldown',
     description: 'Adds a cooldown period between executions.',
-    icon: '⏱',
+    icon: 'CD',
     color: '#8b5cf6',
     inputs: [
       { id: 'duration', name: 'Cooldown (s)', type: 'number', defaultValue: 1.0 },
@@ -194,7 +194,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'action',
     title: 'Action',
     description: 'Executes a custom action on the entity.',
-    icon: '⚡',
+    icon: 'Act',
     color: '#22c55e',
     inputs: [
       { id: 'actionType', name: 'Action Type', type: 'string', defaultValue: 'move' },
@@ -211,7 +211,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'action',
     title: 'Wait',
     description: 'Waits for a specified duration.',
-    icon: '⏸',
+    icon: 'W',
     color: '#22c55e',
     inputs: [
       { id: 'duration', name: 'Duration (s)', type: 'number', defaultValue: 1.0 },
@@ -225,7 +225,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'action',
     title: 'Log',
     description: 'Logs a message to the console.',
-    icon: '📝',
+    icon: 'Log',
     color: '#22c55e',
     inputs: [
       { id: 'message', name: 'Message', type: 'string', defaultValue: 'Debug message' },
@@ -240,7 +240,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'action',
     title: 'Set Blackboard',
     description: 'Sets a value in the blackboard.',
-    icon: '📋',
+    icon: 'Set',
     color: '#22c55e',
     inputs: [
       { id: 'key', name: 'Key', type: 'string', defaultValue: 'myVariable' },
@@ -257,7 +257,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'condition',
     title: 'Condition',
     description: 'Checks a condition and returns success or failure.',
-    icon: '❓',
+    icon: 'If',
     color: '#f59e0b',
     inputs: [
       { id: 'conditionType', name: 'Condition', type: 'string', defaultValue: 'distance' },
@@ -274,7 +274,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     category: 'condition',
     title: 'Check Blackboard',
     description: 'Checks if a blackboard value matches expected.',
-    icon: '🔍',
+    icon: 'Get',
     color: '#f59e0b',
     inputs: [
       { id: 'key', name: 'Key', type: 'string', defaultValue: 'myVariable' },
@@ -659,7 +659,7 @@ export class BehaviorTreeExecutor {
 
     state.data.iteration = iteration + 1;
 
-    if (state.data.iteration >= count) {
+    if ((state.data.iteration as number) >= count) {
       state.data.iteration = 0;
       return 'success';
     }
@@ -757,7 +757,7 @@ export class BehaviorTreeExecutor {
 
   // === ACTION IMPLEMENTATIONS ===
 
-  private executeAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+  private executeAction(node: BehaviorNodeInstance, _context: BehaviorContext, _state: BehaviorNodeState): BehaviorStatus {
     const actionType = (node.data.actionType as string) || 'move';
 
     switch (actionType) {
@@ -788,7 +788,7 @@ export class BehaviorTreeExecutor {
     return 'running';
   }
 
-  private executeLog(node: BehaviorNodeInstance, context: BehaviorContext): BehaviorStatus {
+  private executeLog(node: BehaviorNodeInstance, _context: BehaviorContext): BehaviorStatus {
     const message = (node.data.message as string) || 'Debug';
     const level = (node.data.level as string) || 'info';
 
@@ -818,10 +818,9 @@ export class BehaviorTreeExecutor {
 
   // === CONDITION IMPLEMENTATIONS ===
 
-  private executeCondition(node: BehaviorNodeInstance, context: BehaviorContext): BehaviorStatus {
+  private executeCondition(node: BehaviorNodeInstance, _context: BehaviorContext): BehaviorStatus {
     const conditionType = (node.data.conditionType as string) || 'always';
     const threshold = (node.data.threshold as number) || 100;
-    const comparison = (node.data.comparison as string) || 'less';
 
     switch (conditionType) {
       case 'always':

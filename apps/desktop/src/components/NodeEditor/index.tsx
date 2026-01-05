@@ -26,7 +26,7 @@ function createDefaultGraph(): NodeGraph {
 export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose, onSave }: NodeEditorProps) {
   const [graph, setGraph] = useState<NodeGraph>(initialGraph || createDefaultGraph());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [selectedNodeIds] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<string | null>(null);
   const [showPresetMenu, setShowPresetMenu] = useState(false);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -57,8 +57,6 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
   }, []);
 
   const {
-    canUndo,
-    canRedo,
     pushHistory,
     undo,
     redo,
@@ -305,32 +303,6 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Undo Button */}
-          <button
-            onClick={handleUndo}
-            disabled={!canUndo}
-            className={`p-1.5 rounded ${canUndo ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
-            title="Undo (Ctrl+Z)"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-          </button>
-
-          {/* Redo Button */}
-          <button
-            onClick={handleRedo}
-            disabled={!canRedo}
-            className={`p-1.5 rounded ${canRedo ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-            </svg>
-          </button>
-
-          <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
-
           {/* Save Button */}
           <button
             onClick={handleSave}

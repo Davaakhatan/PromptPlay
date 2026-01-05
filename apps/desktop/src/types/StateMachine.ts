@@ -49,10 +49,10 @@ export interface TransitionCondition {
   type: 'parameter' | 'trigger' | 'time' | 'custom';
   // Parameter name (for parameter conditions)
   parameter?: string;
-  // Comparison operator
-  operator: 'equals' | 'not_equals' | 'greater' | 'less' | 'greater_equals' | 'less_equals';
-  // Value to compare against
-  value: unknown;
+  // Comparison operator (not required for trigger conditions)
+  operator?: 'equals' | 'not_equals' | 'greater' | 'less' | 'greater_equals' | 'less_equals';
+  // Value to compare against (not required for trigger conditions)
+  value?: unknown;
 }
 
 /**
@@ -160,7 +160,7 @@ export const PARAMETER_COLORS: Record<ParameterType, string> = {
 /**
  * Operator display names
  */
-export const OPERATOR_LABELS: Record<TransitionCondition['operator'], string> = {
+export const OPERATOR_LABELS: Record<NonNullable<TransitionCondition['operator']>, string> = {
   equals: '=',
   not_equals: '≠',
   greater: '>',

@@ -386,36 +386,76 @@ export class Game3D {
   private gameLoop = (): void => {
     if (!this.isRunning) return;
 
-    const currentTime = performance.now();
-    const deltaTime = currentTime - this.lastTime;
-    this.lastTime = currentTime;
+    try {
+      const currentTime = performance.now();
+      const deltaTime = currentTime - this.lastTime;
+      this.lastTime = currentTime;
 
-    // Fixed timestep for physics
-    this.accumulator += deltaTime;
-    while (this.accumulator >= this.fixedDeltaTime) {
-      this.fixedUpdate(this.fixedDeltaTime / 1000);
-      this.accumulator -= this.fixedDeltaTime;
+      // Cap deltaTime to prevent spiral of death
+      const cappedDelta = Math.min(deltaTime, 100);
+
+      // Fixed timestep for physics
+      this.accumulator += cappedDelta;
+
+      // Protect against NaN/Infinity in accumulator
+      if (!Number.isFinite(this.accumulator)) {
+        this.accumulator = 0;
+        console.warn('Game3D: Reset accumulator due to invalid value');
+      }
+
+      // Limit iterations to prevent infinite loop
+      let iterations = 0;
+      const maxIterations = 10;
+      while (this.accumulator >= this.fixedDeltaTime && iterations < maxIterations) {
+        this.fixedUpdate(this.fixedDeltaTime / 1000);
+        this.accumulator -= this.fixedDeltaTime;
+        iterations++;
+      }
+
+      // If we hit max iterations, reset accumulator to prevent buildup
+      if (iterations >= maxIterations) {
+        this.accumulator = 0;
+      }
+
+      // Variable update for rendering
+      this.update(cappedDelta / 1000);
+
+      // Render
+      this.render();
+    } catch (error) {
+      console.error('Error in game loop:', error);
     }
 
-    // Variable update for rendering
-    this.update(deltaTime / 1000);
-
-    // Render
-    this.render();
-
-    requestAnimationFrame(this.gameLoop);
+    // Always request next frame while running
+    if (this.isRunning) {
+      requestAnimationFrame(this.gameLoop);
+    }
   };
 
   /**
    * Fixed timestep update (for physics)
    */
   private fixedUpdate(dt: number): void {
-    // Input system (reads keyboard, sets velocity)
-    this.input3DSystem.execute(this.world, dt);
-    // Physics system (handles gravity, collisions, updates transforms)
-    this.physics3DSystem.execute(this.world, dt);
-    // Transform system (for non-physics entities with velocity)
-    this.transform3DSystem.execute(this.world, dt);
+    try {
+      // Input system (reads keyboard, sets velocity)
+      this.input3DSystem.execute(this.world, dt);
+    } catch (error) {
+      console.error('Error in input system:', error);
+    }
+
+    try {
+      // Physics system (handles gravity, collisions, updates transforms)
+      this.physics3DSystem.execute(this.world, dt);
+    } catch (error) {
+      console.error('Error in physics system:', error);
+    }
+
+    try {
+      // Transform system (for non-physics entities with velocity)
+      this.transform3DSystem.execute(this.world, dt);
+    } catch (error) {
+      console.error('Error in transform system:', error);
+    }
   }
 
   /**

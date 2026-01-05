@@ -1,7 +1,7 @@
 // Shader Graph Compiler - Converts visual shader graphs to GLSL
 
 import type { ShaderGraph, ShaderNodeInstance, ShaderConnection, CompiledShader } from '../types/ShaderGraph';
-import { SHADER_NODE_LIBRARY, getShaderNodeDefinition } from './ShaderNodeLibrary';
+import { getShaderNodeDefinition } from './ShaderNodeLibrary';
 
 /**
  * Compiles a visual shader graph into GLSL vertex and fragment shaders
@@ -70,7 +70,7 @@ export class ShaderGraphCompiler {
   /**
    * Format a value as GLSL based on type
    */
-  private formatValue(value: unknown, type?: string): string {
+  private formatValue(value: unknown, _type?: string): string {
     if (typeof value === 'number') {
       return value.toFixed(4);
     }

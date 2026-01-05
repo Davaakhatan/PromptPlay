@@ -174,10 +174,10 @@ class CustomNodeRegistryClass {
   loadFromJSON(json: CustomNodeFile): void {
     if (json.version && json.nodes) {
       // Convert execute functions from string if needed
-      const nodes = json.nodes.map(node => ({
+      const nodes: CustomNodeInput[] = json.nodes.map(node => ({
         ...node,
         execute: typeof node.execute === 'string'
-          ? new Function('inputs', 'context', node.execute as unknown as string)
+          ? new Function('inputs', 'context', node.execute as unknown as string) as CustomNodeInput['execute']
           : node.execute,
       }));
       this.registerAll(nodes);

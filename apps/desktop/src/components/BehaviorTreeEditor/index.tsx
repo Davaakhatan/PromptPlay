@@ -1,9 +1,10 @@
 // Behavior Tree Editor - Visual editor for AI decision trees
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { BehaviorTree, BehaviorNodeInstance, BehaviorConnection, BehaviorNodeType, BehaviorNodeCategory } from '../../types/BehaviorTree';
+import type { BehaviorTree, BehaviorNodeInstance, BehaviorNodeType, BehaviorNodeCategory } from '../../types/BehaviorTree';
 import { BEHAVIOR_NODE_DEFINITIONS, BEHAVIOR_CATEGORIES, getBehaviorNodeDefinition, createDefaultBehaviorTree } from '../../services/BehaviorTreeLibrary';
 import BehaviorTreeCanvas from './BehaviorTreeCanvas';
+import { useUndoRedo, useUndoRedoKeyboard } from '../../hooks/useUndoRedo';
 
 interface BehaviorTreeEditorProps {
   tree?: BehaviorTree | null;
@@ -18,13 +19,40 @@ export default function BehaviorTreeEditor({
   onClose,
   onSave
 }: BehaviorTreeEditorProps) {
-  const [tree, setTree] = useState<BehaviorTree>(initialTree || createDefaultBehaviorTree());
+  // Get initial tree (create default if none provided)
+  const effectiveInitialTree = useMemo(() => {
+    return initialTree || createDefaultBehaviorTree();
+  }, []); // Only compute once on mount
+
+  // Undo/Redo state management
+  const [{ current: tree, canUndo, canRedo }, { set: setTree, undo, redo, reset }] = useUndoRedo<BehaviorTree>(
+    effectiveInitialTree,
+    { maxHistorySize: 50, debounceMs: 300 }
+  );
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [showNodePalette, setShowNodePalette] = useState(false);
   const [paletteSearch, setPaletteSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<BehaviorNodeCategory | 'all'>('all');
   const paletteRef = useRef<HTMLDivElement>(null);
+
+  // Sync with parent when initial tree is provided (restore saved state)
+  useEffect(() => {
+    if (initialTree) {
+      reset(initialTree);
+    }
+  }, [initialTree, reset]);
+
+  // Sync initial tree back to parent if none was provided
+  useEffect(() => {
+    if (!initialTree && onTreeChange) {
+      onTreeChange(effectiveInitialTree);
+    }
+  }, []); // Only on mount
+
+  // Keyboard shortcuts for undo/redo
+  useUndoRedoKeyboard(undo, redo, canUndo, canRedo);
 
   // Close palette when clicking outside
   useEffect(() => {

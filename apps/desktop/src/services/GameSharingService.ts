@@ -175,8 +175,8 @@ export class GameSharingService {
    */
   async updateGame(
     gameId: string,
-    gameSpec: GameSpec,
-    options: Partial<PublishOptions>
+    _gameSpec: GameSpec,
+    _options: Partial<PublishOptions>
   ): Promise<PublishResult> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
@@ -192,7 +192,7 @@ export class GameSharingService {
   /**
    * Delete a published game
    */
-  async deleteGame(gameId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteGame(_gameId: string): Promise<{ success: boolean; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
@@ -284,7 +284,7 @@ export class GameSharingService {
   /**
    * Like a game
    */
-  async likeGame(gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
+  async likeGame(_gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
     if (!this.authToken) {
       return { success: false, likes: 0, error: 'Authentication required' };
     }
@@ -296,7 +296,7 @@ export class GameSharingService {
   /**
    * Unlike a game
    */
-  async unlikeGame(gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
+  async unlikeGame(_gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
     if (!this.authToken) {
       return { success: false, likes: 0, error: 'Authentication required' };
     }
@@ -307,7 +307,7 @@ export class GameSharingService {
   /**
    * Get game comments
    */
-  async getComments(gameId: string, page = 1, limit = 20): Promise<{ comments: GameComment[]; total: number }> {
+  async getComments(_gameId: string, _page = 1, _limit = 20): Promise<{ comments: GameComment[]; total: number }> {
     // Demo comments
     const demoComments: GameComment[] = [
       {
@@ -334,7 +334,7 @@ export class GameSharingService {
   /**
    * Add a comment
    */
-  async addComment(gameId: string, content: string): Promise<{ success: boolean; comment?: GameComment; error?: string }> {
+  async addComment(_gameId: string, content: string): Promise<{ success: boolean; comment?: GameComment; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
@@ -366,7 +366,6 @@ export class GameSharingService {
   } {
     const url = encodeURIComponent(`${this.baseUrl}/games/${game.slug}`);
     const title = encodeURIComponent(game.title);
-    const description = encodeURIComponent(game.description.slice(0, 100));
 
     return {
       twitter: `https://twitter.com/intent/tweet?url=${url}&text=Check%20out%20${title}%20on%20PromptPlay!`,

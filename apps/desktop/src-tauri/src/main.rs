@@ -100,6 +100,10 @@ fn main() {
             let show_assets = MenuItem::with_id(app, "show_assets", "Asset Browser", true, Some("CmdOrCtrl+3"))?;
             let show_animation = MenuItem::with_id(app, "show_animation", "Animation Editor", true, Some("CmdOrCtrl+4"))?;
             let show_code = MenuItem::with_id(app, "show_code", "Code Editor", true, Some("CmdOrCtrl+5"))?;
+            let show_visual_scripts = MenuItem::with_id(app, "show_visual_scripts", "Visual Scripts", true, Some("CmdOrCtrl+6"))?;
+            let show_shaders = MenuItem::with_id(app, "show_shaders", "Shader Graph", true, Some("CmdOrCtrl+7"))?;
+            let show_behavior_trees = MenuItem::with_id(app, "show_behavior_trees", "Behavior Trees", true, Some("CmdOrCtrl+8"))?;
+            let show_state_machines = MenuItem::with_id(app, "show_state_machines", "State Machines", true, Some("CmdOrCtrl+9"))?;
             let show_ai = MenuItem::with_id(app, "show_ai", "AI Assistant", true, Some("CmdOrCtrl+J"))?;
 
             let view_menu = Submenu::with_items(
@@ -122,6 +126,12 @@ fn main() {
                     &show_assets,
                     &show_animation,
                     &show_code,
+                    &PredefinedMenuItem::separator(app)?,
+                    &show_visual_scripts,
+                    &show_shaders,
+                    &show_behavior_trees,
+                    &show_state_machines,
+                    &PredefinedMenuItem::separator(app)?,
                     &show_ai,
                     &PredefinedMenuItem::separator(app)?,
                     &PredefinedMenuItem::fullscreen(app, Some("Toggle Fullscreen"))?,
@@ -134,6 +144,7 @@ fn main() {
             let restart_game = MenuItem::with_id(app, "restart_game", "Restart", true, Some("CmdOrCtrl+R"))?;
             let ai_playtest = MenuItem::with_id(app, "ai_playtest", "AI Playtest...", true, None::<&str>)?;
             let game_settings = MenuItem::with_id(app, "game_settings", "Game Settings...", true, None::<&str>)?;
+            let restore_demo = MenuItem::with_id(app, "restore_demo", "Restore Demo Game", true, None::<&str>)?;
 
             let game_menu = Submenu::with_items(
                 app,
@@ -147,6 +158,8 @@ fn main() {
                     &ai_playtest,
                     &PredefinedMenuItem::separator(app)?,
                     &game_settings,
+                    &PredefinedMenuItem::separator(app)?,
+                    &restore_demo,
                 ],
             )?;
 
@@ -258,6 +271,10 @@ fn main() {
                     "show_assets" => { let _ = window.emit("menu-event", "show_assets"); }
                     "show_animation" => { let _ = window.emit("menu-event", "show_animation"); }
                     "show_code" => { let _ = window.emit("menu-event", "show_code"); }
+                    "show_visual_scripts" => { let _ = window.emit("menu-event", "show_visual_scripts"); }
+                    "show_shaders" => { let _ = window.emit("menu-event", "show_shaders"); }
+                    "show_behavior_trees" => { let _ = window.emit("menu-event", "show_behavior_trees"); }
+                    "show_state_machines" => { let _ = window.emit("menu-event", "show_state_machines"); }
                     "show_ai" => { let _ = window.emit("menu-event", "show_ai"); }
                     // Game menu
                     "play_game" => { let _ = window.emit("menu-event", "play_game"); }
@@ -265,6 +282,7 @@ fn main() {
                     "restart_game" => { let _ = window.emit("menu-event", "restart_game"); }
                     "ai_playtest" => { let _ = window.emit("menu-event", "ai_playtest"); }
                     "game_settings" => { let _ = window.emit("menu-event", "game_settings"); }
+                    "restore_demo" => { let _ = window.emit("menu-event", "restore_demo"); }
                     // Window menu
                     "community_gallery" => { let _ = window.emit("menu-event", "community_gallery"); }
                     "marketplace" => { let _ = window.emit("menu-event", "marketplace"); }

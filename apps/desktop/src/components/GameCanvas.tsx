@@ -263,6 +263,8 @@ export default function GameCanvas({
 
     if (isPlaying) {
       runtimeRef.current.start();
+      // Focus canvas to receive keyboard input
+      canvasRef.current?.focus();
     } else {
       runtimeRef.current.pause();
     }
@@ -832,13 +834,17 @@ export default function GameCanvas({
       <div className="relative" style={{ width: 800, height: 600 }}>
         <canvas
           ref={canvasRef}
+          tabIndex={0}
           width={800}
           height={600}
-          className={`rounded-lg shadow-2xl absolute top-0 left-0 border border-subtle ${isPlaying ? 'cursor-crosshair' : 'cursor-move'
+          className={`rounded-lg shadow-2xl absolute top-0 left-0 border border-subtle outline-none ${isPlaying ? 'cursor-crosshair' : 'cursor-move'
             }`}
           style={{ display: gameSpec && !error ? 'block' : 'none', backgroundColor: '#000' }}
           onClick={handleCanvasClick}
-          onMouseDown={handleMouseDown}
+          onMouseDown={(e) => {
+            canvasRef.current?.focus();
+            handleMouseDown(e);
+          }}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}

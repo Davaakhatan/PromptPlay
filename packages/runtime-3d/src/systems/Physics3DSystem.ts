@@ -95,6 +95,7 @@ export class Physics3DSystem {
         const inputVy = Velocity3D.vy[eid] || 0;
         // If input has upward velocity (jump), use it; otherwise use physics
         const vy = inputVy > 0 ? inputVy : physicsVy;
+
         this.physics.setVelocity(
           eid,
           Velocity3D.vx[eid] || 0,

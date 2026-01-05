@@ -94,7 +94,8 @@ export interface AssetUploadData {
  * Marketplace Service
  */
 export class MarketplaceService {
-  private baseUrl = 'https://api.promptplay.dev'; // Placeholder API
+  // Placeholder API URL for production
+  // private baseUrl = 'https://api.promptplay.dev';
   private authToken: string | null = null;
 
   /**
@@ -231,7 +232,7 @@ export class MarketplaceService {
   /**
    * Rate an asset
    */
-  async rateAsset(id: string, rating: number): Promise<{ success: boolean; error?: string }> {
+  async rateAsset(_id: string, rating: number): Promise<{ success: boolean; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }

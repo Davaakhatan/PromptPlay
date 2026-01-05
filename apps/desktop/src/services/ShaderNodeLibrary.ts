@@ -9,7 +9,7 @@ const uvNode: ShaderNodeDefinition = {
   category: 'input',
   title: 'UV Coordinates',
   description: 'Texture UV coordinates',
-  icon: '📐',
+  icon: 'UV',
   inputs: [],
   outputs: [
     { id: 'uv', name: 'UV', type: 'vec2' },
@@ -22,7 +22,7 @@ const timeNode: ShaderNodeDefinition = {
   category: 'input',
   title: 'Time',
   description: 'Elapsed time in seconds',
-  icon: '⏱',
+  icon: 't',
   inputs: [],
   outputs: [
     { id: 'time', name: 'Time', type: 'float' },
@@ -40,7 +40,7 @@ const positionNode: ShaderNodeDefinition = {
   category: 'input',
   title: 'Position',
   description: 'Vertex/fragment position',
-  icon: '📍',
+  icon: 'P',
   inputs: [],
   outputs: [
     { id: 'world', name: 'World', type: 'vec3' },
@@ -86,7 +86,7 @@ const colorConstNode: ShaderNodeDefinition = {
   category: 'input',
   title: 'Color',
   description: 'Constant color value',
-  icon: '🎨',
+  icon: 'C',
   inputs: [
     { id: 'r', name: 'R', type: 'float', defaultValue: 1 },
     { id: 'g', name: 'G', type: 'float', defaultValue: 1 },
@@ -109,7 +109,7 @@ const surfaceOutputNode: ShaderNodeDefinition = {
   category: 'output',
   title: 'Surface Output',
   description: 'Final material output',
-  icon: '🎯',
+  icon: 'Out',
   inputs: [
     { id: 'color', name: 'Color', type: 'vec3', defaultValue: [1, 1, 1] },
     { id: 'alpha', name: 'Alpha', type: 'float', defaultValue: 1 },
@@ -345,7 +345,7 @@ const mixColorNode: ShaderNodeDefinition = {
   category: 'color',
   title: 'Mix Color',
   description: 'Blend two colors',
-  icon: '🎨',
+  icon: 'Mix',
   inputs: [
     { id: 'a', name: 'Color A', type: 'vec3', defaultValue: [1, 0, 0] },
     { id: 'b', name: 'Color B', type: 'vec3', defaultValue: [0, 0, 1] },
@@ -362,7 +362,7 @@ const hsvToRgbNode: ShaderNodeDefinition = {
   category: 'color',
   title: 'HSV to RGB',
   description: 'Convert HSV to RGB color',
-  icon: '🌈',
+  icon: 'HSV',
   inputs: [
     { id: 'h', name: 'Hue', type: 'float', defaultValue: 0 },
     { id: 's', name: 'Saturation', type: 'float', defaultValue: 1 },
@@ -380,7 +380,7 @@ const brightnessContrastNode: ShaderNodeDefinition = {
   category: 'color',
   title: 'Brightness/Contrast',
   description: 'Adjust brightness and contrast',
-  icon: '☀',
+  icon: 'B/C',
   inputs: [
     { id: 'color', name: 'Color', type: 'vec3', defaultValue: [1, 1, 1] },
     { id: 'brightness', name: 'Brightness', type: 'float', defaultValue: 0 },
@@ -399,7 +399,7 @@ const sampleTextureNode: ShaderNodeDefinition = {
   category: 'texture',
   title: 'Sample Texture',
   description: 'Sample color from texture',
-  icon: '🖼',
+  icon: 'Tex',
   inputs: [
     { id: 'texture', name: 'Texture', type: 'sampler2D' },
     { id: 'uv', name: 'UV', type: 'vec2' },
@@ -426,7 +426,7 @@ const tilingOffsetNode: ShaderNodeDefinition = {
   category: 'texture',
   title: 'Tiling & Offset',
   description: 'Tile and offset UV coordinates',
-  icon: '🔲',
+  icon: 'T/O',
   inputs: [
     { id: 'uv', name: 'UV', type: 'vec2' },
     { id: 'tile_x', name: 'Tile X', type: 'float', defaultValue: 1 },
@@ -447,7 +447,7 @@ const makeVec3Node: ShaderNodeDefinition = {
   category: 'vector',
   title: 'Make Vec3',
   description: 'Create vec3 from components',
-  icon: '📦',
+  icon: 'V3+',
   inputs: [
     { id: 'x', name: 'X', type: 'float', defaultValue: 0 },
     { id: 'y', name: 'Y', type: 'float', defaultValue: 0 },
@@ -464,7 +464,7 @@ const breakVec3Node: ShaderNodeDefinition = {
   category: 'vector',
   title: 'Break Vec3',
   description: 'Split vec3 into components',
-  icon: '📤',
+  icon: 'V3-',
   inputs: [
     { id: 'vec', name: 'Vec3', type: 'vec3' },
   ],
@@ -551,7 +551,7 @@ const noiseNode: ShaderNodeDefinition = {
   category: 'utility',
   title: 'Simple Noise',
   description: 'Pseudo-random noise',
-  icon: '📊',
+  icon: 'N',
   inputs: [
     { id: 'uv', name: 'UV', type: 'vec2' },
     { id: 'scale', name: 'Scale', type: 'float', defaultValue: 10 },

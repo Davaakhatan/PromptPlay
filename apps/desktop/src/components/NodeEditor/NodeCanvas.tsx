@@ -687,9 +687,6 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
-  const [isBoxSelecting, setIsBoxSelecting] = useState(false);
-  const [boxSelectStart, setBoxSelectStart] = useState({ x: 0, y: 0 });
-  const [boxSelectEnd, setBoxSelectEnd] = useState({ x: 0, y: 0 });
 
   // Handle pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1019,7 +1016,6 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
       if (e.key === 'Escape') {
         setConnectingPort(null);
         setShowPalette(false);
-        setIsBoxSelecting(false);
       }
 
       // Ctrl+G to create group

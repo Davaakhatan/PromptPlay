@@ -18,7 +18,7 @@ import type {
   PackageMetadata,
   ChatMessage,
 } from '@promptplay/shared-types';
-import { fileSystem, TauriFileSystem } from './FileSystem';
+import { fileSystem as _fileSystem, TauriFileSystem } from './FileSystem';
 
 /** File extension for PromptPlay game packages */
 export const PACKAGE_EXTENSION = '.promptplay.json';

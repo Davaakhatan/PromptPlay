@@ -53,6 +53,9 @@ export function GameCanvas3D({
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
+    // Track if this effect instance is still mounted
+    let isMounted = true;
+
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight;
 
@@ -84,23 +87,42 @@ export function GameCanvas3D({
 
     // Animation loop - OrbitControls always update so camera can be rotated during play
     const animate = () => {
+      // Stop animation loop if unmounted
+      if (!isMounted) {
+        return;
+      }
+
       animationFrameRef.current = requestAnimationFrame(animate);
 
-      // Always update controls for camera movement (works during play mode too)
-      controls.update();
+      try {
+        // Always update controls for camera movement (works during play mode too)
+        controls.update();
 
-      // Only render in editor mode - Game3D handles its own rendering when playing
-      if (!isPlayingRef.current) {
-        renderer.render();
+        // Only render in editor mode - Game3D handles its own rendering when playing
+        if (!isPlayingRef.current) {
+          renderer.render();
+        }
+      } catch (error) {
+        console.error('Error in editor animation loop:', error);
       }
     };
     animate();
 
+    // If we're already in playing mode, start the game immediately
+    // This handles the case when Game3D is recreated while playing
+    if (isPlayingRef.current && gameSpecRef.current) {
+      game.loadSpec(gameSpecRef.current);
+      game.start();
+    }
+
     // Cleanup
     return () => {
+      isMounted = false;
       cancelAnimationFrame(animationFrameRef.current);
       controls.dispose();
       game.dispose();
+      game3DRef.current = null;
+      controlsRef.current = null;
     };
   }, [showGrid, showAxes]);
 
@@ -116,6 +138,8 @@ export function GameCanvas3D({
       if (spec) {
         game.loadSpec(spec);
         game.start();
+        // Focus canvas to receive keyboard input
+        canvasRef.current?.focus();
       }
     } else {
       // Stop the game loop
@@ -224,46 +248,62 @@ export function GameCanvas3D({
   // Handle click to select entity
   const handleCanvasClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!game3DRef.current || !gameSpec || isDragging) return;
+      try {
+        if (!game3DRef.current || !gameSpec || isDragging) return;
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-      const rect = canvas.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        const rect = canvas.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-      // Raycast to find clicked entity
-      const renderer = game3DRef.current.renderer;
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(new THREE.Vector2(x, y), renderer.camera);
+        // Raycast to find clicked entity
+        const renderer = game3DRef.current.renderer;
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(x, y), renderer.camera);
 
-      const meshes: THREE.Object3D[] = [];
-      gameSpec.entities.forEach((_, index) => {
-        const mesh = renderer.getMesh(index);
-        if (mesh) meshes.push(mesh);
-      });
+        const meshes: THREE.Object3D[] = [];
+        gameSpec.entities.forEach((_, index) => {
+          try {
+            const mesh = renderer.getMesh(index);
+            if (mesh) meshes.push(mesh);
+          } catch {
+            // Skip invalid meshes
+          }
+        });
 
-      const intersects = raycaster.intersectObjects(meshes, true);
-
-      if (intersects.length > 0) {
-        // Find entity by userData
-        const intersected = intersects[0].object;
-        let entityId = intersected.userData?.entityId;
-
-        // Check parent if not found
-        if (entityId === undefined && intersected.parent) {
-          entityId = intersected.parent.userData?.entityId;
+        if (meshes.length === 0) {
+          // No meshes to check, might be in play mode with different IDs
+          if (!event.ctrlKey) {
+            onEntitySelect(null);
+          }
+          return;
         }
 
-        if (entityId !== undefined && gameSpec.entities[entityId]) {
-          onEntitySelect(gameSpec.entities[entityId].name, { ctrlKey: event.ctrlKey });
+        const intersects = raycaster.intersectObjects(meshes, true);
+
+        if (intersects.length > 0) {
+          // Find entity by userData
+          const intersected = intersects[0].object;
+          let entityId = intersected.userData?.entityId;
+
+          // Check parent if not found
+          if (entityId === undefined && intersected.parent) {
+            entityId = intersected.parent.userData?.entityId;
+          }
+
+          if (entityId !== undefined && gameSpec.entities[entityId]) {
+            onEntitySelect(gameSpec.entities[entityId].name, { ctrlKey: event.ctrlKey });
+          }
+        } else {
+          // Click on empty space - deselect
+          if (!event.ctrlKey) {
+            onEntitySelect(null);
+          }
         }
-      } else {
-        // Click on empty space - deselect
-        if (!event.ctrlKey) {
-          onEntitySelect(null);
-        }
+      } catch (error) {
+        console.error('Error in canvas click handler:', error);
       }
     },
     [gameSpec, isDragging, onEntitySelect]
@@ -305,11 +345,16 @@ export function GameCanvas3D({
     >
       <canvas
         ref={canvasRef}
+        tabIndex={0}
         onClick={handleCanvasClick}
-        onMouseDown={handleMouseDown}
+        onMouseDown={(e) => {
+          // Ensure canvas has focus for keyboard events
+          canvasRef.current?.focus();
+          handleMouseDown(e);
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        className="w-full h-full"
+        className="w-full h-full outline-none"
       />
 
       {/* Toolbar overlay */}

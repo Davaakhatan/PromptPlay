@@ -28,15 +28,20 @@ export class Input3DSystem {
       let vx = 0;
       let vz = 0;
 
-      if (this.inputManager.isLeftPressed()) {
+      const leftPressed = this.inputManager.isLeftPressed();
+      const rightPressed = this.inputManager.isRightPressed();
+      const forwardPressed = this.inputManager.isForwardPressed();
+      const backwardPressed = this.inputManager.isBackwardPressed();
+
+      if (leftPressed) {
         vx = -moveSpeed;
-      } else if (this.inputManager.isRightPressed()) {
+      } else if (rightPressed) {
         vx = moveSpeed;
       }
 
-      if (this.inputManager.isForwardPressed()) {
+      if (forwardPressed) {
         vz = -moveSpeed; // Negative Z is forward in Three.js
-      } else if (this.inputManager.isBackwardPressed()) {
+      } else if (backwardPressed) {
         vz = moveSpeed;
       }
 

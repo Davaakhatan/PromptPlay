@@ -1,6 +1,6 @@
 // Node Preset Service - Save and load node configurations as reusable presets
 
-import type { NodeInstance, Connection, NodeGraph } from '../types/NodeEditor';
+import type { NodeInstance, Connection } from '../types/NodeEditor';
 
 /**
  * A node preset - a reusable collection of nodes and connections

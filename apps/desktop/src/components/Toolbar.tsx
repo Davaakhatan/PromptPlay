@@ -1,8 +1,10 @@
-import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon, SmartphoneIcon, RocketIcon, BrainIcon, NodeEditorIcon } from './Icons';
+import { SaveIcon, UndoIcon, RedoIcon, NewProjectIcon, AIIcon, ExportIcon, LoadingSpinner, CameraIcon, SearchIcon, SmartphoneIcon, RocketIcon, BrainIcon, NodeEditorIcon, ShaderIcon, BehaviorTreeIcon, StateMachineIcon } from './Icons';
+
+type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 
 interface ToolbarProps {
   projectPath: string | null;
-  viewMode: 'game' | 'code' | 'nodes';
+  viewMode: ViewMode;
   isPlaying: boolean;
   loading: boolean;
   isExporting: boolean;
@@ -13,7 +15,7 @@ interface ToolbarProps {
   hasGameSpec: boolean;
   is3DMode?: boolean;
 
-  onViewModeChange: (mode: 'game' | 'code' | 'nodes') => void;
+  onViewModeChange: (mode: ViewMode) => void;
   onTogglePlayPause: () => void;
   onReset: () => void;
   onNewProject: () => void;
@@ -94,10 +96,47 @@ export default function Toolbar({
                     ? 'bg-white/10 text-white'
                     : 'text-text-tertiary hover:text-text-secondary'
                 }`}
-                title="Visual Script Editor"
+                title="Visual Script Editor (Cmd+6)"
               >
                 <NodeEditorIcon size={12} />
                 Nodes
+              </button>
+            </div>
+
+            {/* Advanced Editors Dropdown/Buttons */}
+            <div className="flex bg-subtle/50 rounded p-0.5 ml-1">
+              <button
+                onClick={() => onViewModeChange('shaders')}
+                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                  viewMode === 'shaders'
+                    ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+                title="Shader Graph Editor (Cmd+7)"
+              >
+                <ShaderIcon size={12} />
+              </button>
+              <button
+                onClick={() => onViewModeChange('behavior')}
+                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                  viewMode === 'behavior'
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+                title="Behavior Tree Editor (Cmd+8)"
+              >
+                <BehaviorTreeIcon size={12} />
+              </button>
+              <button
+                onClick={() => onViewModeChange('states')}
+                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
+                  viewMode === 'states'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+                title="State Machine Editor (Cmd+9)"
+              >
+                <StateMachineIcon size={12} />
               </button>
             </div>
 
