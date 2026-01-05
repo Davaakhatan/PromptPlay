@@ -27,7 +27,7 @@ const onUpdateNode: NodeDefinition = {
     { id: 'flow', name: 'Flow', type: 'flow' },
     { id: 'delta', name: 'Delta Time', type: 'number' },
   ],
-  execute: (inputs, context) => ({ delta: context.deltaTime }),
+  execute: (_inputs, context) => ({ delta: context.deltaTime }),
 };
 
 const onCollisionNode: NodeDefinition = {

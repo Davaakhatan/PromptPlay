@@ -172,11 +172,29 @@ export interface Model3DComponent {
   animationSpeed?: number;
 }
 
+// 3D Texture component (for explicit texture control)
+export interface Texture3DComponent {
+  // PBR texture paths
+  diffuseMap?: string;      // Color/albedo texture
+  normalMap?: string;       // Normal map
+  roughnessMap?: string;    // Roughness texture
+  metalnessMap?: string;    // Metalness texture
+  aoMap?: string;           // Ambient occlusion map
+  emissiveMap?: string;     // Emissive map
+  // Texture tiling
+  repeatX?: number;         // Texture repeat X (default 1)
+  repeatY?: number;         // Texture repeat Y (default 1)
+  // UV offset
+  offsetX?: number;
+  offsetY?: number;
+}
+
 // Extended EntityComponents for 3D
 export interface Entity3DComponents {
   transform3d?: Transform3DComponent;
   mesh?: MeshComponent;
   material?: MaterialComponent;
+  texture3d?: Texture3DComponent;
   light?: LightComponent;
   collider3d?: Collider3DComponent;
   velocity3d?: Velocity3DComponent;

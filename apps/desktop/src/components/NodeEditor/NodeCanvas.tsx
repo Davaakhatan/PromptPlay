@@ -19,7 +19,6 @@ function ConnectionWire({
   const color = PORT_COLORS[portType] || PORT_COLORS.any;
 
   // Bezier curve control points
-  const midX = (fromX + toX) / 2;
   const cpOffset = Math.min(Math.abs(toX - fromX) * 0.5, 100);
 
   const path = `M ${fromX} ${fromY} C ${fromX + cpOffset} ${fromY}, ${toX - cpOffset} ${toY}, ${toX} ${toY}`;

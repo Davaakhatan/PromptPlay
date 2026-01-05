@@ -1,12 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { NodeGraph } from '../../types/NodeEditor';
 import { NODE_LIBRARY } from '../../services/NodeLibrary';
+import { useNodeGraphHistory } from '../../hooks/useNodeGraphHistory';
 import NodeCanvas from './NodeCanvas';
 
 interface NodeEditorProps {
   graph?: NodeGraph | null;
   onGraphChange?: (graph: NodeGraph) => void;
   onClose?: () => void;
+  onSave?: () => void;
 }
 
 // Create a default empty graph
@@ -20,17 +22,151 @@ function createDefaultGraph(): NodeGraph {
   };
 }
 
-export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose }: NodeEditorProps) {
+export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose, onSave }: NodeEditorProps) {
   const [graph, setGraph] = useState<NodeGraph>(initialGraph || createDefaultGraph());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+  const isInitialized = useRef(false);
 
-  const handleGraphChange = useCallback((newGraph: NodeGraph) => {
+  const {
+    canUndo,
+    canRedo,
+    pushHistory,
+    undo,
+    redo,
+    initializeHistory,
+    getActionDescription,
+  } = useNodeGraphHistory();
+
+  // Initialize history when graph is first loaded
+  useEffect(() => {
+    if (!isInitialized.current) {
+      initializeHistory(graph);
+      isInitialized.current = true;
+    }
+  }, [graph, initializeHistory]);
+
+  // Update graph when initialGraph changes
+  useEffect(() => {
+    if (initialGraph && initialGraph !== graph) {
+      setGraph(initialGraph);
+      initializeHistory(initialGraph);
+    }
+  }, [initialGraph]);
+
+  const showNotification = useCallback((message: string) => {
+    setNotification(message);
+    setTimeout(() => setNotification(null), 2000);
+  }, []);
+
+  const handleGraphChange = useCallback((newGraph: NodeGraph, actionDescription?: string) => {
     setGraph(newGraph);
     onGraphChange?.(newGraph);
-  }, [onGraphChange]);
+
+    // Push to history with action description
+    if (actionDescription) {
+      pushHistory(newGraph, actionDescription);
+    }
+  }, [onGraphChange, pushHistory]);
+
+  // Wrapper that detects what changed
+  const handleGraphChangeWithAction = useCallback((newGraph: NodeGraph) => {
+    let action = 'Edit graph';
+
+    // Detect what changed
+    if (newGraph.nodes.length > graph.nodes.length) {
+      const newNode = newGraph.nodes.find(n => !graph.nodes.some(gn => gn.id === n.id));
+      action = `Add ${NODE_LIBRARY[newNode?.type || '']?.title || 'node'}`;
+    } else if (newGraph.nodes.length < graph.nodes.length) {
+      action = 'Delete node';
+    } else if (newGraph.connections.length > graph.connections.length) {
+      action = 'Add connection';
+    } else if (newGraph.connections.length < graph.connections.length) {
+      action = 'Remove connection';
+    } else if (newGraph.name !== graph.name) {
+      action = 'Rename graph';
+    } else {
+      // Check if node position changed
+      const movedNode = newGraph.nodes.find((n, i) => {
+        const oldNode = graph.nodes[i];
+        return oldNode && (n.position.x !== oldNode.position.x || n.position.y !== oldNode.position.y);
+      });
+      if (movedNode) {
+        action = 'Move node';
+      } else {
+        // Check if node data changed
+        const editedNode = newGraph.nodes.find((n, i) => {
+          const oldNode = graph.nodes[i];
+          return oldNode && JSON.stringify(n.data) !== JSON.stringify(oldNode.data);
+        });
+        if (editedNode) {
+          action = 'Edit node properties';
+        }
+      }
+    }
+
+    handleGraphChange(newGraph, action);
+  }, [graph, handleGraphChange]);
+
+  const handleUndo = useCallback(() => {
+    const previousGraph = undo();
+    if (previousGraph) {
+      setGraph(previousGraph);
+      onGraphChange?.(previousGraph);
+      showNotification(`Undo: ${getActionDescription()}`);
+    }
+  }, [undo, onGraphChange, showNotification, getActionDescription]);
+
+  const handleRedo = useCallback(() => {
+    const nextGraph = redo();
+    if (nextGraph) {
+      setGraph(nextGraph);
+      onGraphChange?.(nextGraph);
+      showNotification(`Redo: ${getActionDescription()}`);
+    }
+  }, [redo, onGraphChange, showNotification, getActionDescription]);
+
+  const handleSave = useCallback(() => {
+    onSave?.();
+    showNotification('Saved');
+  }, [onSave, showNotification]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Ctrl/Cmd + Z = Undo
+      if (modKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y = Redo
+      else if ((modKey && e.shiftKey && e.key === 'z') || (modKey && e.key === 'y')) {
+        e.preventDefault();
+        handleRedo();
+      }
+      // Ctrl/Cmd + S = Save
+      else if (modKey && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, handleSave]);
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f1a]">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-[#2a2a3e] border border-[#3f3f5a] rounded-lg shadow-lg text-sm text-white animate-fade-in">
+          {notification}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#1e1e2e] border-b border-[#3f3f5a]">
         <div className="flex items-center gap-3">
@@ -40,11 +176,51 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Undo Button */}
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className={`p-1.5 rounded ${canUndo ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
+            title="Undo (Ctrl+Z)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </button>
+
+          {/* Redo Button */}
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className={`p-1.5 rounded ${canRedo ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+            </svg>
+          </button>
+
+          <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
+
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            className="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded flex items-center gap-1.5"
+            title="Save (Ctrl+S)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            Save
+          </button>
+
+          <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
+
           {/* Graph name input */}
           <input
             type="text"
             value={graph.name}
-            onChange={(e) => handleGraphChange({ ...graph, name: e.target.value })}
+            onChange={(e) => handleGraphChangeWithAction({ ...graph, name: e.target.value })}
             className="px-3 py-1 bg-[#2a2a3e] border border-[#3f3f5a] rounded text-sm text-white focus:outline-none focus:border-blue-500"
           />
           {onClose && (
@@ -64,7 +240,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
       <div className="flex-1 relative">
         <NodeCanvas
           graph={graph}
-          onGraphChange={handleGraphChange}
+          onGraphChange={handleGraphChangeWithAction}
           onNodeSelect={setSelectedNodeId}
           selectedNodeId={selectedNodeId}
         />
@@ -75,7 +251,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
         <NodeInspector
           graph={graph}
           nodeId={selectedNodeId}
-          onGraphChange={handleGraphChange}
+          onGraphChange={handleGraphChangeWithAction}
         />
       )}
     </div>

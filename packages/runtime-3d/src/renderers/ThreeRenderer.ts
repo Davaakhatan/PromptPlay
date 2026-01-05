@@ -11,6 +11,17 @@ export interface ThreeRendererOptions {
   pixelRatio?: number;
 }
 
+export interface TextureProps {
+  diffuseMap?: string;      // Color/albedo texture URL
+  normalMap?: string;       // Normal map URL
+  roughnessMap?: string;    // Roughness texture URL
+  metalnessMap?: string;    // Metalness texture URL
+  aoMap?: string;           // Ambient occlusion map URL
+  emissiveMap?: string;     // Emissive map URL
+  repeatX?: number;         // Texture repeat X
+  repeatY?: number;         // Texture repeat Y
+}
+
 /**
  * Three.js-based 3D renderer for PromptPlay
  */
@@ -24,7 +35,9 @@ export class ThreeRenderer {
   private entityMeshes: Map<number, THREE.Object3D> = new Map();
   private entityLights: Map<number, THREE.Light> = new Map();
   private gltfLoader: GLTFLoader;
+  private textureLoader: THREE.TextureLoader;
   private modelCache: Map<string, THREE.Group> = new Map();
+  private textureCache: Map<string, THREE.Texture> = new Map();
 
   constructor(options: ThreeRendererOptions = {}) {
     const {
@@ -74,6 +87,9 @@ export class ThreeRenderer {
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     this.gltfLoader.setDRACOLoader(dracoLoader);
+
+    // Initialize texture loader
+    this.textureLoader = new THREE.TextureLoader();
   }
 
   /**
@@ -138,6 +154,57 @@ export class ThreeRenderer {
   }
 
   /**
+   * Load a texture with caching
+   */
+  loadTexture(url: string, repeat?: { x: number; y: number }): THREE.Texture {
+    // Check cache first
+    const cacheKey = `${url}_${repeat?.x ?? 1}_${repeat?.y ?? 1}`;
+    if (this.textureCache.has(cacheKey)) {
+      return this.textureCache.get(cacheKey)!;
+    }
+
+    const texture = this.textureLoader.load(url);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+
+    if (repeat) {
+      texture.repeat.set(repeat.x, repeat.y);
+    }
+
+    this.textureCache.set(cacheKey, texture);
+    return texture;
+  }
+
+  /**
+   * Load a texture asynchronously
+   */
+  async loadTextureAsync(url: string, repeat?: { x: number; y: number }): Promise<THREE.Texture> {
+    const cacheKey = `${url}_${repeat?.x ?? 1}_${repeat?.y ?? 1}`;
+    if (this.textureCache.has(cacheKey)) {
+      return this.textureCache.get(cacheKey)!;
+    }
+
+    return new Promise((resolve, reject) => {
+      this.textureLoader.load(
+        url,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          if (repeat) {
+            texture.repeat.set(repeat.x, repeat.y);
+          }
+          this.textureCache.set(cacheKey, texture);
+          resolve(texture);
+        },
+        undefined,
+        reject
+      );
+    });
+  }
+
+  /**
    * Create a mesh for an entity
    */
   createMesh(
@@ -145,7 +212,8 @@ export class ThreeRenderer {
     geometryType: string,
     dimensions: { width?: number; height?: number; depth?: number; radius?: number },
     materialProps?: { color?: string; metallic?: number; roughness?: number },
-    shadowProps?: { castShadow?: boolean; receiveShadow?: boolean }
+    shadowProps?: { castShadow?: boolean; receiveShadow?: boolean },
+    textureProps?: TextureProps
   ): THREE.Mesh {
     // Create geometry based on type
     let geometry: THREE.BufferGeometry;
@@ -174,11 +242,20 @@ export class ThreeRenderer {
         geometry = new THREE.BoxGeometry(1, 1, 1);
     }
 
-    // Create PBR material
+    // Create PBR material with texture support
+    const repeat = textureProps ? { x: textureProps.repeatX ?? 1, y: textureProps.repeatY ?? 1 } : undefined;
+
     const material = new THREE.MeshStandardMaterial({
       color: materialProps?.color ? new THREE.Color(materialProps.color) : 0x3498db,
       metalness: materialProps?.metallic ?? 0.1,
       roughness: materialProps?.roughness ?? 0.7,
+      // Apply textures if provided
+      map: textureProps?.diffuseMap ? this.loadTexture(textureProps.diffuseMap, repeat) : undefined,
+      normalMap: textureProps?.normalMap ? this.loadTexture(textureProps.normalMap, repeat) : undefined,
+      roughnessMap: textureProps?.roughnessMap ? this.loadTexture(textureProps.roughnessMap, repeat) : undefined,
+      metalnessMap: textureProps?.metalnessMap ? this.loadTexture(textureProps.metalnessMap, repeat) : undefined,
+      aoMap: textureProps?.aoMap ? this.loadTexture(textureProps.aoMap, repeat) : undefined,
+      emissiveMap: textureProps?.emissiveMap ? this.loadTexture(textureProps.emissiveMap, repeat) : undefined,
     });
 
     // Create mesh

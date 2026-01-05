@@ -453,6 +453,16 @@ function App() {
       }
       initializeHistory(spec);
 
+      // Load node graph if exists
+      try {
+        const nodesJsonStr = await invoke<string>('read_file', { path: `${selected}/scripts/nodes.json` });
+        const loadedGraph = JSON.parse(nodesJsonStr) as NodeGraph;
+        setNodeGraph(loadedGraph);
+      } catch {
+        // No node graph file, start fresh
+        setNodeGraph(null);
+      }
+
       // Track in recent projects
       const projectName = spec.metadata?.title || selected.split('/').pop() || 'Untitled';
       addRecentProject({
@@ -549,6 +559,22 @@ function App() {
         path: gameJsonPath,
         content: gameJsonContent,
       });
+
+      // Save node graph if exists
+      if (nodeGraph) {
+        const nodesJsonPath = `${projectPath}/scripts/nodes.json`;
+        const nodesJsonContent = JSON.stringify(nodeGraph, null, 2);
+        // Ensure scripts directory exists
+        try {
+          await invoke('create_directory', { path: `${projectPath}/scripts` });
+        } catch {
+          // Directory may already exist
+        }
+        await invoke('write_file', {
+          path: nodesJsonPath,
+          content: nodesJsonContent,
+        });
+      }
 
       setHasUnsavedChanges(false);
       setNotification('Saved');
@@ -1346,6 +1372,13 @@ function App() {
         case 'show_code':
           setViewMode('code');
           break;
+        case 'show_nodes':
+        case 'show_visual_scripts':
+          setViewMode('nodes');
+          if (!nodeGraph) {
+            setNodeGraph(createDefaultGraph());
+          }
+          break;
         case 'show_ai':
           setShowAIPanel(true);
           break;
@@ -1400,7 +1433,7 @@ function App() {
           window.open('https://github.com/promptplay/promptplay/issues', '_blank');
           break;
         case 'about':
-          setNotification('PromptPlay v1.0 - AI-First 2D/3D Game Engine');
+          setNotification('PromptPlay v3.0 - AI-First 2D/3D Game Engine');
           setTimeout(() => setNotification(null), 3000);
           break;
 
@@ -1729,6 +1762,7 @@ function App() {
                 setHasUnsavedChanges(true);
               }}
               onClose={() => setViewMode('game')}
+              onSave={saveProject}
             />
           )}
         </div>

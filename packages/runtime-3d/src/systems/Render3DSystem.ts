@@ -1,6 +1,6 @@
-import { defineQuery, enterQuery, exitQuery, IWorld } from 'bitecs';
-import { Transform3D, Mesh, Material, Light } from '../components';
-import { ThreeRenderer } from '../renderers/ThreeRenderer';
+import { defineQuery, enterQuery, exitQuery, hasComponent, IWorld } from 'bitecs';
+import { Transform3D, Mesh, Material, Light, Texture3D } from '../components';
+import { ThreeRenderer, TextureProps } from '../renderers/ThreeRenderer';
 
 // Query for entities with mesh
 const meshQuery = defineQuery([Transform3D, Mesh]);
@@ -16,11 +16,31 @@ const lightExitQuery = exitQuery(lightQuery);
 const GEOMETRY_NAMES = ['box', 'sphere', 'plane', 'cylinder', 'cone', 'torus', 'custom'];
 const LIGHT_TYPE_NAMES = ['ambient', 'directional', 'point', 'spot', 'hemisphere'];
 
+// Asset registry for texture URL mapping
+export type AssetRegistry = Map<number, string>;
+
 /**
  * System for rendering 3D entities
  */
 export class Render3DSystem {
+  private assetRegistry: AssetRegistry = new Map();
+
   constructor(private renderer: ThreeRenderer) {}
+
+  /**
+   * Set the asset registry for texture URL lookup
+   */
+  setAssetRegistry(registry: AssetRegistry): void {
+    this.assetRegistry = registry;
+  }
+
+  /**
+   * Get texture URL from asset ID
+   */
+  private getTextureUrl(assetId: number): string | undefined {
+    if (assetId === 0) return undefined;
+    return this.assetRegistry.get(assetId);
+  }
 
   /**
    * Execute the render system
@@ -29,7 +49,7 @@ export class Render3DSystem {
     // Handle new mesh entities
     const enteredMeshes = meshEnterQuery(world);
     for (const eid of enteredMeshes) {
-      this.createMesh(eid);
+      this.createMesh(eid, world);
     }
 
     // Handle removed mesh entities
@@ -66,12 +86,27 @@ export class Render3DSystem {
   /**
    * Create a mesh for an entity
    */
-  private createMesh(eid: number): void {
+  private createMesh(eid: number, world: IWorld): void {
     const geometryType = GEOMETRY_NAMES[Mesh.geometry[eid]] || 'box';
 
     // Convert packed color to hex
     const colorInt = Material.color[eid] || 0x3498db;
     const color = '#' + colorInt.toString(16).padStart(6, '0');
+
+    // Build texture props if entity has Texture3D component
+    let textureProps: TextureProps | undefined;
+    if (hasComponent(world, Texture3D, eid)) {
+      textureProps = {
+        diffuseMap: this.getTextureUrl(Texture3D.diffuseMapId[eid]),
+        normalMap: this.getTextureUrl(Texture3D.normalMapId[eid]),
+        roughnessMap: this.getTextureUrl(Texture3D.roughnessMapId[eid]),
+        metalnessMap: this.getTextureUrl(Texture3D.metalnessMapId[eid]),
+        aoMap: this.getTextureUrl(Texture3D.aoMapId[eid]),
+        emissiveMap: this.getTextureUrl(Texture3D.emissiveMapId[eid]),
+        repeatX: Texture3D.repeatX[eid] || 1,
+        repeatY: Texture3D.repeatY[eid] || 1,
+      };
+    }
 
     this.renderer.createMesh(
       eid,
@@ -86,7 +121,9 @@ export class Render3DSystem {
         color,
         metallic: Material.metallic[eid] || 0.1,
         roughness: Material.roughness[eid] || 0.7,
-      }
+      },
+      undefined,
+      textureProps
     );
   }
 

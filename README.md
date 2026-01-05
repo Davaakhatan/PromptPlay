@@ -89,6 +89,17 @@ While traditional game engines require years of learning, PromptPlay lets anyone
 - **Custom Systems** - Extend engine with your own logic
 - **Hot Reload** - See changes instantly
 
+### Visual Scripting
+- **Node-Based Editor** - ComfyUI-style visual programming
+- **Event Nodes** - On Start, On Update, On Collision
+- **Logic Nodes** - If/Then, Branch, Compare
+- **Math Nodes** - Add, Subtract, Multiply, Divide, Clamp, Lerp, Random
+- **Entity Nodes** - Get Entity, Set Position, Set Velocity, Destroy
+- **Physics Nodes** - Apply Force, Apply Impulse
+- **Animation Nodes** - Play Animation, Tween
+- **Audio Nodes** - Play Sound
+- **Undo/Redo** - Full history support with Ctrl+Z/Ctrl+Shift+Z
+
 ### Export & Distribution
 - **HTML Export** - Single-file, runs anywhere
 - **Desktop Build** - Windows, macOS, Linux via Tauri
@@ -297,6 +308,13 @@ PromptPlay/
 - [x] Mobile Export (PWA with touch controls, offline support)
 - [x] One-Click Publishing (itch.io, GitHub Pages, HTML export)
 - [x] AI Playtesting (automated game analysis and feedback)
+- [x] Visual Script Editor (ComfyUI-style node-based programming)
+- [x] Node Graph Engine (events, logic, math, entities, physics, input, animation, audio)
+- [x] Node Undo/Redo History
+- [x] Node Graph Save/Load (saves with project)
+- [x] 3D Texture Support (PBR materials: diffuse, normal, roughness, metalness, AO, emissive)
+- [x] Texture Caching (performance optimization)
+- [x] Panel Collapse/Expand (UI improvement)
 
 ### v3.1 - Community & Collaboration
 
@@ -314,15 +332,14 @@ PromptPlay/
 - [ ] AI Art Generation Integration (Stable Diffusion, DALL-E)
 - [ ] Voice-to-Game Feature (speak and create)
 
-### v4.0 - Visual Scripting (ComfyUI-Style)
+### v4.0 - Advanced Visual Scripting
 
-- [ ] Node-Based Editor (ComfyUI-inspired workflow)
-- [ ] Visual Logic Builder (connect nodes to create behavior)
 - [ ] Motion & Animation Nodes (keyframe, easing, paths)
-- [ ] Event System Nodes (triggers, conditions, actions)
 - [ ] Custom Node Creation (extend with TypeScript)
+- [ ] Node Groups & Subgraphs
 - [ ] Shader Graph Editor (visual shader creation)
 - [ ] Behavior Trees (AI decision making)
+- [ ] State Machine Nodes
 
 ### v4.1 - Professional Tools
 

@@ -200,3 +200,19 @@ export const Input3D = defineComponent({
   canJump: Types.ui8,
   isGrounded: Types.ui8,
 });
+
+/**
+ * Texture3D component
+ * PBR texture references for 3D meshes
+ * Texture IDs reference asset entries in the game spec
+ */
+export const Texture3D = defineComponent({
+  diffuseMapId: Types.ui32,     // Asset ID for diffuse/albedo texture
+  normalMapId: Types.ui32,      // Asset ID for normal map
+  roughnessMapId: Types.ui32,   // Asset ID for roughness map
+  metalnessMapId: Types.ui32,   // Asset ID for metalness map
+  aoMapId: Types.ui32,          // Asset ID for ambient occlusion map
+  emissiveMapId: Types.ui32,    // Asset ID for emissive map
+  repeatX: Types.f32,           // Texture repeat X (default 1)
+  repeatY: Types.f32,           // Texture repeat Y (default 1)
+});

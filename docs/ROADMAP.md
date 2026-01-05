@@ -109,9 +109,9 @@
 
 ---
 
-### v3.0 - Publishing (Current)
+### v3.0 - Publishing & Visual Scripting (Current)
 
-**Theme:** Distribution & Testing
+**Theme:** Distribution, Testing & Visual Programming
 
 | Phase | Feature | Status |
 |-------|---------|--------|
@@ -131,6 +131,22 @@
 | 3.0.14 | Issue detection | ✅ |
 | 3.0.15 | Quality scoring (0-100) | ✅ |
 | 3.0.16 | Improvement suggestions | ✅ |
+| 3.0.17 | Visual Script Editor (ComfyUI-style) | ✅ |
+| 3.0.18 | Node graph engine | ✅ |
+| 3.0.19 | Node types - events | ✅ |
+| 3.0.20 | Node types - logic | ✅ |
+| 3.0.21 | Node types - math | ✅ |
+| 3.0.22 | Node types - entities | ✅ |
+| 3.0.23 | Node types - physics | ✅ |
+| 3.0.24 | Node types - input | ✅ |
+| 3.0.25 | Node types - animation | ✅ |
+| 3.0.26 | Node types - audio | ✅ |
+| 3.0.27 | Node executor runtime | ✅ |
+| 3.0.28 | Node undo/redo history | ✅ |
+| 3.0.29 | Node graph save/load | ✅ |
+| 3.0.30 | 3D Texture support (PBR) | ✅ |
+| 3.0.31 | Texture caching | ✅ |
+| 3.0.32 | Panel collapse/expand | ✅ |
 
 ---
 
@@ -180,37 +196,27 @@
 
 ---
 
-### v4.0 - Visual Scripting (ComfyUI-Style)
+### v4.0 - Advanced Visual Scripting
 
-**Theme:** Node-Based Programming
+**Theme:** Extended Node-Based Programming
 **Target:** Q4 2025
 
 | Phase | Feature | Description | Priority |
 |-------|---------|-------------|----------|
-| 4.0.1 | Node graph engine | Core graph data structure | P0 |
-| 4.0.2 | Node renderer | Canvas-based node rendering | P0 |
-| 4.0.3 | Connection system | Drag & drop connections | P0 |
-| 4.0.4 | Node types - logic | If/else, switch, loops | P0 |
-| 4.0.5 | Node types - math | Add, multiply, clamp, lerp | P0 |
-| 4.0.6 | Node types - transform | Position, rotation, scale | P0 |
-| 4.0.7 | Node types - input | Keyboard, mouse, touch | P0 |
-| 4.0.8 | Node types - physics | Force, velocity, collision | P1 |
-| 4.0.9 | Node types - animation | Play, pause, blend | P1 |
-| 4.0.10 | Node types - audio | Play sound, volume, spatial | P1 |
-| 4.0.11 | Motion nodes - keyframe | Keyframe animation nodes | P0 |
-| 4.0.12 | Motion nodes - easing | Easing function nodes | P0 |
-| 4.0.13 | Motion nodes - path | Follow path nodes | P1 |
-| 4.0.14 | Motion nodes - physics | Spring, damping nodes | P1 |
-| 4.0.15 | Event nodes - triggers | On start, on collision, on timer | P0 |
-| 4.0.16 | Event nodes - conditions | And, or, compare | P0 |
-| 4.0.17 | Event nodes - actions | Spawn, destroy, modify | P0 |
-| 4.0.18 | Custom node API | TypeScript node definition | P1 |
-| 4.0.19 | Node presets | Save/load node configurations | P2 |
-| 4.0.20 | Shader graph - setup | Visual shader editor | P2 |
-| 4.0.21 | Shader graph - nodes | Color, texture, math nodes | P2 |
-| 4.0.22 | Shader graph - preview | Real-time shader preview | P2 |
-| 4.0.23 | Behavior trees | AI decision making system | P1 |
-| 4.0.24 | Behavior tree editor | Visual tree editor | P1 |
+| 4.0.1 | Motion nodes - keyframe | Keyframe animation nodes | P0 |
+| 4.0.2 | Motion nodes - easing | Easing function nodes | P0 |
+| 4.0.3 | Motion nodes - path | Follow path nodes | P1 |
+| 4.0.4 | Motion nodes - physics | Spring, damping nodes | P1 |
+| 4.0.5 | Custom node API | TypeScript node definition | P1 |
+| 4.0.6 | Node presets | Save/load node configurations | P2 |
+| 4.0.7 | Node groups | Group nodes into subgraphs | P1 |
+| 4.0.8 | Node comments | Add comments to node groups | P2 |
+| 4.0.9 | Shader graph - setup | Visual shader editor | P2 |
+| 4.0.10 | Shader graph - nodes | Color, texture, math nodes | P2 |
+| 4.0.11 | Shader graph - preview | Real-time shader preview | P2 |
+| 4.0.12 | Behavior trees | AI decision making system | P1 |
+| 4.0.13 | Behavior tree editor | Visual tree editor | P1 |
+| 4.0.14 | State machine nodes | FSM visual editor | P1 |
 
 ---
 
