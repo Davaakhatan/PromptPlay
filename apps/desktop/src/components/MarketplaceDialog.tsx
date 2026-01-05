@@ -273,11 +273,11 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="bg-surface border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+                    className="bg-[#1a1a2e] border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500"
                   >
-                    <option value="downloads">Most Downloaded</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="recent">Most Recent</option>
+                    <option value="downloads" className="bg-[#1a1a2e] text-white">Most Downloaded</option>
+                    <option value="rating" className="bg-[#1a1a2e] text-white">Highest Rated</option>
+                    <option value="recent" className="bg-[#1a1a2e] text-white">Most Recent</option>
                   </select>
                 </div>
 
@@ -375,10 +375,10 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
                       <select
                         value={uploadCategory}
                         onChange={(e) => setUploadCategory(e.target.value as AssetCategory)}
-                        className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+                        className="w-full bg-[#1a1a2e] border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500"
                       >
                         {CATEGORIES.filter((c) => c.value !== 'all').map((cat) => (
-                          <option key={cat.value} value={cat.value}>
+                          <option key={cat.value} value={cat.value} className="bg-[#1a1a2e] text-white">
                             {cat.icon} {cat.label}
                           </option>
                         ))}
