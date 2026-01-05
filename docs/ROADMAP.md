@@ -218,7 +218,7 @@
 | 4.0.13 | Shader graph - preview | Real-time shader preview | ✅ |
 | 4.0.14 | Behavior trees | AI decision making system | ✅ |
 | 4.0.15 | Behavior tree editor | Visual tree editor | ✅ |
-| 4.0.16 | State machine nodes | FSM visual editor | 🔲 |
+| 4.0.16 | State machine nodes | FSM visual editor | ✅ |
 
 ---
 

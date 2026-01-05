@@ -348,7 +348,7 @@ PromptPlay/
 - [x] Shader Graph Editor UI (visual editor with real-time preview)
 - [x] Behavior Trees (AI decision making with 19 node types)
 - [x] Behavior Tree Editor (visual tree editor)
-- [ ] State Machine Nodes
+- [x] State Machine Nodes (FSM with visual editor, presets)
 
 ### v4.1 - Professional Tools
 
