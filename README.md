@@ -341,7 +341,8 @@ PromptPlay/
 - [x] Motion Nodes - Timing (timer, delay, keyframe lerp)
 - [x] Custom Node API (extend with TypeScript)
 - [x] Node Presets (save/load node configurations)
-- [ ] Node Groups & Subgraphs
+- [x] Node Groups (group nodes with Ctrl+G)
+- [x] Node Comments (add notes with Ctrl+M)
 - [ ] Shader Graph Editor (visual shader creation)
 - [ ] Behavior Trees (AI decision making)
 - [ ] State Machine Nodes

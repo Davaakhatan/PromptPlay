@@ -37,11 +37,43 @@ export interface Connection {
   toPortId: string;
 }
 
+/**
+ * A node group - visual grouping of nodes for organization
+ */
+export interface NodeGroup {
+  id: string;
+  name: string;
+  color: string;
+  // Bounding box (in graph coordinates)
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  // IDs of nodes contained in this group
+  nodeIds: string[];
+  // Optional description
+  description?: string;
+  // Whether the group is collapsed (hides contained nodes)
+  collapsed?: boolean;
+}
+
+/**
+ * A comment/note on the node graph
+ */
+export interface NodeComment {
+  id: string;
+  text: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  color?: string;
+  fontSize?: number;
+}
+
 export interface NodeGraph {
   id: string;
   name: string;
   nodes: NodeInstance[];
   connections: Connection[];
+  groups?: NodeGroup[];
+  comments?: NodeComment[];
   viewport: {
     x: number;
     y: number;

@@ -1,7 +1,19 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import type { NodeGraph, NodeInstance, Connection, NodeDefinition, PortType } from '../../types/NodeEditor';
+import type { NodeGraph, NodeInstance, Connection, NodeDefinition, PortType, NodeGroup, NodeComment } from '../../types/NodeEditor';
 import { NODE_LIBRARY, getNodesByCategory, getCategories } from '../../services/NodeLibrary';
 import { PORT_COLORS, CATEGORY_COLORS } from '../../types/NodeEditor';
+
+// Predefined group colors
+const GROUP_COLORS = [
+  '#3b82f6', // blue
+  '#22c55e', // green
+  '#f59e0b', // amber
+  '#ef4444', // red
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#f97316', // orange
+];
 
 interface NodeCanvasProps {
   graph: NodeGraph;
@@ -264,6 +276,283 @@ function NodeComponent({
   );
 }
 
+// Node Group component - visual container for nodes
+function NodeGroupComponent({
+  group,
+  selected,
+  onSelect,
+  onDrag,
+  onResize,
+  onNameChange,
+  zoom,
+}: {
+  group: NodeGroup;
+  selected: boolean;
+  onSelect: () => void;
+  onDrag: (dx: number, dy: number) => void;
+  onResize: (dw: number, dh: number) => void;
+  onNameChange: (name: string) => void;
+  zoom: number;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onSelect();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  useEffect(() => {
+    if (!isDragging && !isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = (e.clientX - dragStart.current.x) / zoom;
+      const dy = (e.clientY - dragStart.current.y) / zoom;
+      dragStart.current = { x: e.clientX, y: e.clientY };
+
+      if (isDragging) {
+        onDrag(dx, dy);
+      } else if (isResizing) {
+        onResize(dx, dy);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isResizing, onDrag, onResize, zoom]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  return (
+    <g transform={`translate(${group.position.x}, ${group.position.y})`}>
+      {/* Group background */}
+      <rect
+        x={0}
+        y={0}
+        width={group.size.width}
+        height={group.size.height}
+        rx={12}
+        fill={group.color + '15'}
+        stroke={selected ? '#60a5fa' : group.color + '40'}
+        strokeWidth={selected ? 2 : 1}
+        strokeDasharray={selected ? 'none' : '4 4'}
+        className="cursor-move"
+        onMouseDown={handleMouseDown}
+      />
+
+      {/* Group header */}
+      <rect
+        x={0}
+        y={0}
+        width={group.size.width}
+        height={28}
+        rx={12}
+        fill={group.color + '30'}
+        className="cursor-move"
+        onMouseDown={handleMouseDown}
+      />
+      <rect
+        x={0}
+        y={20}
+        width={group.size.width}
+        height={8}
+        fill={group.color + '30'}
+      />
+
+      {/* Group name */}
+      {isEditing ? (
+        <foreignObject x={8} y={4} width={group.size.width - 16} height={24}>
+          <input
+            ref={inputRef}
+            type="text"
+            defaultValue={group.name}
+            className="w-full px-1 py-0 bg-black/50 border-none text-white text-sm font-medium focus:outline-none"
+            onBlur={(e) => {
+              onNameChange(e.target.value);
+              setIsEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onNameChange((e.target as HTMLInputElement).value);
+                setIsEditing(false);
+              }
+              if (e.key === 'Escape') {
+                setIsEditing(false);
+              }
+            }}
+          />
+        </foreignObject>
+      ) : (
+        <text
+          x={12}
+          y={18}
+          fill="white"
+          fontSize={12}
+          fontWeight={600}
+          className="pointer-events-none select-none"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setIsEditing(true);
+          }}
+        >
+          {group.name}
+        </text>
+      )}
+
+      {/* Resize handle */}
+      <rect
+        x={group.size.width - 16}
+        y={group.size.height - 16}
+        width={16}
+        height={16}
+        fill="transparent"
+        className="cursor-se-resize"
+        onMouseDown={handleResizeMouseDown}
+      />
+      <path
+        d={`M ${group.size.width - 12} ${group.size.height - 4} L ${group.size.width - 4} ${group.size.height - 12} M ${group.size.width - 8} ${group.size.height - 4} L ${group.size.width - 4} ${group.size.height - 8}`}
+        stroke={group.color + '60'}
+        strokeWidth={2}
+        strokeLinecap="round"
+        className="pointer-events-none"
+      />
+    </g>
+  );
+}
+
+// Node Comment component - text notes on the canvas
+function NodeCommentComponent({
+  comment,
+  selected,
+  onSelect,
+  onDrag,
+  onTextChange,
+  zoom,
+}: {
+  comment: NodeComment;
+  selected: boolean;
+  onSelect: () => void;
+  onDrag: (dx: number, dy: number) => void;
+  onTextChange: (text: string) => void;
+  zoom: number;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onSelect();
+    if (!isEditing) {
+      setIsDragging(true);
+      dragStart.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = (e.clientX - dragStart.current.x) / zoom;
+      const dy = (e.clientY - dragStart.current.y) / zoom;
+      dragStart.current = { x: e.clientX, y: e.clientY };
+      onDrag(dx, dy);
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, onDrag, zoom]);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const bgColor = comment.color || '#fef08a';
+
+  return (
+    <g transform={`translate(${comment.position.x}, ${comment.position.y})`}>
+      <rect
+        x={0}
+        y={0}
+        width={comment.size.width}
+        height={comment.size.height}
+        rx={4}
+        fill={bgColor}
+        stroke={selected ? '#60a5fa' : bgColor}
+        strokeWidth={selected ? 2 : 1}
+        className="cursor-move"
+        onMouseDown={handleMouseDown}
+        onDoubleClick={() => setIsEditing(true)}
+      />
+
+      {isEditing ? (
+        <foreignObject x={4} y={4} width={comment.size.width - 8} height={comment.size.height - 8}>
+          <textarea
+            ref={textareaRef}
+            defaultValue={comment.text}
+            className="w-full h-full resize-none bg-transparent border-none text-gray-800 text-sm focus:outline-none"
+            style={{ fontSize: comment.fontSize || 12 }}
+            onBlur={(e) => {
+              onTextChange(e.target.value);
+              setIsEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsEditing(false);
+              }
+            }}
+          />
+        </foreignObject>
+      ) : (
+        <foreignObject x={4} y={4} width={comment.size.width - 8} height={comment.size.height - 8}>
+          <div
+            className="text-gray-800 text-sm whitespace-pre-wrap overflow-hidden pointer-events-none"
+            style={{ fontSize: comment.fontSize || 12 }}
+          >
+            {comment.text}
+          </div>
+        </foreignObject>
+      )}
+    </g>
+  );
+}
+
 // Node palette for adding new nodes
 function NodePalette({
   onAddNode,
@@ -395,6 +684,12 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
     portType: PortType;
   } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [isBoxSelecting, setIsBoxSelecting] = useState(false);
+  const [boxSelectStart, setBoxSelectStart] = useState({ x: 0, y: 0 });
+  const [boxSelectEnd, setBoxSelectEnd] = useState({ x: 0, y: 0 });
 
   // Handle pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -578,30 +873,202 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
     };
   }, [graph.nodes]);
 
+  // Create a group from selected nodes
+  const createGroupFromSelection = useCallback(() => {
+    const nodeIds = selectedNodeIds.size > 0 ? Array.from(selectedNodeIds) : selectedNodeId ? [selectedNodeId] : [];
+    if (nodeIds.length === 0) return;
+
+    const selectedNodes = graph.nodes.filter(n => nodeIds.includes(n.id));
+    if (selectedNodes.length === 0) return;
+
+    // Calculate bounding box with padding
+    const padding = 40;
+    const nodeWidth = 180;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    selectedNodes.forEach(node => {
+      const definition = NODE_LIBRARY[node.type];
+      const maxPorts = definition ? Math.max(definition.inputs.length, definition.outputs.length) : 1;
+      const nodeHeight = 32 + maxPorts * 24 + 12;
+
+      minX = Math.min(minX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxX = Math.max(maxX, node.position.x + nodeWidth);
+      maxY = Math.max(maxY, node.position.y + nodeHeight);
+    });
+
+    const newGroup: NodeGroup = {
+      id: `group_${Date.now()}`,
+      name: 'New Group',
+      color: GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)],
+      position: { x: minX - padding, y: minY - padding - 28 },
+      size: { width: maxX - minX + padding * 2, height: maxY - minY + padding * 2 + 28 },
+      nodeIds,
+    };
+
+    onGraphChange({
+      ...graph,
+      groups: [...(graph.groups || []), newGroup],
+    });
+
+    setSelectedGroupId(newGroup.id);
+    setSelectedNodeIds(new Set());
+    onNodeSelect?.(null);
+  }, [selectedNodeIds, selectedNodeId, graph, onGraphChange, onNodeSelect]);
+
+  // Add a comment
+  const addComment = useCallback(() => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const worldX = (palettePosition.x - viewport.x) / viewport.zoom || viewport.x / viewport.zoom + 100;
+    const worldY = (palettePosition.y - viewport.y) / viewport.zoom || viewport.y / viewport.zoom + 100;
+
+    const newComment: NodeComment = {
+      id: `comment_${Date.now()}`,
+      text: 'Double-click to edit',
+      position: { x: worldX, y: worldY },
+      size: { width: 200, height: 80 },
+    };
+
+    onGraphChange({
+      ...graph,
+      comments: [...(graph.comments || []), newComment],
+    });
+
+    setSelectedCommentId(newComment.id);
+  }, [graph, onGraphChange, palettePosition, viewport]);
+
+  // Handle group drag (moves all nodes in group)
+  const handleGroupDrag = useCallback((groupId: string, dx: number, dy: number) => {
+    const group = graph.groups?.find(g => g.id === groupId);
+    if (!group) return;
+
+    onGraphChange({
+      ...graph,
+      groups: graph.groups?.map(g =>
+        g.id === groupId
+          ? { ...g, position: { x: g.position.x + dx, y: g.position.y + dy } }
+          : g
+      ),
+      nodes: graph.nodes.map(n =>
+        group.nodeIds.includes(n.id)
+          ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }
+          : n
+      ),
+    });
+  }, [graph, onGraphChange]);
+
+  // Handle group resize
+  const handleGroupResize = useCallback((groupId: string, dw: number, dh: number) => {
+    onGraphChange({
+      ...graph,
+      groups: graph.groups?.map(g =>
+        g.id === groupId
+          ? {
+              ...g,
+              size: {
+                width: Math.max(100, g.size.width + dw),
+                height: Math.max(60, g.size.height + dh),
+              },
+            }
+          : g
+      ),
+    });
+  }, [graph, onGraphChange]);
+
+  // Handle group name change
+  const handleGroupNameChange = useCallback((groupId: string, name: string) => {
+    onGraphChange({
+      ...graph,
+      groups: graph.groups?.map(g =>
+        g.id === groupId ? { ...g, name } : g
+      ),
+    });
+  }, [graph, onGraphChange]);
+
+  // Handle comment drag
+  const handleCommentDrag = useCallback((commentId: string, dx: number, dy: number) => {
+    onGraphChange({
+      ...graph,
+      comments: graph.comments?.map(c =>
+        c.id === commentId
+          ? { ...c, position: { x: c.position.x + dx, y: c.position.y + dy } }
+          : c
+      ),
+    });
+  }, [graph, onGraphChange]);
+
+  // Handle comment text change
+  const handleCommentTextChange = useCallback((commentId: string, text: string) => {
+    onGraphChange({
+      ...graph,
+      comments: graph.comments?.map(c =>
+        c.id === commentId ? { ...c, text } : c
+      ),
+    });
+  }, [graph, onGraphChange]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
       // ESC to cancel connection
       if (e.key === 'Escape') {
         setConnectingPort(null);
         setShowPalette(false);
+        setIsBoxSelecting(false);
       }
-      // Delete selected node
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId) {
-        onGraphChange({
-          ...graph,
-          nodes: graph.nodes.filter(n => n.id !== selectedNodeId),
-          connections: graph.connections.filter(
-            c => c.fromNodeId !== selectedNodeId && c.toNodeId !== selectedNodeId
-          ),
-        });
-        onNodeSelect?.(null);
+
+      // Ctrl+G to create group
+      if (modKey && e.key === 'g') {
+        e.preventDefault();
+        createGroupFromSelection();
+      }
+
+      // Ctrl+M to add comment
+      if (modKey && e.key === 'm') {
+        e.preventDefault();
+        addComment();
+      }
+
+      // Delete selected node/group/comment
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedGroupId) {
+          onGraphChange({
+            ...graph,
+            groups: graph.groups?.filter(g => g.id !== selectedGroupId),
+          });
+          setSelectedGroupId(null);
+        } else if (selectedCommentId) {
+          onGraphChange({
+            ...graph,
+            comments: graph.comments?.filter(c => c.id !== selectedCommentId),
+          });
+          setSelectedCommentId(null);
+        } else if (selectedNodeId) {
+          // Also remove from any groups
+          onGraphChange({
+            ...graph,
+            nodes: graph.nodes.filter(n => n.id !== selectedNodeId),
+            connections: graph.connections.filter(
+              c => c.fromNodeId !== selectedNodeId && c.toNodeId !== selectedNodeId
+            ),
+            groups: graph.groups?.map(g => ({
+              ...g,
+              nodeIds: g.nodeIds.filter(id => id !== selectedNodeId),
+            })),
+          });
+          onNodeSelect?.(null);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, graph, onGraphChange, onNodeSelect]);
+  }, [selectedNodeId, selectedGroupId, selectedCommentId, selectedNodeIds, graph, onGraphChange, onNodeSelect, createGroupFromSelection, addComment]);
 
   // Sync viewport changes back to graph
   useEffect(() => {
@@ -637,6 +1104,41 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
 
         {/* Transform group for pan/zoom */}
         <g transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.zoom})`}>
+          {/* Groups (rendered first, behind everything) */}
+          {graph.groups?.map(group => (
+            <NodeGroupComponent
+              key={group.id}
+              group={group}
+              selected={group.id === selectedGroupId}
+              onSelect={() => {
+                setSelectedGroupId(group.id);
+                setSelectedCommentId(null);
+                onNodeSelect?.(null);
+              }}
+              onDrag={(dx, dy) => handleGroupDrag(group.id, dx, dy)}
+              onResize={(dw, dh) => handleGroupResize(group.id, dw, dh)}
+              onNameChange={(name) => handleGroupNameChange(group.id, name)}
+              zoom={viewport.zoom}
+            />
+          ))}
+
+          {/* Comments (rendered behind nodes but above groups) */}
+          {graph.comments?.map(comment => (
+            <NodeCommentComponent
+              key={comment.id}
+              comment={comment}
+              selected={comment.id === selectedCommentId}
+              onSelect={() => {
+                setSelectedCommentId(comment.id);
+                setSelectedGroupId(null);
+                onNodeSelect?.(null);
+              }}
+              onDrag={(dx, dy) => handleCommentDrag(comment.id, dx, dy)}
+              onTextChange={(text) => handleCommentTextChange(comment.id, text)}
+              zoom={viewport.zoom}
+            />
+          ))}
+
           {/* Connections */}
           {graph.connections.map(conn => {
             const fromPos = getPortPosition(conn.fromNodeId, conn.fromPortId, true);
@@ -723,6 +1225,7 @@ export default function NodeCanvas({ graph, onGraphChange, onNodeSelect, selecte
         <div>Right-click to add nodes • Delete/Backspace to remove selected</div>
         <div>Click port → Click another port to connect (matching colors only)</div>
         <div>Alt+drag or middle-click to pan • Scroll to zoom</div>
+        <div>Ctrl+G to group selected • Ctrl+M to add comment</div>
       </div>
 
       {/* Connection hint */}
