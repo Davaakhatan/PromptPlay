@@ -53,6 +53,7 @@ import { AIToolsPanel } from './components/AIToolsPanel';
 import { ProfessionalToolsPanel } from './components/ProfessionalToolsPanel';
 import { PerformancePanel } from './components/PerformancePanel';
 import { MultiplayerPanel } from './components/MultiplayerPanel';
+import { MonetizationPanel } from './components/MonetizationPanel';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -111,6 +112,9 @@ function App() {
 
   // v5.0 Multiplayer
   const [showMultiplayer, setShowMultiplayer] = useState(false);
+
+  // v5.1 Monetization & Analytics
+  const [showMonetization, setShowMonetization] = useState(false);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -1848,6 +1852,9 @@ function App() {
         case 'multiplayer':
           setShowMultiplayer(!showMultiplayer);
           break;
+        case 'monetization':
+          setShowMonetization(!showMonetization);
+          break;
 
         // ==================== HELP MENU ====================
         case 'getting_started':
@@ -1897,7 +1904,10 @@ function App() {
       )}
 
       {/* Left Panel - File Tree / Scene Tree */}
-      <aside className={`${leftPanelCollapsed ? 'w-10' : 'w-64'} bg-panel border-r border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
+      <aside
+        style={{ width: leftPanelCollapsed ? '40px' : '256px' }}
+        className="flex-shrink-0 bg-panel border-r border-subtle flex flex-col backdrop-blur-md transition-[width] duration-200 relative z-20"
+      >
         {/* Collapse Toggle Button */}
         <button
           onClick={(e) => {
@@ -2102,7 +2112,7 @@ function App() {
       </aside>
 
       {/* Center Panel - Game Canvas / Code Editor */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Toolbar Row with UserMenu */}
         <div className="flex items-center">
           <div className="flex-1">
@@ -2209,6 +2219,15 @@ function App() {
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowMonetization(!showMonetization)}
+              className={`p-1.5 rounded transition-colors ${showMonetization ? 'bg-amber-500/20 text-amber-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
+              title="Monetization & Analytics (IAP, Ads, Analytics, A/B Testing)"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
             <div className="w-px h-5 bg-subtle mx-1" />
@@ -2320,7 +2339,14 @@ function App() {
       </main>
 
       {/* Right Panel - Inspector / JSON Editor */}
-      <aside className={`${rightPanelCollapsed ? 'w-10' : 'w-80'} bg-panel border-l border-subtle flex flex-col backdrop-blur-md transition-all duration-200 relative`}>
+      <aside
+        style={{
+          width: rightPanelCollapsed ? '40px' : '320px',
+          minWidth: rightPanelCollapsed ? '40px' : '320px',
+          maxWidth: rightPanelCollapsed ? '40px' : '320px',
+        }}
+        className="flex-shrink-0 bg-panel border-l border-subtle flex flex-col backdrop-blur-md transition-[width,min-width,max-width] duration-200 relative z-20"
+      >
         {/* Collapse Toggle Button */}
         <button
           onClick={(e) => {
@@ -2336,9 +2362,16 @@ function App() {
           </svg>
         </button>
 
+        {/* Panel Header - Always visible when expanded */}
+        {!rightPanelCollapsed && (
+          <div className="px-3 py-2 border-b border-subtle bg-surface">
+            <span className="text-xs font-medium text-white">Inspector</span>
+          </div>
+        )}
+
         {/* Panel Mode Tabs */}
-        {projectPath && gameSpec && viewMode === 'game' && !rightPanelCollapsed && (
-          <div className="flex gap-1 bg-panel border-b border-subtle p-1.5">
+        {!rightPanelCollapsed && (
+          <div className="flex gap-1 bg-surface border-b border-subtle p-1.5">
             <button
               onClick={() => setRightPanelMode('inspector')}
               title="Inspector"
@@ -2387,7 +2420,7 @@ function App() {
         )}
 
         {/* Collapsed mode - vertical icon strip */}
-        {projectPath && gameSpec && viewMode === 'game' && rightPanelCollapsed && (
+        {rightPanelCollapsed && (
           <div className="flex flex-col items-center py-2 gap-1">
             <button
               onClick={() => { setRightPanelCollapsed(false); setRightPanelMode('inspector'); }}
@@ -2416,7 +2449,7 @@ function App() {
         {/* Panel Content */}
         {!rightPanelCollapsed && (
           <div className="flex-1 overflow-hidden">
-            {viewMode === 'game' && gameSpec && rightPanelMode === 'inspector' ? (
+            {viewMode === 'game' && rightPanelMode === 'inspector' ? (
             <Inspector
               gameSpec={gameSpec}
               selectedEntities={selectedEntities}
@@ -2427,7 +2460,7 @@ function App() {
               onDuplicateSelected={handleDuplicateSelected}
               projectPath={projectPath}
             />
-          ) : viewMode === 'game' && gameSpec && rightPanelMode === 'json' ? (
+          ) : viewMode === 'game' && rightPanelMode === 'json' ? (
             <JSONEditorPanel
               gameSpec={gameSpec}
               onApplyChanges={handleApplyAIChanges}
@@ -2443,7 +2476,7 @@ function App() {
                 setHasUnsavedChanges(true);
               }}
             />
-          ) : viewMode === 'game' && gameSpec && rightPanelMode === 'scripts' ? (
+          ) : viewMode === 'game' && rightPanelMode === 'scripts' ? (
             <ScriptRunner
               projectPath={projectPath}
               onError={(errors) => {
@@ -2657,6 +2690,13 @@ function App() {
       <MultiplayerPanel
         isOpen={showMultiplayer}
         onClose={() => setShowMultiplayer(false)}
+        onNotification={setNotification}
+      />
+
+      {/* Monetization Panel (v5.1 - IAP, Ads, Analytics, A/B Testing, Crash Reporting) */}
+      <MonetizationPanel
+        isOpen={showMonetization}
+        onClose={() => setShowMonetization(false)}
         onNotification={setNotification}
       />
     </div>

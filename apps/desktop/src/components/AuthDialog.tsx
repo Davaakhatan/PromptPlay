@@ -94,7 +94,7 @@ export function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
   if (!isConfigured) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
         <div className="bg-panel border border-subtle rounded-xl shadow-2xl w-[400px] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Authentication Not Configured</h2>
@@ -126,7 +126,7 @@ export function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="bg-panel border border-subtle rounded-xl shadow-2xl w-[420px]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-subtle">

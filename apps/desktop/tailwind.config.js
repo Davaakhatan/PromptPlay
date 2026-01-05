@@ -9,8 +9,8 @@ export default {
       colors: {
         // Premium Dark Palette
         canvas: '#0f0f12', // Deepest background
-        panel: 'rgba(24, 24, 27, 0.7)', // Glassy panel background
-        'panel-solid': '#18181b', // Solid fallback
+        panel: '#1e1e24', // Solid panel background
+        surface: '#252530', // Surface background for dialogs/modals
         subtle: 'rgba(255, 255, 255, 0.08)', // Subtle borders/dividers
         
         // Accents

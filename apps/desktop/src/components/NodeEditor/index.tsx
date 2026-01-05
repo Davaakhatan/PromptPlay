@@ -374,7 +374,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
                         onClick={() => handleInsertPreset(preset)}
                         className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 group"
                       >
-                        <span className="text-lg">{preset.icon || '📦'}</span>
+                        <span className="text-lg">{preset.icon || <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}</span>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{preset.name}</div>
                           {preset.description && (

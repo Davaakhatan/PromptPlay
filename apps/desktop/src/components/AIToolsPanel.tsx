@@ -683,7 +683,7 @@ export function AIToolsPanel({ gameSpec, isOpen, onClose, onApplyChanges, onNoti
   return (
     <div className="fixed right-4 top-16 w-80 bg-panel border border-subtle rounded-xl shadow-2xl z-50 overflow-hidden max-h-[calc(100vh-100px)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface/50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-subtle bg-surface">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">
           <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -701,24 +701,28 @@ export function AIToolsPanel({ gameSpec, isOpen, onClose, onApplyChanges, onNoti
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-subtle bg-surface/30">
+      <div className="flex border-b border-subtle bg-panel">
         {[
-          { id: 'level', label: 'Level', icon: '🏗️' },
-          { id: 'npc', label: 'NPC', icon: '👤' },
-          { id: 'procedural', label: 'Proc', icon: '🎲' },
-          { id: 'art', label: 'Art', icon: '🎨' },
-          { id: 'voice', label: 'Voice', icon: '🎤' },
+          { id: 'level', label: 'Level' },
+          { id: 'npc', label: 'NPC' },
+          { id: 'procedural', label: 'Proc' },
+          { id: 'art', label: 'Art' },
+          { id: 'voice', label: 'Voice' },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as AIToolTab)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors ${
+            className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
               activeTab === tab.id
                 ? 'text-purple-400 border-b-2 border-purple-400 bg-purple-500/10'
                 : 'text-text-secondary hover:text-white hover:bg-white/5'
             }`}
           >
-            <span className="mr-1">{tab.icon}</span>
+            {tab.id === 'level' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+            {tab.id === 'npc' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+            {tab.id === 'procedural' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>}
+            {tab.id === 'art' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+            {tab.id === 'voice' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
             {tab.label}
           </button>
         ))}

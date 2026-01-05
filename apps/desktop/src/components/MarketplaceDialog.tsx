@@ -10,15 +10,27 @@ interface MarketplaceDialogProps {
 
 type Tab = 'browse' | 'my-assets' | 'upload';
 
-const CATEGORIES: { value: AssetCategory | 'all'; label: string; icon: string }[] = [
-  { value: 'all', label: 'All', icon: '🎮' },
-  { value: 'prefab', label: 'Prefabs', icon: '📦' },
-  { value: 'sprite', label: 'Sprites', icon: '🎨' },
-  { value: 'template', label: 'Templates', icon: '📋' },
-  { value: 'sound', label: 'Sounds', icon: '🔊' },
-  { value: 'script', label: 'Scripts', icon: '📜' },
-  { value: 'shader', label: 'Shaders', icon: '✨' },
+const CATEGORIES: { value: AssetCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'prefab', label: 'Prefabs' },
+  { value: 'sprite', label: 'Sprites' },
+  { value: 'template', label: 'Templates' },
+  { value: 'sound', label: 'Sounds' },
+  { value: 'script', label: 'Scripts' },
+  { value: 'shader', label: 'Shaders' },
 ];
+
+const getCategoryIcon = (value: AssetCategory | 'all', className = 'w-4 h-4') => {
+  switch (value) {
+    case 'all': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>;
+    case 'prefab': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>;
+    case 'sprite': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+    case 'template': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
+    case 'sound': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>;
+    case 'script': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>;
+    case 'shader': return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>;
+  }
+};
 
 export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: MarketplaceDialogProps) {
   const { isAuthenticated } = useAuth();
@@ -146,13 +158,13 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="bg-panel border border-subtle rounded-xl shadow-2xl w-[900px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-subtle">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">
-              🛒
+            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Asset Marketplace</h2>
@@ -229,7 +241,7 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
                             : 'text-text-secondary hover:text-white hover:bg-white/5'
                         }`}
                       >
-                        <span>{cat.icon}</span>
+                        {getCategoryIcon(cat.value)}
                         <span>{cat.label}</span>
                       </button>
                     ))}
@@ -306,8 +318,8 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
                   </div>
                 ) : assets.length === 0 ? (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-4 text-2xl">
-                      📦
+                    <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                     </div>
                     <h3 className="text-lg font-medium text-white mb-2">No Assets Found</h3>
                     <p className="text-text-secondary">Try adjusting your search or filters</p>
@@ -332,8 +344,8 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
               <div className="max-w-md mx-auto">
                 {uploadSuccess ? (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4 text-2xl">
-                      ✅
+                    <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <h3 className="text-lg font-medium text-white">Asset Uploaded!</h3>
                     <p className="text-text-secondary">Your asset is now available in the marketplace</p>
@@ -379,7 +391,7 @@ export function MarketplaceDialog({ isOpen, onClose, onImportAsset }: Marketplac
                       >
                         {CATEGORIES.filter((c) => c.value !== 'all').map((cat) => (
                           <option key={cat.value} value={cat.value} className="bg-[#1a1a2e] text-white">
-                            {cat.icon} {cat.label}
+                            {cat.label}
                           </option>
                         ))}
                       </select>
@@ -432,15 +444,6 @@ function AssetCard({
   onDownload: () => void;
   featured?: boolean;
 }) {
-  const categoryIcons: Record<AssetCategory, string> = {
-    prefab: '📦',
-    sprite: '🎨',
-    template: '📋',
-    sound: '🔊',
-    script: '📜',
-    shader: '✨',
-  };
-
   return (
     <div
       className={`bg-surface border border-subtle rounded-lg overflow-hidden hover:border-orange-500/50 transition-colors group ${
@@ -449,7 +452,7 @@ function AssetCard({
     >
       {/* Thumbnail */}
       <div className="aspect-video bg-gray-800 relative flex items-center justify-center">
-        <span className="text-4xl">{categoryIcons[asset.category]}</span>
+        {getCategoryIcon(asset.category, 'w-10 h-10 text-orange-400')}
 
         {/* Download overlay */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
