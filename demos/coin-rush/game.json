@@ -1,0 +1,134 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "title": "Coin Rush",
+    "genre": "platformer",
+    "description": "Collect all the coins before time runs out! A classic platformer demo."
+  },
+  "config": {
+    "gravity": { "x": 0, "y": 980 },
+    "worldBounds": { "width": 800, "height": 600 }
+  },
+  "entities": [
+    {
+      "name": "player",
+      "components": {
+        "transform": { "x": 100, "y": 450, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 32, "height": 48, "tint": 4488447 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "collider": { "type": "box", "width": 32, "height": 48 },
+        "input": { "moveSpeed": 200, "jumpForce": 400 }
+      },
+      "tags": ["player"]
+    },
+    {
+      "name": "ground",
+      "components": {
+        "transform": { "x": 400, "y": 580, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 800, "height": 40, "tint": 5592098 },
+        "collider": { "type": "box", "width": 800, "height": 40 }
+      },
+      "tags": ["ground", "platform"]
+    },
+    {
+      "name": "platform1",
+      "components": {
+        "transform": { "x": 150, "y": 480, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 120, "height": 20, "tint": 8930131 },
+        "collider": { "type": "box", "width": 120, "height": 20 }
+      },
+      "tags": ["platform"]
+    },
+    {
+      "name": "platform2",
+      "components": {
+        "transform": { "x": 350, "y": 400, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 150, "height": 20, "tint": 8930131 },
+        "collider": { "type": "box", "width": 150, "height": 20 }
+      },
+      "tags": ["platform"]
+    },
+    {
+      "name": "platform3",
+      "components": {
+        "transform": { "x": 550, "y": 320, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 140, "height": 20, "tint": 8930131 },
+        "collider": { "type": "box", "width": 140, "height": 20 }
+      },
+      "tags": ["platform"]
+    },
+    {
+      "name": "platform4",
+      "components": {
+        "transform": { "x": 700, "y": 450, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 100, "height": 20, "tint": 8930131 },
+        "collider": { "type": "box", "width": 100, "height": 20 }
+      },
+      "tags": ["platform"]
+    },
+    {
+      "name": "platform5",
+      "components": {
+        "transform": { "x": 250, "y": 250, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 130, "height": 20, "tint": 8930131 },
+        "collider": { "type": "box", "width": 130, "height": 20 }
+      },
+      "tags": ["platform"]
+    },
+    {
+      "name": "coin1",
+      "components": {
+        "transform": { "x": 150, "y": 450, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    },
+    {
+      "name": "coin2",
+      "components": {
+        "transform": { "x": 350, "y": 370, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    },
+    {
+      "name": "coin3",
+      "components": {
+        "transform": { "x": 550, "y": 290, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    },
+    {
+      "name": "coin4",
+      "components": {
+        "transform": { "x": 700, "y": 420, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    },
+    {
+      "name": "coin5",
+      "components": {
+        "transform": { "x": 250, "y": 220, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    },
+    {
+      "name": "coin6",
+      "components": {
+        "transform": { "x": 600, "y": 550, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "sprite": { "texture": "default", "width": 24, "height": 24, "tint": 16766720 },
+        "collider": { "type": "box", "width": 24, "height": 24, "isSensor": true }
+      },
+      "tags": ["coin", "collectible"]
+    }
+  ],
+  "systems": ["input", "physics", "collision", "render"]
+}

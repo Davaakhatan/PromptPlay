@@ -1,0 +1,196 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "title": "Maze Runner",
+    "genre": "puzzle",
+    "description": "Navigate the maze, collect keys, and find the exit! A 3D puzzle game."
+  },
+  "config": {
+    "gravity": { "x": 0, "y": 0 },
+    "worldBounds": { "width": 800, "height": 600 }
+  },
+  "settings": {
+    "is3D": true,
+    "cameraType": "thirdPerson"
+  },
+  "entities": [
+    {
+      "name": "player",
+      "components": {
+        "transform": { "x": 50, "y": 50, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 50, "y": 0.5, "z": 50, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 1, "scaleY": 1, "scaleZ": 1 },
+        "sprite": { "texture": "default", "width": 30, "height": 30, "tint": 4488447 },
+        "mesh3D": { "type": "box", "width": 1, "height": 1, "depth": 1, "color": 4488447 },
+        "velocity": { "vx": 0, "vy": 0 },
+        "collider": { "type": "box", "width": 30, "height": 30 },
+        "input": { "moveSpeed": 150, "jumpForce": 0 }
+      },
+      "tags": ["player"]
+    },
+    {
+      "name": "floor",
+      "components": {
+        "transform": { "x": 400, "y": 550, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 400, "y": -0.5, "z": 300, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 800, "scaleY": 1, "scaleZ": 600 },
+        "sprite": { "texture": "default", "width": 800, "height": 600, "tint": 5592098 },
+        "mesh3D": { "type": "box", "width": 800, "height": 1, "depth": 600, "color": 5592098 }
+      },
+      "tags": ["floor"]
+    },
+    {
+      "name": "wall_north",
+      "components": {
+        "transform": { "x": 400, "y": 10, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 400, "y": 1.5, "z": 0, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 800, "scaleY": 3, "scaleZ": 20 },
+        "sprite": { "texture": "default", "width": 800, "height": 20, "tint": 6710886 },
+        "mesh3D": { "type": "box", "width": 800, "height": 3, "depth": 20, "color": 6710886 },
+        "collider": { "type": "box", "width": 800, "height": 20 }
+      },
+      "tags": ["wall"]
+    },
+    {
+      "name": "wall_south",
+      "components": {
+        "transform": { "x": 400, "y": 590, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 400, "y": 1.5, "z": 600, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 800, "scaleY": 3, "scaleZ": 20 },
+        "sprite": { "texture": "default", "width": 800, "height": 20, "tint": 6710886 },
+        "mesh3D": { "type": "box", "width": 800, "height": 3, "depth": 20, "color": 6710886 },
+        "collider": { "type": "box", "width": 800, "height": 20 }
+      },
+      "tags": ["wall"]
+    },
+    {
+      "name": "wall_west",
+      "components": {
+        "transform": { "x": 10, "y": 300, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 0, "y": 1.5, "z": 300, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 20, "scaleY": 3, "scaleZ": 600 },
+        "sprite": { "texture": "default", "width": 20, "height": 600, "tint": 6710886 },
+        "mesh3D": { "type": "box", "width": 20, "height": 3, "depth": 600, "color": 6710886 },
+        "collider": { "type": "box", "width": 20, "height": 600 }
+      },
+      "tags": ["wall"]
+    },
+    {
+      "name": "wall_east",
+      "components": {
+        "transform": { "x": 790, "y": 300, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 800, "y": 1.5, "z": 300, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 20, "scaleY": 3, "scaleZ": 600 },
+        "sprite": { "texture": "default", "width": 20, "height": 600, "tint": 6710886 },
+        "mesh3D": { "type": "box", "width": 20, "height": 3, "depth": 600, "color": 6710886 },
+        "collider": { "type": "box", "width": 20, "height": 600 }
+      },
+      "tags": ["wall"]
+    },
+    {
+      "name": "maze_wall_1",
+      "components": {
+        "transform": { "x": 200, "y": 150, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 200, "y": 1.5, "z": 150, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 200, "scaleY": 3, "scaleZ": 20 },
+        "sprite": { "texture": "default", "width": 200, "height": 20, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 200, "height": 3, "depth": 20, "color": 8421504 },
+        "collider": { "type": "box", "width": 200, "height": 20 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "maze_wall_2",
+      "components": {
+        "transform": { "x": 400, "y": 250, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 400, "y": 1.5, "z": 250, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 20, "scaleY": 3, "scaleZ": 200 },
+        "sprite": { "texture": "default", "width": 20, "height": 200, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 20, "height": 3, "depth": 200, "color": 8421504 },
+        "collider": { "type": "box", "width": 20, "height": 200 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "maze_wall_3",
+      "components": {
+        "transform": { "x": 600, "y": 150, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 600, "y": 1.5, "z": 150, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 200, "scaleY": 3, "scaleZ": 20 },
+        "sprite": { "texture": "default", "width": 200, "height": 20, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 200, "height": 3, "depth": 20, "color": 8421504 },
+        "collider": { "type": "box", "width": 200, "height": 20 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "maze_wall_4",
+      "components": {
+        "transform": { "x": 200, "y": 350, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 200, "y": 1.5, "z": 350, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 20, "scaleY": 3, "scaleZ": 200 },
+        "sprite": { "texture": "default", "width": 20, "height": 200, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 20, "height": 3, "depth": 200, "color": 8421504 },
+        "collider": { "type": "box", "width": 20, "height": 200 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "maze_wall_5",
+      "components": {
+        "transform": { "x": 500, "y": 450, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 500, "y": 1.5, "z": 450, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 300, "scaleY": 3, "scaleZ": 20 },
+        "sprite": { "texture": "default", "width": 300, "height": 20, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 300, "height": 3, "depth": 20, "color": 8421504 },
+        "collider": { "type": "box", "width": 300, "height": 20 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "maze_wall_6",
+      "components": {
+        "transform": { "x": 600, "y": 350, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 600, "y": 1.5, "z": 350, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 20, "scaleY": 3, "scaleZ": 200 },
+        "sprite": { "texture": "default", "width": 20, "height": 200, "tint": 8421504 },
+        "mesh3D": { "type": "box", "width": 20, "height": 3, "depth": 200, "color": 8421504 },
+        "collider": { "type": "box", "width": 20, "height": 200 }
+      },
+      "tags": ["wall", "maze"]
+    },
+    {
+      "name": "key1",
+      "components": {
+        "transform": { "x": 150, "y": 100, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 150, "y": 0.5, "z": 100, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 1, "scaleY": 1, "scaleZ": 1 },
+        "sprite": { "texture": "default", "width": 20, "height": 20, "tint": 16776960 },
+        "mesh3D": { "type": "box", "width": 0.5, "height": 0.5, "depth": 0.5, "color": 16776960 },
+        "collider": { "type": "box", "width": 20, "height": 20, "isSensor": true }
+      },
+      "tags": ["key", "collectible"]
+    },
+    {
+      "name": "key2",
+      "components": {
+        "transform": { "x": 700, "y": 200, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 700, "y": 0.5, "z": 200, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 1, "scaleY": 1, "scaleZ": 1 },
+        "sprite": { "texture": "default", "width": 20, "height": 20, "tint": 16776960 },
+        "mesh3D": { "type": "box", "width": 0.5, "height": 0.5, "depth": 0.5, "color": 16776960 },
+        "collider": { "type": "box", "width": 20, "height": 20, "isSensor": true }
+      },
+      "tags": ["key", "collectible"]
+    },
+    {
+      "name": "key3",
+      "components": {
+        "transform": { "x": 300, "y": 500, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 300, "y": 0.5, "z": 500, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 1, "scaleY": 1, "scaleZ": 1 },
+        "sprite": { "texture": "default", "width": 20, "height": 20, "tint": 16776960 },
+        "mesh3D": { "type": "box", "width": 0.5, "height": 0.5, "depth": 0.5, "color": 16776960 },
+        "collider": { "type": "box", "width": 20, "height": 20, "isSensor": true }
+      },
+      "tags": ["key", "collectible"]
+    },
+    {
+      "name": "exit_door",
+      "components": {
+        "transform": { "x": 750, "y": 550, "rotation": 0, "scaleX": 1, "scaleY": 1 },
+        "transform3D": { "x": 750, "y": 1, "z": 550, "rotationX": 0, "rotationY": 0, "rotationZ": 0, "scaleX": 2, "scaleY": 2, "scaleZ": 0.5 },
+        "sprite": { "texture": "default", "width": 40, "height": 40, "tint": 65280 },
+        "mesh3D": { "type": "box", "width": 2, "height": 2, "depth": 0.5, "color": 65280 },
+        "collider": { "type": "box", "width": 40, "height": 40, "isSensor": true }
+      },
+      "tags": ["exit", "goal"]
+    }
+  ],
+  "systems": ["input", "physics", "collision", "render"]
+}
