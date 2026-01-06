@@ -1108,12 +1108,12 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 ### Priority 4: Polish & Code Quality
 
 #### WP14.10: AI Chat Context
-**File:** `apps/desktop/src/components/AIChat.tsx`
-**Status:** ⏳ Pending
+**File:** `apps/desktop/src/components/AIPromptPanel.tsx`
+**Status:** ✅ Complete
 
-- [ ] Pass current scene state to AI
-- [ ] Include entity hierarchy in prompts
-- [ ] Add ability to reference specific entities
+- [x] Pass current scene state to AI
+- [x] Include entity hierarchy in prompts
+- [x] Add ability to reference specific entities (@ mentions with autocomplete)
 
 ---
 
@@ -1152,6 +1152,6 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 | Animation Timeline | Medium | ✅ Complete |
 | Terrain Editor | Medium | ✅ Complete |
 | Shader Editor | Medium | ✅ Complete |
-| AI Chat Context | Low | ⏳ Pending |
+| AI Chat Context | Low | ✅ Complete |
 | Video Recording | Low | ⏳ Pending |
 | TypeScript Strict | Low | ⏳ Pending |

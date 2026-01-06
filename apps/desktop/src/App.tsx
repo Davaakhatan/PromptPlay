@@ -2671,6 +2671,11 @@ function App() {
         isVisible={showAIPanel}
         onClose={() => setShowAIPanel(false)}
         projectPath={projectPath}
+        sceneContext={{
+          selectedEntityId: selectedEntity,
+          isPlaying,
+          editorMode: is3DMode ? '3d' : '2d',
+        }}
       />
 
       {/* Keyboard Shortcuts Modal */}

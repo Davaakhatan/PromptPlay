@@ -9,12 +9,21 @@ import { simulateAIResponse } from '../services/aiDemoSimulator';
 import { chatHistoryService, ChatSession } from '../services/ChatHistoryService';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 
+interface SceneContext {
+  selectedEntityId?: string | null;
+  cameraPosition?: { x: number; y: number; z?: number };
+  isPlaying?: boolean;
+  editorMode?: '2d' | '3d';
+  activeScene?: string;
+}
+
 interface AIPromptPanelProps {
   gameSpec: GameSpec | null;
   onApplyChanges: (updatedSpec: GameSpec) => void;
   isVisible: boolean;
   onClose: () => void;
   projectPath: string | null;
+  sceneContext?: SceneContext;
 }
 
 interface Message {
@@ -35,6 +44,7 @@ export default function AIPromptPanel({
   isVisible,
   onClose,
   projectPath,
+  sceneContext,
 }: AIPromptPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -46,6 +56,9 @@ export default function AIPromptPanel({
   const [hasApiKey, setHasApiKey] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [showEntitySuggestions, setShowEntitySuggestions] = useState(false);
+  const [entitySuggestions, setEntitySuggestions] = useState<string[]>([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -141,6 +154,124 @@ export default function AIPromptPanel({
     'help',
   ];
 
+  // Get entity names from game spec for autocomplete
+  const entityNames = gameSpec?.entities?.map(e => e.name) || [];
+
+  // Generate formatted entity hierarchy for AI context
+  const generateEntityHierarchy = useCallback((): string => {
+    if (!gameSpec?.entities) return 'No entities in scene.';
+
+    const lines: string[] = ['Entity Hierarchy:'];
+    gameSpec.entities.forEach((entity, index) => {
+      const isSelected = sceneContext?.selectedEntityId === entity.name;
+      const marker = isSelected ? '→ ' : '  ';
+      const components = Object.keys(entity.components || {}).join(', ');
+      const tags = entity.tags?.join(', ') || 'none';
+
+      lines.push(`${marker}${index + 1}. ${entity.name}`);
+      lines.push(`      Components: [${components}]`);
+      lines.push(`      Tags: [${tags}]`);
+
+      // Add position info if available
+      const transform = entity.components?.transform;
+      if (transform) {
+        lines.push(`      Position: (${transform.x}, ${transform.y})`);
+      }
+    });
+
+    return lines.join('\n');
+  }, [gameSpec, sceneContext?.selectedEntityId]);
+
+  // Generate enhanced context for AI including scene state
+  const generateEnhancedContext = useCallback((): string => {
+    const contextParts: string[] = [];
+
+    // Add scene context
+    if (sceneContext) {
+      contextParts.push('=== Current Scene State ===');
+      if (sceneContext.editorMode) {
+        contextParts.push(`Editor Mode: ${sceneContext.editorMode.toUpperCase()}`);
+      }
+      if (sceneContext.isPlaying !== undefined) {
+        contextParts.push(`Game State: ${sceneContext.isPlaying ? 'Playing' : 'Paused/Editing'}`);
+      }
+      if (sceneContext.selectedEntityId) {
+        const selected = gameSpec?.entities?.find(e => e.name === sceneContext.selectedEntityId);
+        if (selected) {
+          contextParts.push(`Selected Entity: "${selected.name}"`);
+        }
+      }
+      if (sceneContext.cameraPosition) {
+        const cam = sceneContext.cameraPosition;
+        contextParts.push(`Camera Position: (${cam.x.toFixed(0)}, ${cam.y.toFixed(0)}${cam.z !== undefined ? `, ${cam.z.toFixed(0)}` : ''})`);
+      }
+      if (sceneContext.activeScene) {
+        contextParts.push(`Active Scene: ${sceneContext.activeScene}`);
+      }
+      contextParts.push('');
+    }
+
+    // Add entity hierarchy
+    contextParts.push(generateEntityHierarchy());
+    contextParts.push('');
+
+    // Add game metadata
+    if (gameSpec?.metadata) {
+      contextParts.push('=== Game Metadata ===');
+      contextParts.push(`Name: ${gameSpec.metadata.name}`);
+      contextParts.push(`Genre: ${gameSpec.metadata.genre || 'Not specified'}`);
+      contextParts.push(`Description: ${gameSpec.metadata.description || 'None'}`);
+      contextParts.push('');
+    }
+
+    // Add physics settings if available
+    if (gameSpec?.settings?.physics) {
+      contextParts.push('=== Physics Settings ===');
+      const physics = gameSpec.settings.physics;
+      contextParts.push(`Gravity: ${physics.gravity ?? 0}`);
+      if (physics.friction !== undefined) {
+        contextParts.push(`Friction: ${physics.friction}`);
+      }
+      contextParts.push('');
+    }
+
+    // Add full game spec JSON at the end
+    contextParts.push('=== Full Game Spec (JSON) ===');
+    contextParts.push(JSON.stringify(gameSpec, null, 2));
+
+    return contextParts.join('\n');
+  }, [gameSpec, sceneContext, generateEntityHierarchy]);
+
+  // Handle entity reference autocomplete
+  const handlePromptChange = useCallback((value: string) => {
+    setPrompt(value);
+
+    // Check for @ mentions to trigger entity suggestions
+    const atMatch = value.match(/@(\w*)$/);
+    if (atMatch) {
+      const query = atMatch[1].toLowerCase();
+      const filtered = entityNames.filter(name =>
+        name.toLowerCase().includes(query)
+      );
+      setEntitySuggestions(filtered);
+      setShowEntitySuggestions(filtered.length > 0);
+      setSuggestionIndex(0);
+    } else {
+      setShowEntitySuggestions(false);
+    }
+  }, [entityNames]);
+
+  // Insert entity reference
+  const insertEntityReference = useCallback((entityName: string) => {
+    const atMatch = prompt.match(/@\w*$/);
+    if (atMatch) {
+      const newPrompt = prompt.slice(0, -atMatch[0].length) + `@${entityName} `;
+      setPrompt(newPrompt);
+    }
+    setShowEntitySuggestions(false);
+    inputRef.current?.focus();
+  }, [prompt]);
+
   // Parse JSON from AI response
   const parseGameSpecFromResponse = (content: string): GameSpec | null => {
     // Look for JSON code blocks with game.json marker
@@ -191,10 +322,10 @@ export default function AIPromptPanel({
         .map(m => ({ role: m.role, content: m.content }));
       apiMessages.push({ role: 'user', content: prompt });
 
-      // Send to Anthropic API via Rust backend
+      // Send to Anthropic API via Rust backend with enhanced context
       const response = await invoke<AIResponse>('ai_send_message', {
         messages: apiMessages,
-        gameContext: JSON.stringify(gameSpec, null, 2),
+        gameContext: generateEnhancedContext(),
       });
 
       if (!response.success) {
@@ -291,6 +422,31 @@ export default function AIPromptPanel({
   }, [apiKey]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle entity suggestion navigation
+    if (showEntitySuggestions && entitySuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev + 1) % entitySuggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev - 1 + entitySuggestions.length) % entitySuggestions.length);
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && entitySuggestions[suggestionIndex])) {
+        e.preventDefault();
+        insertEntityReference(entitySuggestions[suggestionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowEntitySuggestions(false);
+        return;
+      }
+    }
+
+    // Default behavior
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -298,7 +454,7 @@ export default function AIPromptPanel({
     if (e.key === 'Escape') {
       onClose();
     }
-  }, [handleSubmit, onClose]);
+  }, [handleSubmit, onClose, showEntitySuggestions, entitySuggestions, suggestionIndex, insertEntityReference]);
 
   const handleClearChat = useCallback(() => {
     setMessages([]);
@@ -564,19 +720,38 @@ export default function AIPromptPanel({
             {interimTranscript}...
           </div>
         )}
-        <div className="flex gap-2">
-          <textarea
-            ref={inputRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isListening ? "Listening..." : "Describe what you want to change..."}
-            className={`flex-1 px-3 py-2 bg-white/5 border rounded-lg text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 placeholder-gray-500 ${
-              isListening ? 'border-violet-500 bg-violet-500/10' : 'border-white/20'
-            }`}
-            rows={2}
-            disabled={isLoading}
-          />
+        <div className="flex gap-2 relative">
+          <div className="flex-1 relative">
+            <textarea
+              ref={inputRef}
+              value={prompt}
+              onChange={(e) => handlePromptChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isListening ? "Listening..." : "Describe what you want to change... (use @ to reference entities)"}
+              className={`w-full px-3 py-2 bg-white/5 border rounded-lg text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 placeholder-gray-500 ${
+                isListening ? 'border-violet-500 bg-violet-500/10' : 'border-white/20'
+              }`}
+              rows={2}
+              disabled={isLoading}
+            />
+            {/* Entity suggestions dropdown */}
+            {showEntitySuggestions && entitySuggestions.length > 0 && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#252542] border border-white/20 rounded-lg shadow-xl overflow-hidden z-50 max-h-32 overflow-y-auto">
+                {entitySuggestions.map((name, idx) => (
+                  <button
+                    key={name}
+                    onClick={() => insertEntityReference(name)}
+                    className={`w-full px-3 py-1.5 text-left text-sm hover:bg-violet-500/30 flex items-center gap-2 ${
+                      idx === suggestionIndex ? 'bg-violet-500/20 text-white' : 'text-gray-300'
+                    }`}
+                  >
+                    <span className="text-violet-400">@</span>
+                    <span>{name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             <div className="flex gap-1">
               {/* Voice input button */}
