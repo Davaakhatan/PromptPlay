@@ -1118,13 +1118,13 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 ---
 
 #### WP14.11: Video Recording Quality
-**File:** `apps/desktop/src/services/VideoRecorder.ts`
-**Status:** ⏳ Pending
+**File:** `apps/desktop/src/services/ScreenCaptureService.ts`
+**Status:** ✅ Complete
 
-- [ ] Add resolution selection
-- [ ] Add framerate options
-- [ ] Implement format selection (MP4, WebM)
-- [ ] Add audio recording option
+- [x] Add resolution selection (480p, 720p, 1080p, 4K, custom)
+- [x] Add framerate options (24, 30, 60 fps)
+- [x] Implement format selection (MP4, WebM)
+- [x] Add audio recording option with microphone support
 
 ---
 
@@ -1153,5 +1153,5 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 | Terrain Editor | Medium | ✅ Complete |
 | Shader Editor | Medium | ✅ Complete |
 | AI Chat Context | Low | ✅ Complete |
-| Video Recording | Low | ⏳ Pending |
+| Video Recording | Low | ✅ Complete |
 | TypeScript Strict | Low | ⏳ Pending |

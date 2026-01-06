@@ -19,6 +19,39 @@ export interface RecordingOptions {
   quality?: number;
 }
 
+export type VideoFormat = 'webm' | 'mp4';
+export type VideoResolution = '480p' | '720p' | '1080p' | '4k' | 'custom';
+
+export interface VideoRecordingOptions {
+  resolution: VideoResolution;
+  customWidth?: number;
+  customHeight?: number;
+  fps: 24 | 30 | 60;
+  format: VideoFormat;
+  quality: 'low' | 'medium' | 'high' | 'ultra';
+  includeAudio: boolean;
+  audioBitrate?: number; // kbps
+  videoBitrate?: number; // kbps
+  maxDuration?: number; // seconds, 0 = unlimited
+}
+
+// Resolution presets
+const RESOLUTION_PRESETS: Record<VideoResolution, { width: number; height: number }> = {
+  '480p': { width: 854, height: 480 },
+  '720p': { width: 1280, height: 720 },
+  '1080p': { width: 1920, height: 1080 },
+  '4k': { width: 3840, height: 2160 },
+  'custom': { width: 0, height: 0 },
+};
+
+// Quality presets (video bitrate in kbps)
+const QUALITY_BITRATES: Record<string, Record<VideoRecordingOptions['quality'], number>> = {
+  '480p': { low: 1000, medium: 2000, high: 3000, ultra: 4000 },
+  '720p': { low: 2500, medium: 5000, high: 7500, ultra: 10000 },
+  '1080p': { low: 4000, medium: 8000, high: 12000, ultra: 16000 },
+  '4k': { low: 15000, medium: 25000, high: 35000, ultra: 50000 },
+};
+
 export class ScreenCaptureService {
   private isRecording = false;
   private recordingStartTime = 0;
@@ -319,6 +352,311 @@ export class ScreenCaptureService {
         }
       }, intervalMs);
     });
+  }
+
+  // ============================================
+  // Enhanced Video Recording with Quality Options
+  // ============================================
+
+  private videoRecorder: MediaRecorder | null = null;
+  private videoChunks: Blob[] = [];
+  private videoStream: MediaStream | null = null;
+  private recordingOptions: VideoRecordingOptions | null = null;
+  private recordingTimeout: number | null = null;
+
+  /**
+   * Get supported video formats
+   */
+  getSupportedFormats(): VideoFormat[] {
+    const formats: VideoFormat[] = [];
+
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+      formats.push('webm');
+    }
+    if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+      formats.push('mp4');
+    }
+
+    // Fallback - WebM is usually supported
+    if (formats.length === 0 && MediaRecorder.isTypeSupported('video/webm')) {
+      formats.push('webm');
+    }
+
+    return formats;
+  }
+
+  /**
+   * Get default recording options
+   */
+  getDefaultRecordingOptions(): VideoRecordingOptions {
+    return {
+      resolution: '1080p',
+      fps: 30,
+      format: 'webm',
+      quality: 'high',
+      includeAudio: false,
+      maxDuration: 60,
+    };
+  }
+
+  /**
+   * Get resolution dimensions
+   */
+  getResolutionDimensions(
+    resolution: VideoResolution,
+    customWidth?: number,
+    customHeight?: number
+  ): { width: number; height: number } {
+    if (resolution === 'custom' && customWidth && customHeight) {
+      return { width: customWidth, height: customHeight };
+    }
+    return RESOLUTION_PRESETS[resolution];
+  }
+
+  /**
+   * Get video bitrate for quality setting
+   */
+  getVideoBitrate(resolution: VideoResolution, quality: VideoRecordingOptions['quality']): number {
+    const resKey = resolution === 'custom' ? '1080p' : resolution;
+    return QUALITY_BITRATES[resKey]?.[quality] ?? QUALITY_BITRATES['1080p'][quality];
+  }
+
+  /**
+   * Start enhanced video recording with options
+   */
+  async startVideoRecording(
+    canvas: HTMLCanvasElement,
+    options: Partial<VideoRecordingOptions> = {}
+  ): Promise<boolean> {
+    if (this.videoRecorder && this.videoRecorder.state === 'recording') {
+      console.warn('Recording already in progress');
+      return false;
+    }
+
+    // Merge with defaults
+    const opts: VideoRecordingOptions = {
+      ...this.getDefaultRecordingOptions(),
+      ...options,
+    };
+    this.recordingOptions = opts;
+
+    try {
+      // Get resolution
+      const { width, height } = this.getResolutionDimensions(
+        opts.resolution,
+        opts.customWidth,
+        opts.customHeight
+      );
+
+      // Create scaled canvas if resolution differs
+      let sourceCanvas = canvas;
+      if (width !== canvas.width || height !== canvas.height) {
+        sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = width;
+        sourceCanvas.height = height;
+
+        // Copy content scaled
+        const ctx = sourceCanvas.getContext('2d')!;
+        const scale = () => {
+          ctx.drawImage(canvas, 0, 0, width, height);
+          if (this.videoRecorder?.state === 'recording') {
+            requestAnimationFrame(scale);
+          }
+        };
+        scale();
+      }
+
+      // Capture video stream
+      const videoStream = sourceCanvas.captureStream(opts.fps);
+      this.videoStream = videoStream;
+
+      // Add audio if requested
+      if (opts.includeAudio) {
+        try {
+          // Try to get system audio (game audio)
+          const audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+            video: false,
+          });
+
+          // Combine video and audio tracks
+          const audioTrack = audioStream.getAudioTracks()[0];
+          if (audioTrack) {
+            videoStream.addTrack(audioTrack);
+          }
+        } catch (audioErr) {
+          console.warn('Could not capture audio:', audioErr);
+          // Continue without audio
+        }
+      }
+
+      // Determine MIME type and codec
+      let mimeType: string;
+      if (opts.format === 'mp4') {
+        mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
+          ? 'video/mp4;codecs=avc1'
+          : 'video/webm;codecs=vp9';
+      } else {
+        mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : 'video/webm';
+      }
+
+      // Calculate bitrate
+      const videoBitrate = opts.videoBitrate ?? this.getVideoBitrate(opts.resolution, opts.quality);
+      const audioBitrate = opts.audioBitrate ?? 128;
+
+      // Create MediaRecorder
+      this.videoRecorder = new MediaRecorder(videoStream, {
+        mimeType,
+        videoBitsPerSecond: videoBitrate * 1000,
+        audioBitsPerSecond: opts.includeAudio ? audioBitrate * 1000 : undefined,
+      });
+
+      this.videoChunks = [];
+
+      this.videoRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          this.videoChunks.push(e.data);
+        }
+      };
+
+      // Start recording
+      this.videoRecorder.start(1000); // Collect data every second
+      this.recordingStartTime = Date.now();
+
+      // Set max duration timeout
+      if (opts.maxDuration && opts.maxDuration > 0) {
+        this.recordingTimeout = window.setTimeout(() => {
+          this.stopVideoRecording();
+        }, opts.maxDuration * 1000);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Failed to start video recording:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Stop video recording and return blob
+   */
+  async stopVideoRecording(): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      if (!this.videoRecorder || this.videoRecorder.state !== 'recording') {
+        resolve(null);
+        return;
+      }
+
+      // Clear timeout
+      if (this.recordingTimeout) {
+        clearTimeout(this.recordingTimeout);
+        this.recordingTimeout = null;
+      }
+
+      this.videoRecorder.onstop = () => {
+        const format = this.recordingOptions?.format ?? 'webm';
+        const mimeType = format === 'mp4' ? 'video/mp4' : 'video/webm';
+        const blob = new Blob(this.videoChunks, { type: mimeType });
+
+        // Cleanup
+        this.videoChunks = [];
+        this.videoRecorder = null;
+        this.recordingOptions = null;
+
+        if (this.videoStream) {
+          this.videoStream.getTracks().forEach(track => track.stop());
+          this.videoStream = null;
+        }
+
+        resolve(blob);
+      };
+
+      this.videoRecorder.stop();
+    });
+  }
+
+  /**
+   * Get current recording status
+   */
+  getVideoRecordingStatus(): {
+    isRecording: boolean;
+    duration: number;
+    format: VideoFormat | null;
+    resolution: VideoResolution | null;
+  } {
+    const isRecording = this.videoRecorder?.state === 'recording';
+    return {
+      isRecording,
+      duration: isRecording ? (Date.now() - this.recordingStartTime) / 1000 : 0,
+      format: this.recordingOptions?.format ?? null,
+      resolution: this.recordingOptions?.resolution ?? null,
+    };
+  }
+
+  /**
+   * Save enhanced video recording with options
+   */
+  async saveEnhancedVideo(
+    canvas: HTMLCanvasElement,
+    options: Partial<VideoRecordingOptions> = {}
+  ): Promise<string | null> {
+    const opts = { ...this.getDefaultRecordingOptions(), ...options };
+
+    // Start recording
+    const started = await this.startVideoRecording(canvas, opts);
+    if (!started) return null;
+
+    // Wait for duration
+    const duration = (opts.maxDuration ?? 5) * 1000;
+    await new Promise(resolve => setTimeout(resolve, duration));
+
+    // Stop and get blob
+    const blob = await this.stopVideoRecording();
+    if (!blob) return null;
+
+    const arrayBuffer = await blob.arrayBuffer();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const extension = opts.format === 'mp4' ? 'mp4' : 'webm';
+    const defaultName = `recording-${opts.resolution}-${opts.fps}fps-${timestamp}.${extension}`;
+
+    const path = await save({
+      defaultPath: defaultName,
+      filters: [
+        {
+          name: 'Video',
+          extensions: [extension],
+        },
+      ],
+    });
+
+    if (path) {
+      await writeFile(path, new Uint8Array(arrayBuffer));
+      return path;
+    }
+
+    return null;
+  }
+
+  /**
+   * Quick download video (browser download)
+   */
+  downloadVideo(blob: Blob, filename?: string): void {
+    const format = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const name = filename ?? `recording-${timestamp}.${format}`;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 }
 
