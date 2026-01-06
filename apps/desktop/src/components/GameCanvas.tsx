@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Runtime2D } from '@promptplay/runtime-2d';
-import type { GameSpec } from '@promptplay/shared-types';
+import type { GameSpec, TilemapSpec } from '@promptplay/shared-types';
 import { GridIcon, DebugIcon, MoveIcon, RotateIcon, ScaleIcon, ZoomInIcon, ZoomOutIcon, FitAllIcon } from './Icons';
+import type { TilemapTool } from './TilemapEditor';
 
 interface GameCanvasProps {
   gameSpec: GameSpec | null;
@@ -15,6 +16,14 @@ interface GameCanvasProps {
   debugEnabled?: boolean;
   onDebugToggle?: () => void;
   gridSize?: number;
+  // Tilemap editing props
+  tilemapMode?: boolean;
+  onTilemapModeToggle?: () => void;
+  selectedTileId?: number;
+  selectedLayerId?: string;
+  tilemapTool?: TilemapTool;
+  onTilemapToolChange?: (tool: TilemapTool) => void;
+  onTilemapChange?: (tilemap: TilemapSpec) => void;
 }
 
 type TransformMode = 'move' | 'rotate' | 'scale';
@@ -47,15 +56,51 @@ export default function GameCanvas({
   debugEnabled = false,
   onDebugToggle,
   gridSize = 16,
+  // Tilemap editing
+  tilemapMode = false,
+  onTilemapModeToggle,
+  selectedTileId = 1,
+  selectedLayerId,
+  tilemapTool = 'brush',
+  onTilemapToolChange,
+  onTilemapChange,
 }: GameCanvasProps) {
   // Get primary selected entity (first in set, for transform operations)
   const selectedEntity = selectedEntities.size > 0 ? Array.from(selectedEntities)[0] : null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const runtimeRef = useRef<Runtime2D | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [transformMode, setTransformMode] = useState<TransformMode>('move');
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Responsive canvas dimensions
+  const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 800 });
+
+  // Track container size for responsive canvas
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const rect = container.getBoundingClientRect();
+      // Leave some padding for the UI elements
+      const padding = 32;
+      const newWidth = Math.max(800, Math.floor(rect.width - padding));
+      const newHeight = Math.max(600, Math.floor(rect.height - padding));
+      setCanvasSize({ width: newWidth, height: newHeight });
+    };
+
+    // Initial size
+    updateSize();
+
+    // Watch for resize
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   // Use controlled props for grid and debug, with local state fallback
   const showGrid = gridEnabled;
@@ -81,6 +126,95 @@ export default function GameCanvas({
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragRotation, setDragRotation] = useState<number | null>(null);
   const [dragScale, setDragScale] = useState<{ scaleX: number; scaleY: number } | null>(null);
+
+  // Tilemap painting state
+  const [isTilemapDrawing, setIsTilemapDrawing] = useState(false);
+  const lastTilePosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Mouse hover position for brush preview
+  const [hoverTilePos, setHoverTilePos] = useState<{ x: number; y: number } | null>(null);
+
+  // Get tile position from canvas coordinates
+  const getTilePos = useCallback((canvasX: number, canvasY: number) => {
+    const tilemap = gameSpec?.tilemap;
+    if (!tilemap) return null;
+    const tileX = Math.floor(canvasX / tilemap.tileSize);
+    const tileY = Math.floor(canvasY / tilemap.tileSize);
+    if (tileX < 0 || tileX >= tilemap.width || tileY < 0 || tileY >= tilemap.height) {
+      return null;
+    }
+    return { x: tileX, y: tileY };
+  }, [gameSpec?.tilemap]);
+
+  // Paint tile at position
+  const paintTile = useCallback((tileX: number, tileY: number) => {
+    const tilemap = gameSpec?.tilemap;
+    if (!tilemap || !onTilemapChange) return;
+
+    const layerId = selectedLayerId || tilemap.layers[0]?.id;
+    const layerIndex = tilemap.layers.findIndex(l => l.id === layerId);
+    if (layerIndex === -1) return;
+
+    const layer = tilemap.layers[layerIndex];
+    if (layer.locked) return;
+
+    // Check if already the same tile
+    const currentTile = layer.data[tileY]?.[tileX] ?? 0;
+    const newTileId = tilemapTool === 'eraser' ? 0 : selectedTileId;
+    if (currentTile === newTileId) return;
+
+    // Clone the tilemap data
+    const newLayers = tilemap.layers.map((l, idx) => {
+      if (idx !== layerIndex) return l;
+      const newData = l.data.map(row => [...row]);
+      if (!newData[tileY]) newData[tileY] = [];
+      newData[tileY][tileX] = newTileId;
+      return { ...l, data: newData };
+    });
+
+    onTilemapChange({ ...tilemap, layers: newLayers });
+  }, [gameSpec?.tilemap, selectedLayerId, selectedTileId, tilemapTool, onTilemapChange]);
+
+  // Flood fill
+  const floodFill = useCallback((startX: number, startY: number) => {
+    const tilemap = gameSpec?.tilemap;
+    if (!tilemap || !onTilemapChange) return;
+
+    const layerId = selectedLayerId || tilemap.layers[0]?.id;
+    const layerIndex = tilemap.layers.findIndex(l => l.id === layerId);
+    if (layerIndex === -1) return;
+
+    const layer = tilemap.layers[layerIndex];
+    if (layer.locked) return;
+
+    const targetTile = layer.data[startY]?.[startX] ?? 0;
+    const fillTile = selectedTileId;
+    if (targetTile === fillTile) return;
+
+    // Clone data
+    const newData = layer.data.map(row => [...row]);
+    const stack: [number, number][] = [[startX, startY]];
+    const visited = new Set<string>();
+
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!;
+      const key = `${x},${y}`;
+      if (visited.has(key)) continue;
+      if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
+      if ((newData[y]?.[x] ?? 0) !== targetTile) continue;
+
+      visited.add(key);
+      if (!newData[y]) newData[y] = [];
+      newData[y][x] = fillTile;
+
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+
+    const newLayers = tilemap.layers.map((l, idx) =>
+      idx === layerIndex ? { ...l, data: newData } : l
+    );
+    onTilemapChange({ ...tilemap, layers: newLayers });
+  }, [gameSpec?.tilemap, selectedLayerId, selectedTileId, onTilemapChange]);
 
   // Helper to get canvas coordinates from mouse event
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement> | MouseEvent) => {
@@ -209,7 +343,7 @@ export default function GameCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, handleZoomIn, handleZoomOut, handleFitAll, onGridToggle, onDebugToggle]);
 
-  // Initialize runtime when gameSpec changes
+  // Initialize runtime when gameSpec or canvas size changes
   useEffect(() => {
     if (!canvasRef.current || !gameSpec) return;
 
@@ -222,8 +356,11 @@ export default function GameCanvas({
           runtimeRef.current.destroy();
         }
 
-        // Create new runtime
-        const runtime = new Runtime2D(canvasRef.current!);
+        // Create new runtime with responsive canvas size
+        const runtime = new Runtime2D(canvasRef.current!, {
+          width: canvasSize.width,
+          height: canvasSize.height,
+        });
         await runtime.loadGameSpec(gameSpec);
 
         if (!isMounted) {
@@ -255,7 +392,7 @@ export default function GameCanvas({
         runtimeRef.current = null;
       }
     };
-  }, [gameSpec]);
+  }, [gameSpec, canvasSize.width, canvasSize.height]);
 
   // Handle play/pause
   useEffect(() => {
@@ -311,15 +448,32 @@ export default function GameCanvas({
     return 'none';
   }, [transformMode]);
 
-  // Handle mouse down - start drag if on entity and paused
+  // Handle mouse down - start drag if on entity and paused, or paint tiles in tilemap mode
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!canvasRef.current || !runtimeRef.current) return;
+      if (!canvasRef.current) return;
+
+      const coords = getCanvasCoords(e);
+
+      // Tilemap painting mode
+      if (tilemapMode && !isPlaying && gameSpec?.tilemap) {
+        const tilePos = getTilePos(coords.x, coords.y);
+        if (tilePos) {
+          if (tilemapTool === 'fill') {
+            floodFill(tilePos.x, tilePos.y);
+          } else {
+            paintTile(tilePos.x, tilePos.y);
+            setIsTilemapDrawing(true);
+            lastTilePosRef.current = tilePos;
+          }
+        }
+        return;
+      }
+
+      if (!runtimeRef.current) return;
 
       // Only allow dragging when paused
       if (isPlaying) return;
-
-      const coords = getCanvasCoords(e);
 
       // Check if clicking on a gizmo handle for the selected entity
       if (selectedEntity) {
@@ -381,15 +535,35 @@ export default function GameCanvas({
         }
       }
     },
-    [isPlaying, getCanvasCoords, onEntitySelect, selectedEntity, getHandleAtPoint, gameSpec]
+    [isPlaying, getCanvasCoords, onEntitySelect, selectedEntity, getHandleAtPoint, gameSpec, tilemapMode, tilemapTool, getTilePos, paintTile, floodFill]
   );
 
   // Handle mouse move - update drag position/rotation/scale
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const coords = getCanvasCoords(e);
+
+      // Tilemap mode - track hover position for brush preview
+      if (tilemapMode && gameSpec?.tilemap) {
+        const tilePos = getTilePos(coords.x, coords.y);
+        setHoverTilePos(tilePos);
+
+        // Tilemap painting - continuous stroke
+        if (isTilemapDrawing) {
+          if (tilePos && lastTilePosRef.current) {
+            if (tilePos.x !== lastTilePosRef.current.x || tilePos.y !== lastTilePosRef.current.y) {
+              paintTile(tilePos.x, tilePos.y);
+              lastTilePosRef.current = tilePos;
+            }
+          }
+          return;
+        }
+      } else {
+        setHoverTilePos(null);
+      }
+
       if (!dragState.isDragging || !dragState.entityName) return;
 
-      const coords = getCanvasCoords(e);
       const deltaX = coords.x - dragState.startX;
       const deltaY = coords.y - dragState.startY;
 
@@ -476,11 +650,17 @@ export default function GameCanvas({
         setDragScale({ scaleX: newScaleX, scaleY: newScaleY });
       }
     },
-    [dragState, getCanvasCoords, snapToGrid, showGrid]
+    [dragState, getCanvasCoords, snapToGrid, showGrid, isTilemapDrawing, tilemapMode, gameSpec?.tilemap, getTilePos, paintTile]
   );
 
   // Handle mouse up - finish drag and persist changes
   const handleMouseUp = useCallback(() => {
+    // Stop tilemap drawing
+    if (isTilemapDrawing) {
+      setIsTilemapDrawing(false);
+      lastTilePosRef.current = null;
+    }
+
     if (!dragState.isDragging || !dragState.entityName) {
       setDragState({
         isDragging: false,
@@ -544,7 +724,7 @@ export default function GameCanvas({
     setDragPosition(null);
     setDragRotation(null);
     setDragScale(null);
-  }, [dragState, dragPosition, dragRotation, dragScale, onUpdateEntity, gameSpec]);
+  }, [dragState, dragPosition, dragRotation, dragScale, onUpdateEntity, gameSpec, isTilemapDrawing]);
 
   // Handle canvas click to select entities
   const handleCanvasClick = useCallback(
@@ -614,13 +794,236 @@ export default function GameCanvas({
 
   // Note: Primary bounds are identified within allSelectedBounds via isPrimary flag
 
+  // Draw tilemap grid overlay when in tilemap mode
+  const renderTilemapGrid = () => {
+    if (!tilemapMode || !gameSpec?.tilemap) return null;
+
+    const tilemap = gameSpec.tilemap;
+    const tileSize = tilemap.tileSize;
+    const width = tilemap.width * tileSize;
+    const height = tilemap.height * tileSize;
+
+    const lines = [];
+
+    // Vertical lines
+    for (let x = 0; x <= tilemap.width; x++) {
+      lines.push(
+        <line
+          key={`tv-${x}`}
+          x1={x * tileSize}
+          y1={0}
+          x2={x * tileSize}
+          y2={height}
+          stroke="rgba(0,255,150,0.3)"
+          strokeWidth="1"
+        />
+      );
+    }
+
+    // Horizontal lines
+    for (let y = 0; y <= tilemap.height; y++) {
+      lines.push(
+        <line
+          key={`th-${y}`}
+          x1={0}
+          y1={y * tileSize}
+          x2={width}
+          y2={y * tileSize}
+          stroke="rgba(0,255,150,0.3)"
+          strokeWidth="1"
+        />
+      );
+    }
+
+    return (
+      <svg
+        className="absolute top-0 left-0 pointer-events-none z-20"
+        width={canvasSize.width}
+        height={canvasSize.height}
+        style={{ display: 'block' }}
+      >
+        {lines}
+        {/* Tilemap boundary */}
+        <rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="none"
+          stroke="rgba(0,255,150,0.6)"
+          strokeWidth="2"
+          strokeDasharray="4,4"
+        />
+      </svg>
+    );
+  };
+
+  // Render brush cursor preview (ghost tile at mouse position)
+  const renderBrushPreview = () => {
+    if (!tilemapMode || !gameSpec?.tilemap || !hoverTilePos || isPlaying) return null;
+
+    const tilemap = gameSpec.tilemap;
+    const tileSize = tilemap.tileSize;
+    const x = hoverTilePos.x * tileSize;
+    const y = hoverTilePos.y * tileSize;
+
+    // Get the selected tile definition for color/image
+    const selectedTile = tilemap.tileset.find(t => t.id === selectedTileId);
+    const isEraser = tilemapTool === 'eraser';
+
+    // Preview style based on tool
+    let previewColor = 'rgba(100, 100, 100, 0.5)';
+    let borderColor = 'rgba(255, 255, 255, 0.8)';
+    let icon = null;
+
+    if (isEraser) {
+      previewColor = 'rgba(255, 50, 50, 0.3)';
+      borderColor = 'rgba(255, 100, 100, 0.8)';
+      icon = (
+        <text
+          x={x + tileSize / 2}
+          y={y + tileSize / 2 + 4}
+          textAnchor="middle"
+          fill="rgba(255, 100, 100, 0.9)"
+          fontSize="14"
+          fontWeight="bold"
+        >
+          ✕
+        </text>
+      );
+    } else if (tilemapTool === 'fill') {
+      previewColor = selectedTile ? selectedTile.color : 'rgba(100, 200, 100, 0.5)';
+      borderColor = 'rgba(100, 255, 100, 0.8)';
+      icon = (
+        <text
+          x={x + tileSize / 2}
+          y={y + tileSize / 2 + 4}
+          textAnchor="middle"
+          fill="rgba(255, 255, 255, 0.9)"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          ⬛
+        </text>
+      );
+    } else if (selectedTile) {
+      previewColor = selectedTile.color;
+      borderColor = 'rgba(255, 255, 255, 0.9)';
+    }
+
+    return (
+      <svg
+        className="absolute top-0 left-0 pointer-events-none z-30"
+        width={canvasSize.width}
+        height={canvasSize.height}
+        style={{ display: 'block' }}
+      >
+        {/* Ghost tile preview */}
+        <rect
+          x={x}
+          y={y}
+          width={tileSize}
+          height={tileSize}
+          fill={isEraser ? 'transparent' : previewColor}
+          stroke={borderColor}
+          strokeWidth="2"
+          opacity={0.7}
+        />
+        {/* Crosshair pattern for eraser */}
+        {isEraser && (
+          <>
+            <line
+              x1={x + 4}
+              y1={y + 4}
+              x2={x + tileSize - 4}
+              y2={y + tileSize - 4}
+              stroke="rgba(255, 100, 100, 0.8)"
+              strokeWidth="2"
+            />
+            <line
+              x1={x + tileSize - 4}
+              y1={y + 4}
+              x2={x + 4}
+              y2={y + tileSize - 4}
+              stroke="rgba(255, 100, 100, 0.8)"
+              strokeWidth="2"
+            />
+          </>
+        )}
+        {icon}
+      </svg>
+    );
+  };
+
+  // Render floating tilemap toolbar
+  const renderTilemapToolbar = () => {
+    if (!tilemapMode || !gameSpec?.tilemap || isPlaying) return null;
+
+    const tilemap = gameSpec.tilemap;
+    const selectedTile = tilemap.tileset.find(t => t.id === selectedTileId);
+
+    const tools: { id: TilemapTool; icon: string; label: string }[] = [
+      { id: 'brush', icon: '🖌️', label: 'Brush' },
+      { id: 'eraser', icon: '🧹', label: 'Eraser' },
+      { id: 'fill', icon: '🪣', label: 'Fill' },
+    ];
+
+    return (
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40">
+        <div className="flex items-center gap-2 bg-panel/95 backdrop-blur-md border border-subtle rounded-xl px-3 py-2 shadow-2xl">
+          {/* Selected tile preview */}
+          <div className="flex items-center gap-2 pr-3 border-r border-subtle">
+            <div
+              className="w-8 h-8 rounded border-2 border-white/30"
+              style={{ backgroundColor: selectedTile?.color || '#666' }}
+              title={selectedTile?.name || 'No tile selected'}
+            />
+            <div className="text-xs text-text-secondary">
+              <div className="font-medium text-text-primary">{selectedTile?.name || 'None'}</div>
+              <div>Tile {selectedTileId}</div>
+            </div>
+          </div>
+
+          {/* Tool buttons */}
+          <div className="flex items-center gap-1">
+            {tools.map(tool => (
+              <button
+                key={tool.id}
+                onClick={() => onTilemapToolChange?.(tool.id)}
+                className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                  tilemapTool === tool.id
+                    ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                    : 'bg-white/5 text-text-secondary hover:bg-white/10 hover:text-white'
+                }`}
+                title={tool.label}
+              >
+                <span className="text-lg">{tool.icon}</span>
+                <span className="text-xs font-medium">{tool.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Current layer indicator */}
+          <div className="pl-3 border-l border-subtle text-xs text-text-tertiary">
+            Layer: {tilemap.layers.find(l => l.id === (selectedLayerId || tilemap.layers[0]?.id))?.name || 'None'}
+          </div>
+        </div>
+
+        {/* Hint text */}
+        <div className="text-center text-xs text-text-tertiary mt-2">
+          Click to paint • Hold to draw • Select tiles in left panel
+        </div>
+      </div>
+    );
+  };
+
   // Draw grid overlay
   const renderGrid = () => {
     if (!showGrid || !gameSpec) return null;
 
     const lines = [];
-    const width = 800;
-    const height = 600;
+    const width = canvasSize.width;
+    const height = canvasSize.height;
 
     // Vertical lines
     for (let x = 0; x <= width; x += gridSize) {
@@ -777,8 +1180,8 @@ export default function GameCanvas({
     return (
       <svg
         className="absolute top-0 left-0 pointer-events-none z-10"
-        width={800}
-        height={600}
+        width={canvasSize.width}
+        height={canvasSize.height}
         style={{ display: gameSpec && !error ? 'block' : 'none' }}
       >
         {/* Arrow marker for velocity vectors */}
@@ -831,12 +1234,12 @@ export default function GameCanvas({
         </div>
       )}
 
-      <div className="relative" style={{ width: 800, height: 600 }}>
+      <div ref={canvasContainerRef} className="relative" style={{ width: canvasSize.width, height: canvasSize.height }}>
         <canvas
           ref={canvasRef}
           tabIndex={0}
-          width={800}
-          height={600}
+          width={canvasSize.width}
+          height={canvasSize.height}
           className={`rounded-lg shadow-2xl absolute top-0 left-0 border border-subtle outline-none ${isPlaying ? 'cursor-crosshair' : 'cursor-move'
             }`}
           style={{ display: gameSpec && !error ? 'block' : 'none', backgroundColor: '#000' }}
@@ -847,17 +1250,47 @@ export default function GameCanvas({
           }}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseLeave={() => {
+            handleMouseUp();
+            setHoverTilePos(null);
+          }}
         />
 
         {/* Grid overlay */}
         {renderGrid()}
 
+        {/* Tilemap grid overlay */}
+        {renderTilemapGrid()}
+
+        {/* Brush cursor preview */}
+        {renderBrushPreview()}
+
+        {/* Floating tilemap toolbar */}
+        {renderTilemapToolbar()}
+
         {/* Editor toolbar */}
         {gameSpec && !error && (
           <div className="absolute top-2 right-2 flex items-center gap-1">
-            {/* Transform mode buttons - only show when not playing */}
-            {!isPlaying && (
+            {/* Tilemap mode toggle - only show when tilemap exists */}
+            {!isPlaying && gameSpec.tilemap && (
+              <>
+                <button
+                  onClick={() => onTilemapModeToggle?.()}
+                  className={`p-2 rounded backdrop-blur-md transition-all ${tilemapMode
+                    ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
+                    : 'bg-panel/80 text-text-secondary hover:text-white hover:bg-panel'
+                    }`}
+                  title={tilemapMode ? 'Exit Tilemap Mode (T)' : 'Edit Tilemap (T)'}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                  </svg>
+                </button>
+                <div className="w-px h-6 bg-white/10 mx-1" />
+              </>
+            )}
+            {/* Transform mode buttons - only show when not playing and not in tilemap mode */}
+            {!isPlaying && !tilemapMode && (
               <>
                 <button
                   onClick={() => setTransformMode('move')}
@@ -958,6 +1391,11 @@ export default function GameCanvas({
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 Playing
               </span>
+            ) : tilemapMode ? (
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                Tilemap Mode
+              </span>
             ) : (
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
@@ -968,7 +1406,7 @@ export default function GameCanvas({
         )}
 
         {/* Controls hint */}
-        {gameSpec && !error && (
+        {gameSpec && !error && !tilemapMode && (
           <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-gray-300 px-2 py-1 rounded text-xs">
             {isPlaying ? (
               <>

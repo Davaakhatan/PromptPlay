@@ -202,7 +202,7 @@ export const EXAMPLE_CUSTOM_NODES: CustomNodeInput[] = [
     type: 'custom_health_check',
     title: 'Health Check',
     description: 'Check if entity health is below threshold',
-    icon: '❤️',
+    icon: '♥',
     inputs: [
       { id: 'entity', name: 'Entity', type: 'entity' },
       { id: 'threshold', name: 'Threshold', type: 'number', defaultValue: 30 },
@@ -242,7 +242,7 @@ export const EXAMPLE_CUSTOM_NODES: CustomNodeInput[] = [
     type: 'custom_wave',
     title: 'Sine Wave',
     description: 'Generate a sine wave value over time',
-    icon: '〰️',
+    icon: '∿',
     inputs: [
       { id: 'time', name: 'Time', type: 'number', defaultValue: 0 },
       { id: 'frequency', name: 'Frequency', type: 'number', defaultValue: 1 },

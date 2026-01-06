@@ -5,6 +5,8 @@ import {
   Game3D,
   OrbitControls,
 } from '@promptplay/runtime-3d';
+import { useWebGPU, type RendererType } from '../hooks/useWebGPU';
+import { RendererStats } from './RendererStats';
 
 interface GameCanvas3DProps {
   gameSpec: Game3DSpec | null;
@@ -14,6 +16,8 @@ interface GameCanvas3DProps {
   onEntityTransformChange?: (name: string, transform: { x: number; y: number; z: number }) => void;
   showGrid?: boolean;
   showAxes?: boolean;
+  showStats?: boolean;
+  preferWebGPU?: boolean;
 }
 
 export function GameCanvas3D({
@@ -24,6 +28,8 @@ export function GameCanvas3D({
   onEntityTransformChange,
   showGrid = true,
   showAxes = true,
+  showStats = true,
+  preferWebGPU = true,
 }: GameCanvas3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,6 +40,35 @@ export function GameCanvas3D({
 
   const [isDragging, setIsDragging] = useState(false);
   const [draggedEntity, setDraggedEntity] = useState<string | null>(null);
+  const [statsVisible, setStatsVisible] = useState(showStats);
+
+  // WebGPU integration with automatic fallback
+  const {
+    rendererType,
+    isInitialized: webGPUInitialized,
+    initialize: initializeWebGPU,
+  } = useWebGPU({
+    preferWebGPU,
+    powerPreference: 'high-performance',
+    onInitialized: (type: RendererType) => {
+      console.log(`[GameCanvas3D] Renderer initialized: ${type}`);
+    },
+    onError: (error: string) => {
+      console.warn(`[GameCanvas3D] WebGPU error: ${error}`);
+    },
+  });
+
+  // Initialize WebGPU when canvas is available
+  useEffect(() => {
+    if (canvasRef.current && !webGPUInitialized && preferWebGPU) {
+      // Create a separate canvas for WebGPU (Three.js uses its own WebGL context)
+      // WebGPU can be used for compute shaders alongside Three.js WebGL rendering
+      const webgpuCanvas = document.createElement('canvas');
+      webgpuCanvas.width = canvasRef.current.width || 800;
+      webgpuCanvas.height = canvasRef.current.height || 600;
+      initializeWebGPU(webgpuCanvas);
+    }
+  }, [canvasRef.current, webGPUInitialized, preferWebGPU, initializeWebGPU]);
 
   // Drag plane and offset for 3D dragging
   const dragPlaneRef = useRef<THREE.Plane>(new THREE.Plane());
@@ -564,6 +599,18 @@ export function GameCanvas3D({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </button>
+
+        <div className="w-px bg-subtle mx-1" />
+
+        <button
+          className={`p-2 rounded transition-colors ${statsVisible ? 'text-accent bg-white/10' : 'text-text-secondary hover:text-white hover:bg-white/10'}`}
+          title={statsVisible ? 'Hide Stats' : 'Show Stats'}
+          onClick={() => setStatsVisible(!statsVisible)}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </button>
       </div>
 
       {/* Camera info overlay */}
@@ -576,6 +623,17 @@ export function GameCanvas3D({
         <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
           Playing
         </div>
+      )}
+
+      {/* Renderer stats overlay */}
+      {statsVisible && (
+        <RendererStats
+          rendererType={rendererType}
+          isVisible={statsVisible}
+          showCapabilities={true}
+          position="bottom-right"
+          onClose={() => setStatsVisible(false)}
+        />
       )}
     </div>
   );

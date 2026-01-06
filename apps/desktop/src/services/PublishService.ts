@@ -333,13 +333,13 @@ export class PublishService {
       theme_color: options.themeColor,
       icons: [
         {
-          src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="%231a1a2e"/><text x="96" y="110" font-size="80" text-anchor="middle" fill="white">🎮</text></svg>',
+          src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="%231a1a2e"/><polygon points="70,50 70,142 150,96" fill="white"/></svg>',
           sizes: '192x192',
           type: 'image/svg+xml',
           purpose: 'any maskable',
         },
         {
-          src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="%231a1a2e"/><text x="256" y="300" font-size="200" text-anchor="middle" fill="white">🎮</text></svg>',
+          src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="%231a1a2e"/><polygon points="180,130 180,382 400,256" fill="white"/></svg>',
           sizes: '512x512',
           type: 'image/svg+xml',
           purpose: 'any maskable',
@@ -568,7 +568,7 @@ self.addEventListener('fetch', (event) => {
   <meta name="msapplication-TileColor" content="${themeColor}">
   <meta name="description" content="Play ${this.escapeHtml(title)} - Made with PromptPlay">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='${encodeURIComponent(backgroundColor)}'/><text x='90' y='110' font-size='80' text-anchor='middle'>🎮</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='${encodeURIComponent(backgroundColor)}'/><polygon points='65,45 65,135 140,90' fill='white'/></svg>">
   <title>${this.escapeHtml(title)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }

@@ -21,7 +21,7 @@ const onUpdateNode: NodeDefinition = {
   category: 'events',
   title: 'On Update',
   description: 'Triggered every frame',
-  icon: '🔄',
+  icon: '↻',
   inputs: [],
   outputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
@@ -35,7 +35,7 @@ const onCollisionNode: NodeDefinition = {
   category: 'events',
   title: 'On Collision',
   description: 'Triggered when entities collide',
-  icon: '💥',
+  icon: '※',
   inputs: [
     { id: 'entity', name: 'Entity', type: 'entity' },
   ],
@@ -256,7 +256,7 @@ const randomNode: NodeDefinition = {
   category: 'math',
   title: 'Random',
   description: 'Generate a random number',
-  icon: '🎲',
+  icon: '⚄',
   inputs: [
     { id: 'min', name: 'Min', type: 'number', defaultValue: 0 },
     { id: 'max', name: 'Max', type: 'number', defaultValue: 1 },
@@ -275,7 +275,7 @@ const getEntityNode: NodeDefinition = {
   category: 'entities',
   title: 'Get Entity',
   description: 'Get an entity by name',
-  icon: '📦',
+  icon: '▣',
   inputs: [
     { id: 'name', name: 'Name', type: 'string' },
   ],
@@ -427,7 +427,7 @@ const applyImpulseNode: NodeDefinition = {
   category: 'physics',
   title: 'Apply Impulse',
   description: 'Apply an instant impulse to an entity',
-  icon: '⚡',
+  icon: '↯',
   inputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
     { id: 'entity', name: 'Entity', type: 'entity' },
@@ -459,9 +459,10 @@ const getKeyNode: NodeDefinition = {
   outputs: [
     { id: 'pressed', name: 'Pressed', type: 'boolean' },
   ],
-  execute: () => {
-    // Input state would be passed via context in real implementation
-    return { pressed: false };
+  execute: (inputs, context) => {
+    const key = (inputs.key as string) || 'Space';
+    const pressed = context.pressedKeys?.has(key) ?? false;
+    return { pressed };
   },
 };
 
@@ -487,7 +488,7 @@ const getAxisNode: NodeDefinition = {
   category: 'input',
   title: 'Get Axis',
   description: 'Get input axis value (-1 to 1)',
-  icon: '🕹',
+  icon: '⊕',
   inputs: [
     { id: 'axis', name: 'Axis', type: 'string', defaultValue: 'Horizontal' },
   ],
@@ -682,7 +683,7 @@ const easeOutBounceNode: NodeDefinition = {
   category: 'motion',
   title: 'Ease Out Bounce',
   description: 'Bouncing ease-out',
-  icon: '⚾',
+  icon: '◉',
   inputs: [
     { id: 't', name: 'T (0-1)', type: 'number', defaultValue: 0 },
   ],
@@ -737,7 +738,7 @@ const timerNode: NodeDefinition = {
   category: 'motion',
   title: 'Timer',
   description: 'Track elapsed time with duration',
-  icon: '⏱',
+  icon: '◷',
   inputs: [
     { id: 'flow', name: 'Flow', type: 'flow' },
     { id: 'duration', name: 'Duration', type: 'number', defaultValue: 1 },
@@ -877,7 +878,7 @@ const springNode: NodeDefinition = {
   category: 'motion',
   title: 'Spring',
   description: 'Spring physics - move towards target with bounce',
-  icon: '🔄',
+  icon: '↻',
   inputs: [
     { id: 'current', name: 'Current', type: 'number' },
     { id: 'target', name: 'Target', type: 'number' },

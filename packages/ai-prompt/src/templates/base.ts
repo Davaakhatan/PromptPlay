@@ -84,13 +84,13 @@ Your output MUST be valid JSON. Return ONLY the JSON object, no markdown code bl
 
 ### Platformer
 - gravity: { "x": 0, "y": 1 }
-- Player: moveSpeed: 200, jumpForce: 400, canJump: true
+- Player: moveSpeed: 150, jumpForce: 280, canJump: true
 - Place ground at y: 580 (bottom of 600px canvas)
 - Player spawn: x: 100, y: 400
 
 ### Shooter (top-down)
 - gravity: { "x": 0, "y": 0 }
-- Player: moveSpeed: 250-300, jumpForce: 0
+- Player: moveSpeed: 200, jumpForce: 0
 - Free movement in all directions
 
 ### Puzzle

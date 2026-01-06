@@ -85,6 +85,7 @@ export interface NodeContext {
   deltaTime: number;
   gameSpec: unknown;
   entities: Map<string, unknown>;
+  pressedKeys?: Set<string>;
   getEntity: (name: string) => unknown | null;
   updateEntity: (name: string, data: unknown) => void;
   emit: (event: string, data?: unknown) => void;

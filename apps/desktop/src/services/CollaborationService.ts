@@ -339,7 +339,7 @@ export class CollaborationService {
       const demoCollaborator: Collaborator = {
         id: 'demo-user-1',
         name: 'Alice',
-        avatar: '👩‍💻',
+        avatar: 'JD',
         color: '#10b981',
         cursor: { x: 300, y: 200 },
         isOnline: true,

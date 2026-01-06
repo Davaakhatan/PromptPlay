@@ -25,8 +25,16 @@ export class InputSystem implements ISystem {
     for (const eid of entities) {
       if (!hasComponent(w, Input, eid)) continue;
 
-      const moveSpeed = Input.moveSpeed[eid];
-      const jumpForce = Input.jumpForce[eid];
+      // IMPORTANT: Force small values for Matter.js physics
+      // Old games have extreme values (200-400) that cause player to fly off screen
+      // Scale down to Matter.js-appropriate values (typically 3-10)
+      const rawMoveSpeed = Input.moveSpeed[eid];
+      const rawJumpForce = Math.abs(Input.jumpForce[eid]); // Handle negative values from old games
+
+      // Scale values: if > 50, divide by 40 to get reasonable Matter.js values
+      const moveSpeed = rawMoveSpeed > 50 ? rawMoveSpeed / 40 : rawMoveSpeed;
+      const jumpForce = rawJumpForce > 50 ? rawJumpForce / 40 : rawJumpForce;
+
       const canJump = Input.canJump[eid] === 1;
       const isGrounded = Input.isGrounded[eid] === 1;
 
@@ -47,8 +55,9 @@ export class InputSystem implements ISystem {
 
       // Jump only when grounded and canJump is enabled
       // Use isKeyPressed for single jump (not held)
+      // Negate jumpForce so positive values = jump up (Matter.js has positive Y = down)
       if (canJump && isGrounded && this.inputManager.isKeyPressed('Space')) {
-        this.physics.setVelocity(eid, vx, jumpForce);
+        this.physics.setVelocity(eid, vx, -jumpForce);
       }
     }
 

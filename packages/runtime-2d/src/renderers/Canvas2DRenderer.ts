@@ -2,6 +2,37 @@ import { hasComponent } from 'bitecs';
 import { GameWorld, Transform, Sprite } from '@promptplay/ecs-core';
 import { CameraState } from '../systems/CameraSystem';
 
+// Tilemap types (matches @promptplay/shared-types)
+export interface TileDefinition {
+  id: number;
+  name: string;
+  color: string;
+  collision: boolean;
+  properties?: Record<string, unknown>;
+  imageRect?: { x: number; y: number; width: number; height: number };
+}
+
+export interface TilemapLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  opacity: number;
+  data: number[][];
+}
+
+export interface TilemapSpec {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  tileSize: number;
+  layers: TilemapLayer[];
+  tileset: TileDefinition[];
+  tilesetImage?: string;
+  tilesetColumns?: number;
+}
+
 // Particle data for rendering
 export interface RenderableParticle {
   x: number;
@@ -56,6 +87,10 @@ export class Canvas2DRenderer {
   // Asset base path for loading textures
   private assetBasePath: string = '';
 
+  // Tilemap data
+  private tilemap: TilemapSpec | null = null;
+  private tilesetImage: HTMLImageElement | null = null;
+
   constructor(canvas: HTMLCanvasElement, world: GameWorld, options: {
     width: number;
     height: number;
@@ -102,6 +137,27 @@ export class Canvas2DRenderer {
 
   toggleDebug(): void {
     this.debugInfo.showDebug = !this.debugInfo.showDebug;
+  }
+
+  // Set tilemap for rendering
+  setTilemap(tilemap: TilemapSpec | null): void {
+    this.tilemap = tilemap;
+
+    // Load tileset image if present
+    if (tilemap?.tilesetImage) {
+      const img = new Image();
+      img.onload = () => {
+        this.tilesetImage = img;
+      };
+      img.src = tilemap.tilesetImage;
+    } else {
+      this.tilesetImage = null;
+    }
+  }
+
+  // Get current tilemap
+  getTilemap(): TilemapSpec | null {
+    return this.tilemap;
   }
 
   // Load a texture by name and cache it
@@ -209,6 +265,9 @@ export class Canvas2DRenderer {
       // Apply camera position (inverted - move world opposite to camera)
       this.ctx.translate(-cam.x + cam.shakeOffsetX, -cam.y + cam.shakeOffsetY);
     }
+
+    // Render tilemap first (background layer)
+    this.renderTilemap();
 
     // Collect renderable entities with z-index for sorting
     const renderables: { eid: number; zIndex: number }[] = [];
@@ -353,6 +412,55 @@ export class Canvas2DRenderer {
       this.ctx.beginPath();
       this.ctx.arc(p.x, p.y, p.size * (1 - progress * 0.5), 0, Math.PI * 2);
       this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
+  private renderTilemap(): void {
+    if (!this.tilemap) return;
+
+    const { width, height, tileSize, layers, tileset } = this.tilemap;
+
+    // Render each layer (bottom to top)
+    for (const layer of layers) {
+      if (!layer.visible) continue;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = layer.opacity;
+
+      // Render tiles in this layer
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const tileId = layer.data[y]?.[x] || 0;
+          if (tileId === 0) continue; // Empty tile
+
+          const tile = tileset.find(t => t.id === tileId);
+          if (!tile) continue;
+
+          const destX = x * tileSize;
+          const destY = y * tileSize;
+
+          // Draw image tile if tileset image is loaded and tile has imageRect
+          if (this.tilesetImage && tile.imageRect) {
+            this.ctx.drawImage(
+              this.tilesetImage,
+              tile.imageRect.x,
+              tile.imageRect.y,
+              tile.imageRect.width,
+              tile.imageRect.height,
+              destX,
+              destY,
+              tileSize,
+              tileSize
+            );
+          } else {
+            // Fallback to color
+            this.ctx.fillStyle = tile.color;
+            this.ctx.fillRect(destX, destY, tileSize, tileSize);
+          }
+        }
+      }
+
       this.ctx.restore();
     }
   }

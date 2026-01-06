@@ -29,7 +29,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { addRecentProject } from './services/RecentProjectsService';
 import { screenCapture } from './services/ScreenCaptureService';
 import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
-import TilemapEditor, { Tilemap } from './components/TilemapEditor';
+import TilemapEditor, { Tilemap, TilemapTool } from './components/TilemapEditor';
 import MobileExportDialog from './components/MobileExportDialog';
 import PublishDialog from './components/PublishDialog';
 import AIPlaytestPanel from './components/AIPlaytestPanel';
@@ -86,6 +86,10 @@ function App() {
   const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false);
   const [showEntitySearch, setShowEntitySearch] = useState(false);
   const [currentTilemap, setCurrentTilemap] = useState<Tilemap | null>(null);
+  const [tilemapMode, setTilemapMode] = useState(false);
+  const [selectedTileId, setSelectedTileId] = useState(1);
+  const [selectedLayerId, setSelectedLayerId] = useState<string>('');
+  const [tilemapTool, setTilemapTool] = useState<TilemapTool>('brush');
   const [showMobileExport, setShowMobileExport] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showAIPlaytest, setShowAIPlaytest] = useState(false);
@@ -488,6 +492,8 @@ function App() {
       const spec = JSON.parse(gameJsonStr) as GameSpec;
 
       setGameSpec(spec);
+      // Load tilemap from gameSpec if present
+      setCurrentTilemap(spec.tilemap as Tilemap | undefined || null);
       setIsPlaying(false);
       setLoading(false);
       setHasUnsavedChanges(false);
@@ -935,7 +941,12 @@ function App() {
 
     try {
       const gameJsonPath = `${projectPath}/game.json`;
-      const gameJsonContent = JSON.stringify(gameSpec, null, 2);
+      // Include tilemap in gameSpec when saving
+      const specToSave: GameSpec = {
+        ...gameSpec,
+        tilemap: currentTilemap || undefined,
+      };
+      const gameJsonContent = JSON.stringify(specToSave, null, 2);
 
       await invoke('write_file', {
         path: gameJsonPath,
@@ -2142,8 +2153,18 @@ function App() {
                 tilemap={currentTilemap}
                 onTilemapChange={(tilemap) => {
                   setCurrentTilemap(tilemap);
+                  // Sync tilemap to gameSpec for runtime to use
+                  if (gameSpec) {
+                    setGameSpec({ ...gameSpec, tilemap });
+                  }
                   setHasUnsavedChanges(true);
                 }}
+                selectedTileId={selectedTileId}
+                onSelectedTileChange={setSelectedTileId}
+                selectedLayerId={selectedLayerId}
+                onSelectedLayerChange={setSelectedLayerId}
+                tool={tilemapTool}
+                onToolChange={setTilemapTool}
               />
             )}
           </div>
@@ -2327,6 +2348,20 @@ function App() {
               debugEnabled={showDebug}
               onDebugToggle={() => setShowDebug(prev => !prev)}
               gridSize={16}
+              // Tilemap editing
+              tilemapMode={tilemapMode}
+              onTilemapModeToggle={() => setTilemapMode(prev => !prev)}
+              selectedTileId={selectedTileId}
+              selectedLayerId={selectedLayerId || gameSpec?.tilemap?.layers[0]?.id}
+              tilemapTool={tilemapTool}
+              onTilemapToolChange={setTilemapTool}
+              onTilemapChange={(tilemap) => {
+                setCurrentTilemap(tilemap as Tilemap);
+                if (gameSpec) {
+                  setGameSpec({ ...gameSpec, tilemap });
+                }
+                setHasUnsavedChanges(true);
+              }}
             />
           )}
 
@@ -2352,6 +2387,7 @@ function App() {
           {projectPath && viewMode === 'nodes' && (
             <NodeEditor
               graph={nodeGraph}
+              gameSpec={gameSpec}
               onGraphChange={(graph) => {
                 setNodeGraph(graph);
                 setHasUnsavedChanges(true);

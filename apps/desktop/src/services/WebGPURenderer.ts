@@ -76,10 +76,20 @@ export interface ComputeShader {
 type EventCallback = (data: unknown) => void;
 type RendererEventType = 'initialized' | 'frame' | 'resize' | 'error' | 'lost' | 'restored';
 
+// Actual GPU device and context (when WebGPU is available)
+interface WebGPUContext {
+  adapter: GPUAdapter;
+  device: GPUDevice;
+  context: GPUCanvasContext;
+  format: GPUTextureFormat;
+}
+
 class WebGPURenderer {
   private listeners: Map<RendererEventType, EventCallback[]> = new Map();
   private _initialized = false;
   private _supported = false;
+  private _gpuContext: WebGPUContext | null = null;
+  private _canvas: HTMLCanvasElement | null = null;
   private stats: RenderStats = {
     fps: 0,
     frameTime: 0,
@@ -94,11 +104,23 @@ class WebGPURenderer {
   private buffers: Map<string, GPUBuffer> = new Map();
   private textures: Map<string, GPUTexture> = new Map();
   private computeShaders: Map<string, ComputeShader> = new Map();
+  private _gpuPipelines: Map<string, GPURenderPipeline> = new Map();
+  private _gpuBuffers: Map<string, globalThis.GPUBuffer> = new Map();
+  private _gpuTextures: Map<string, globalThis.GPUTexture> = new Map();
+  private _gpuComputePipelines: Map<string, GPUComputePipeline> = new Map();
   private frameCount = 0;
   private lastTime = 0;
 
   constructor() {
     this.checkSupport();
+  }
+
+  get gpuContext(): WebGPUContext | null {
+    return this._gpuContext;
+  }
+
+  get device(): GPUDevice | null {
+    return this._gpuContext?.device ?? null;
   }
 
   // Check WebGPU support
@@ -239,27 +261,131 @@ class WebGPURenderer {
     }
   }
 
-  // Initialize renderer (mock for now as actual WebGPU requires device context)
+  // Initialize renderer with actual WebGPU context
   async initialize(config: WebGPUConfig): Promise<boolean> {
-    if (!this._supported) {
-      this.emit('error', { message: 'WebGPU not supported' });
+    if (!navigator.gpu) {
+      this._supported = false;
+      this.emit('error', { message: 'WebGPU not supported in this browser' });
       return false;
     }
 
     try {
-      // In a real implementation, this would:
       // 1. Request adapter
-      // 2. Request device
-      // 3. Configure canvas context
-      // 4. Create default pipelines
+      const adapter = await navigator.gpu.requestAdapter({
+        powerPreference: config.powerPreference ?? 'high-performance',
+      });
 
+      if (!adapter) {
+        this._supported = false;
+        this.emit('error', { message: 'Failed to get WebGPU adapter' });
+        return false;
+      }
+
+      // 2. Request device
+      const device = await adapter.requestDevice({
+        requiredFeatures: [],
+        requiredLimits: {},
+      });
+
+      // Handle device loss
+      device.lost.then((info) => {
+        console.error('WebGPU device lost:', info.message);
+        this._initialized = false;
+        this._gpuContext = null;
+        this.emit('lost', { reason: info.reason, message: info.message });
+      });
+
+      // 3. Configure canvas context
+      const context = config.canvas.getContext('webgpu');
+      if (!context) {
+        this.emit('error', { message: 'Failed to get WebGPU canvas context' });
+        return false;
+      }
+
+      const format = navigator.gpu.getPreferredCanvasFormat();
+      context.configure({
+        device,
+        format,
+        alphaMode: 'premultiplied',
+      });
+
+      // Store context
+      this._gpuContext = { adapter, device, context, format };
+      this._canvas = config.canvas;
+      this._supported = true;
       this._initialized = true;
-      this.emit('initialized', { config });
+
+      // Create default pipelines
+      await this.createDefaultPipelines();
+
+      this.emit('initialized', { config, format });
       return true;
     } catch (error) {
+      console.error('WebGPU initialization failed:', error);
+      this._supported = false;
       this.emit('error', { message: 'Failed to initialize WebGPU', error });
       return false;
     }
+  }
+
+  // Create default render pipelines
+  private async createDefaultPipelines(): Promise<void> {
+    if (!this._gpuContext) return;
+
+    const { device, format } = this._gpuContext;
+
+    // Basic shader module
+    const basicShaderCode = `
+      struct VertexOutput {
+        @builtin(position) position: vec4<f32>,
+        @location(0) color: vec4<f32>,
+      };
+
+      @vertex
+      fn vs_main(@location(0) position: vec3<f32>, @location(1) color: vec4<f32>) -> VertexOutput {
+        var output: VertexOutput;
+        output.position = vec4<f32>(position, 1.0);
+        output.color = color;
+        return output;
+      }
+
+      @fragment
+      fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+        return input.color;
+      }
+    `;
+
+    const shaderModule = device.createShaderModule({
+      code: basicShaderCode,
+    });
+
+    const pipeline = device.createRenderPipeline({
+      layout: 'auto',
+      vertex: {
+        module: shaderModule,
+        entryPoint: 'vs_main',
+        buffers: [
+          {
+            arrayStride: 28, // 3 floats position + 4 floats color
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },
+              { shaderLocation: 1, offset: 12, format: 'float32x4' },
+            ],
+          },
+        ],
+      },
+      fragment: {
+        module: shaderModule,
+        entryPoint: 'fs_main',
+        targets: [{ format }],
+      },
+      primitive: {
+        topology: 'triangle-list',
+      },
+    });
+
+    this._gpuPipelines.set('basic', pipeline);
+    this.stats.pipelineCount = this._gpuPipelines.size;
   }
 
   // Create shader module
@@ -453,10 +579,163 @@ fn main(
     return texture;
   }
 
-  // Create compute shader
+  // Create compute shader with actual GPU pipeline
   createComputeShader(config: ComputeShader): ComputeShader {
     this.computeShaders.set(config.id, config);
+
+    // Create actual GPU compute pipeline if initialized
+    if (this._gpuContext) {
+      const { device } = this._gpuContext;
+
+      const shaderModule = device.createShaderModule({
+        code: config.code,
+      });
+
+      const computePipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: {
+          module: shaderModule,
+          entryPoint: 'main',
+        },
+      });
+
+      this._gpuComputePipelines.set(config.id, computePipeline);
+    }
+
     return config;
+  }
+
+  // Execute compute shader
+  async executeComputeShader(
+    shaderId: string,
+    bindGroups: { binding: number; resource: GPUBindingResource }[],
+    dispatchX: number,
+    dispatchY = 1,
+    dispatchZ = 1
+  ): Promise<void> {
+    if (!this._gpuContext) {
+      throw new Error('WebGPU not initialized');
+    }
+
+    const pipeline = this._gpuComputePipelines.get(shaderId);
+    if (!pipeline) {
+      throw new Error(`Compute shader not found: ${shaderId}`);
+    }
+
+    const { device } = this._gpuContext;
+
+    // Create bind group
+    const bindGroup = device.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: bindGroups.map(({ binding, resource }) => ({
+        binding,
+        resource,
+      })),
+    });
+
+    // Create command encoder
+    const commandEncoder = device.createCommandEncoder();
+    const passEncoder = commandEncoder.beginComputePass();
+
+    passEncoder.setPipeline(pipeline);
+    passEncoder.setBindGroup(0, bindGroup);
+    passEncoder.dispatchWorkgroups(dispatchX, dispatchY, dispatchZ);
+    passEncoder.end();
+
+    // Submit
+    device.queue.submit([commandEncoder.finish()]);
+  }
+
+  // Create GPU buffer
+  createGPUBuffer(
+    id: string,
+    size: number,
+    usage: GPUBufferUsageFlags,
+    mappedAtCreation = false
+  ): globalThis.GPUBuffer | null {
+    if (!this._gpuContext) return null;
+
+    const buffer = this._gpuContext.device.createBuffer({
+      size,
+      usage,
+      mappedAtCreation,
+    });
+
+    this._gpuBuffers.set(id, buffer);
+    this.stats.bufferMemory += size;
+
+    return buffer;
+  }
+
+  // Get GPU buffer by ID
+  getGPUBuffer(id: string): globalThis.GPUBuffer | undefined {
+    return this._gpuBuffers.get(id);
+  }
+
+  // Create GPU texture
+  createGPUTexture(
+    id: string,
+    width: number,
+    height: number,
+    format: GPUTextureFormat = 'rgba8unorm',
+    usage: GPUTextureUsageFlags = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+  ): globalThis.GPUTexture | null {
+    if (!this._gpuContext) return null;
+
+    const texture = this._gpuContext.device.createTexture({
+      size: { width, height },
+      format,
+      usage,
+    });
+
+    this._gpuTextures.set(id, texture);
+    this.stats.textureMemory += width * height * 4;
+
+    return texture;
+  }
+
+  // Get GPU texture by ID
+  getGPUTexture(id: string): globalThis.GPUTexture | undefined {
+    return this._gpuTextures.get(id);
+  }
+
+  // Write data to GPU buffer
+  writeBuffer(bufferId: string, data: ArrayBuffer | ArrayBufferView, offset = 0): void {
+    if (!this._gpuContext) return;
+
+    const buffer = this._gpuBuffers.get(bufferId);
+    if (!buffer) return;
+
+    this._gpuContext.device.queue.writeBuffer(buffer, offset, data);
+  }
+
+  // Read data from GPU buffer (async)
+  async readBuffer(bufferId: string, size: number): Promise<ArrayBuffer | null> {
+    if (!this._gpuContext) return null;
+
+    const srcBuffer = this._gpuBuffers.get(bufferId);
+    if (!srcBuffer) return null;
+
+    const { device } = this._gpuContext;
+
+    // Create staging buffer for readback
+    const stagingBuffer = device.createBuffer({
+      size,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+
+    // Copy from source to staging
+    const commandEncoder = device.createCommandEncoder();
+    commandEncoder.copyBufferToBuffer(srcBuffer, 0, stagingBuffer, 0, size);
+    device.queue.submit([commandEncoder.finish()]);
+
+    // Map and read
+    await stagingBuffer.mapAsync(GPUMapMode.READ);
+    const data = stagingBuffer.getMappedRange().slice(0);
+    stagingBuffer.unmap();
+    stagingBuffer.destroy();
+
+    return data;
   }
 
   // Get example compute shaders
@@ -583,12 +862,30 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   // Cleanup
   dispose(): void {
+    // Destroy GPU buffers
+    this._gpuBuffers.forEach((buffer) => buffer.destroy());
+    this._gpuBuffers.clear();
+
+    // Destroy GPU textures
+    this._gpuTextures.forEach((texture) => texture.destroy());
+    this._gpuTextures.clear();
+
+    // Clear pipelines (they don't need explicit destruction)
+    this._gpuPipelines.clear();
+    this._gpuComputePipelines.clear();
+
+    // Clear metadata
     this.shaders.clear();
     this.pipelines.clear();
     this.buffers.clear();
     this.textures.clear();
     this.computeShaders.clear();
+
+    // Reset context
+    this._gpuContext = null;
+    this._canvas = null;
     this._initialized = false;
+
     this.stats = {
       fps: 0,
       frameTime: 0,

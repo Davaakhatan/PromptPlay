@@ -561,7 +561,7 @@ function handleAddComponent(gameSpec: GameSpec, componentType: string, entityNam
     health: { current: 100, max: 100 },
     velocity: { vx: 0, vy: 0 },
     collider: { type: 'box', width: 32, height: 32 },
-    input: { moveSpeed: 200, jumpForce: -400 },
+    input: { moveSpeed: 150, jumpForce: 280 },
     aibehavior: { type: 'patrol', speed: 50, detectionRadius: 100 },
     physics: { mass: 1, friction: 0.1, restitution: 0.2 },
   };
@@ -650,7 +650,7 @@ function handleFixPlayer(gameSpec: GameSpec): AISimulatorResponse {
             sprite: { texture: 'player', width: 32, height: 48, tint: 0x4488ff },
             velocity: { vx: 0, vy: 0 },
             collider: { type: 'box' as const, width: 32, height: 48 },
-            input: { moveSpeed: 200, jumpForce: -400 },
+            input: { moveSpeed: 150, jumpForce: 280 },
           },
           tags: ['player'],
         }],

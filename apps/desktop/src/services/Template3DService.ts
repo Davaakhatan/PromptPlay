@@ -152,7 +152,7 @@ export const PREFABS_3D: Prefab3D[] = [
     name: 'Directional Light',
     description: 'Sun-like directional light with shadows',
     category: 'light',
-    icon: '☀️',
+    icon: '◐',
     components: {
       transform3d: { x: 5, y: 10, z: 5 },
       light: {
@@ -212,7 +212,7 @@ export const PREFABS_3D: Prefab3D[] = [
     name: 'Ambient Light',
     description: 'Global ambient illumination',
     category: 'light',
-    icon: '🌤️',
+    icon: '◑',
     components: {
       transform3d: { x: 0, y: 0, z: 0 },
       light: {
@@ -288,7 +288,7 @@ export const PREFABS_3D: Prefab3D[] = [
     name: 'Physics Box',
     description: 'Box with physics collision',
     category: 'environment',
-    icon: '📦',
+    icon: '▣',
     components: {
       transform3d: { x: 0, y: 2, z: 0 },
       mesh: { geometry: 'box', width: 1, height: 1, depth: 1 },

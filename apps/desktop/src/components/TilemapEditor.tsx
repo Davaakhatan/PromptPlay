@@ -7,6 +7,9 @@ export interface TileDefinition {
   color: string;
   collision: boolean;
   properties?: Record<string, unknown>;
+  // Image-based tile support
+  imageData?: string; // Base64 encoded image or data URL
+  imageRect?: { x: number; y: number; width: number; height: number }; // For sprite sheets
 }
 
 export interface Tilemap {
@@ -17,6 +20,9 @@ export interface Tilemap {
   tileSize: number;
   layers: TilemapLayer[];
   tileset: TileDefinition[];
+  // Tileset image for sprite sheet support
+  tilesetImage?: string; // Base64 or data URL of the tileset sprite sheet
+  tilesetColumns?: number; // Number of columns in the sprite sheet
 }
 
 export interface TilemapLayer {
@@ -32,6 +38,13 @@ interface TilemapEditorProps {
   tilemap: Tilemap | null;
   onTilemapChange: (tilemap: Tilemap) => void;
   onCreateTilemap?: () => void;
+  // External state control (for GameCanvas integration)
+  selectedTileId?: number;
+  onSelectedTileChange?: (tileId: number) => void;
+  selectedLayerId?: string;
+  onSelectedLayerChange?: (layerId: string) => void;
+  tool?: Tool;
+  onToolChange?: (tool: Tool) => void;
 }
 
 // Default color palette for tiles
@@ -42,7 +55,8 @@ const DEFAULT_COLORS = [
 ];
 
 // Tool types
-type Tool = 'brush' | 'eraser' | 'fill' | 'picker' | 'select';
+export type TilemapTool = 'brush' | 'eraser' | 'fill' | 'picker' | 'select';
+type Tool = TilemapTool;
 
 // Max history entries
 const MAX_HISTORY = 50;
@@ -51,15 +65,45 @@ export function TilemapEditor({
   tilemap,
   onTilemapChange,
   onCreateTilemap,
+  selectedTileId,
+  onSelectedTileChange,
+  selectedLayerId,
+  onSelectedLayerChange,
+  tool: externalTool,
+  onToolChange,
 }: TilemapEditorProps) {
-  const [selectedTile, setSelectedTile] = useState<number>(1);
-  const [selectedLayer, setSelectedLayer] = useState<string>('');
-  const [tool, setTool] = useState<Tool>('brush');
+  // Use controlled or uncontrolled state
+  const [internalSelectedTile, setInternalSelectedTile] = useState<number>(1);
+  const [internalSelectedLayer, setInternalSelectedLayer] = useState<string>('');
+  const [internalTool, setInternalTool] = useState<Tool>('brush');
+
+  // Prefer external state if provided
+  const selectedTile = selectedTileId ?? internalSelectedTile;
+  const setSelectedTile = onSelectedTileChange ?? setInternalSelectedTile;
+  const selectedLayer = selectedLayerId ?? internalSelectedLayer;
+  const setSelectedLayer = onSelectedLayerChange ?? setInternalSelectedLayer;
+  const tool = externalTool ?? internalTool;
+  const setTool = onToolChange ?? setInternalTool;
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [isDrawing, setIsDrawing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Loaded tileset image element for rendering
+  const [tilesetImageEl, setTilesetImageEl] = useState<HTMLImageElement | null>(null);
+
+  // Load tileset image when tilemap changes
+  useEffect(() => {
+    if (tilemap?.tilesetImage) {
+      const img = new Image();
+      img.onload = () => setTilesetImageEl(img);
+      img.src = tilemap.tilesetImage;
+    } else {
+      setTilesetImageEl(null);
+    }
+  }, [tilemap?.tilesetImage]);
 
   // History for undo/redo
   const historyRef = useRef<Tilemap[]>([]);
@@ -130,10 +174,15 @@ export function TilemapEditor({
     }
   }, [tilemap]);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo and tools
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!tilemap) return;
+
+      // Don't trigger shortcuts when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
 
       // Undo: Cmd/Ctrl + Z
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
@@ -147,6 +196,28 @@ export function TilemapEditor({
         e.preventDefault();
         handleRedo();
         return;
+      }
+
+      // Tool shortcuts (only when no modifier keys pressed)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        switch (e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            setTool('brush');
+            break;
+          case 'e':
+            e.preventDefault();
+            setTool('eraser');
+            break;
+          case 'g':
+            e.preventDefault();
+            setTool('fill');
+            break;
+          case 'i':
+            e.preventDefault();
+            setTool('picker');
+            break;
+        }
       }
     };
 
@@ -205,13 +276,28 @@ export function TilemapEditor({
           const tile = tilemap.tileset.find(t => t.id === tileId);
           if (!tile) continue;
 
-          ctx.fillStyle = tile.color;
-          ctx.fillRect(
-            x * tilemap.tileSize * zoom,
-            y * tilemap.tileSize * zoom,
-            tilemap.tileSize * zoom,
-            tilemap.tileSize * zoom
-          );
+          const destX = x * tilemap.tileSize * zoom;
+          const destY = y * tilemap.tileSize * zoom;
+          const destSize = tilemap.tileSize * zoom;
+
+          // Draw image tile if available
+          if (tilesetImageEl && tile.imageRect) {
+            ctx.drawImage(
+              tilesetImageEl,
+              tile.imageRect.x,
+              tile.imageRect.y,
+              tile.imageRect.width,
+              tile.imageRect.height,
+              destX,
+              destY,
+              destSize,
+              destSize
+            );
+          } else {
+            // Fallback to color
+            ctx.fillStyle = tile.color;
+            ctx.fillRect(destX, destY, destSize, destSize);
+          }
         }
       }
 
@@ -237,7 +323,7 @@ export function TilemapEditor({
         ctx.stroke();
       }
     }
-  }, [tilemap, zoom, showGrid]);
+  }, [tilemap, zoom, showGrid, tilesetImageEl]);
 
   // Get tile position from mouse event
   const getTilePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -438,13 +524,67 @@ export function TilemapEditor({
     }
   }, [tilemap, selectedLayer, updateTilemap]);
 
+  // Import tileset image
+  const handleImportTileset = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!tilemap) return;
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+
+      // Create image to get dimensions
+      const img = new Image();
+      img.onload = () => {
+        const cols = Math.floor(img.width / tilemap.tileSize);
+        const rows = Math.floor(img.height / tilemap.tileSize);
+        const totalTiles = cols * rows;
+
+        // Generate tiles from sprite sheet
+        const newTileset: TileDefinition[] = [];
+        for (let i = 0; i < totalTiles; i++) {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          newTileset.push({
+            id: i + 1,
+            name: `Tile ${i + 1}`,
+            color: DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+            collision: false,
+            imageRect: {
+              x: col * tilemap.tileSize,
+              y: row * tilemap.tileSize,
+              width: tilemap.tileSize,
+              height: tilemap.tileSize,
+            },
+          });
+        }
+
+        updateTilemap({
+          ...tilemap,
+          tilesetImage: dataUrl,
+          tilesetColumns: cols,
+          tileset: newTileset,
+        });
+
+        setSelectedTile(1);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  }, [tilemap, updateTilemap]);
+
   // Create new tilemap
   const handleCreateTilemap = useCallback(() => {
     const newTilemap: Tilemap = {
       id: `tilemap_${Date.now()}`,
       name: 'New Tilemap',
-      width: 20,
-      height: 15,
+      width: 40,  // 40 * 32 = 1280px (covers responsive canvas)
+      height: 26, // 26 * 32 = 832px (covers responsive canvas)
       tileSize: 32,
       layers: [
         {
@@ -548,6 +688,50 @@ export function TilemapEditor({
 
         <div className="w-px h-5 bg-subtle" />
 
+        {/* Selected Tile Preview */}
+        {(() => {
+          const tile = tilemap.tileset.find(t => t.id === selectedTile);
+          if (!tile) return null;
+          return (
+            <div className="flex items-center gap-1.5" title={`Selected: ${tile.name}`}>
+              <div
+                className="w-6 h-6 rounded border border-white/30 overflow-hidden"
+                style={{ backgroundColor: tile.imageRect ? undefined : tile.color }}
+              >
+                {tilesetImageEl && tile.imageRect && (
+                  <canvas
+                    ref={(canvas) => {
+                      if (canvas && tilesetImageEl && tile.imageRect) {
+                        canvas.width = 24;
+                        canvas.height = 24;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                          ctx.imageSmoothingEnabled = false;
+                          ctx.drawImage(
+                            tilesetImageEl,
+                            tile.imageRect.x,
+                            tile.imageRect.y,
+                            tile.imageRect.width,
+                            tile.imageRect.height,
+                            0,
+                            0,
+                            24,
+                            24
+                          );
+                        }
+                      }
+                    }}
+                    className="w-full h-full"
+                  />
+                )}
+              </div>
+              <span className="text-xs text-text-secondary truncate max-w-20">{tile.name}</span>
+            </div>
+          );
+        })()}
+
+        <div className="w-px h-5 bg-subtle" />
+
         {/* Grid toggle */}
         <button
           onClick={() => setShowGrid(!showGrid)}
@@ -621,7 +805,7 @@ export function TilemapEditor({
               {[...tilemap.layers].reverse().map(layer => (
                 <div
                   key={layer.id}
-                  className={`flex items-center gap-2 px-2 py-1 cursor-pointer ${
+                  className={`group flex items-center gap-2 px-2 py-1 cursor-pointer ${
                     selectedLayer === layer.id ? 'bg-white/10' : 'hover:bg-white/5'
                   }`}
                   onClick={() => setSelectedLayer(layer.id)}
@@ -665,14 +849,33 @@ export function TilemapEditor({
           <div className="flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-2 border-b border-subtle">
               <span className="text-xs font-medium text-text-secondary">Tiles</span>
-              <button
-                onClick={handleAddTile}
-                className="p-1 text-text-tertiary hover:text-text-primary"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-1 text-text-tertiary hover:text-text-primary"
+                  title="Import Tileset Image"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImportTileset}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleAddTile}
+                  className="p-1 text-text-tertiary hover:text-text-primary"
+                  title="Add Color Tile"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
               <div className="grid grid-cols-4 gap-1">
@@ -680,14 +883,40 @@ export function TilemapEditor({
                   <button
                     key={tile.id}
                     onClick={() => setSelectedTile(tile.id)}
-                    className={`aspect-square rounded border-2 transition-all ${
+                    className={`aspect-square rounded border-2 transition-all overflow-hidden ${
                       selectedTile === tile.id
                         ? 'border-white scale-110'
                         : 'border-transparent hover:border-white/30'
                     }`}
-                    style={{ backgroundColor: tile.color }}
+                    style={{ backgroundColor: tile.imageRect ? undefined : tile.color }}
                     title={`${tile.name}${tile.collision ? ' (collision)' : ''}`}
-                  />
+                  >
+                    {tilesetImageEl && tile.imageRect && (
+                      <canvas
+                        ref={(canvas) => {
+                          if (canvas && tilesetImageEl) {
+                            canvas.width = tile.imageRect!.width;
+                            canvas.height = tile.imageRect!.height;
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) {
+                              ctx.drawImage(
+                                tilesetImageEl,
+                                tile.imageRect!.x,
+                                tile.imageRect!.y,
+                                tile.imageRect!.width,
+                                tile.imageRect!.height,
+                                0,
+                                0,
+                                tile.imageRect!.width,
+                                tile.imageRect!.height
+                              );
+                            }
+                          }
+                        }}
+                        className="w-full h-full"
+                      />
+                    )}
+                  </button>
                 ))}
               </div>
             </div>

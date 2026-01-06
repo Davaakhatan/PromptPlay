@@ -8,21 +8,29 @@ export interface ExecutionState {
   variables: Map<string, unknown>;
 }
 
+export type ExecutionLogCallback = (type: 'node' | 'flow' | 'value', message: string, nodeId?: string, nodeType?: string) => void;
+
 export class NodeExecutor {
   private graph: NodeGraph;
   private context: NodeContext;
   private state: ExecutionState;
   private eventListeners: Map<string, Set<string>> = new Map();
+  private logCallback?: ExecutionLogCallback;
 
-  constructor(graph: NodeGraph, context: NodeContext) {
+  constructor(graph: NodeGraph, context: NodeContext, logCallback?: ExecutionLogCallback) {
     this.graph = graph;
     this.context = context;
+    this.logCallback = logCallback;
     this.state = {
       nodeOutputs: new Map(),
       activeFlows: new Set(),
       variables: new Map(),
     };
     this.registerEventNodes();
+  }
+
+  private log(type: 'node' | 'flow' | 'value', message: string, nodeId?: string, nodeType?: string): void {
+    this.logCallback?.(type, message, nodeId, nodeType);
   }
 
   // Find all event nodes and register them
@@ -43,12 +51,12 @@ export class NodeExecutor {
 
   private getEventType(node: NodeInstance): string | null {
     switch (node.type) {
-      case 'event_start': return 'start';
-      case 'event_update': return 'update';
-      case 'event_collision': return 'collision';
-      case 'event_key_press': return `key_${node.data.key || 'Space'}`;
-      case 'event_mouse_click': return 'mouse_click';
-      case 'event_custom': return `custom_${node.data.eventName || 'event'}`;
+      case 'on_start': return 'start';
+      case 'on_update': return 'update';
+      case 'on_collision': return 'collision';
+      case 'on_key_press': return `key_${node.data.key || 'Space'}`;
+      case 'on_mouse_click': return 'mouse_click';
+      case 'on_custom_event': return `custom_${node.data.eventName || 'event'}`;
       default: return null;
     }
   }
@@ -71,6 +79,9 @@ export class NodeExecutor {
     const definition = NODE_LIBRARY[node.type];
     if (!definition) return;
 
+    // Log node execution start
+    this.log('node', `Executing: ${definition.title}`, node.id, node.type);
+
     // Gather inputs from connected nodes and defaults
     const inputs = this.gatherInputs(node, definition, additionalInputs);
 
@@ -79,6 +90,18 @@ export class NodeExecutor {
     if (definition.execute) {
       try {
         outputs = definition.execute(inputs, this.context);
+
+        // Log outputs for non-flow values
+        const valueOutputs = Object.entries(outputs).filter(([key]) => key !== 'condition');
+        if (valueOutputs.length > 0) {
+          const outputStr = valueOutputs.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ');
+          this.log('value', `  Output: ${outputStr}`, node.id, node.type);
+        }
+
+        // Log branch decision
+        if ('condition' in outputs) {
+          this.log('flow', `  Branch: ${outputs.condition ? 'TRUE' : 'FALSE'}`, node.id, node.type);
+        }
       } catch (error) {
         console.error(`Error executing node ${node.id} (${node.type}):`, error);
         return;
@@ -97,6 +120,11 @@ export class NodeExecutor {
 
       const connections = this.findConnectionsFrom(node.id, flowOutput.id);
       for (const connection of connections) {
+        const targetNode = this.graph.nodes.find(n => n.id === connection.toNodeId);
+        const targetDef = targetNode ? NODE_LIBRARY[targetNode.type] : null;
+        if (targetDef) {
+          this.log('flow', `  -> ${targetDef.title}`, connection.toNodeId, targetNode?.type);
+        }
         this.executeFromNode(connection.toNodeId);
       }
     }

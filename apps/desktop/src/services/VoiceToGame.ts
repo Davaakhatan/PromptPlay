@@ -550,7 +550,7 @@ class VoiceToGameService {
           sprite: { width: 32, height: 48, texture: 'player' },
           collider: { type: 'box', width: 32, height: 48 },
           velocity: { vx: 0, vy: 0 },
-          input: { moveSpeed: 200, jumpForce: 400 },
+          input: { moveSpeed: 150, jumpForce: 280 },
         },
         tags: ['player'],
       },

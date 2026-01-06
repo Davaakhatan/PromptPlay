@@ -16,7 +16,7 @@ const builtInPrefabs: Prefab[] = [
         sprite: { texture: 'default', width: 32, height: 48, tint: 0x4488ff },
         velocity: { vx: 0, vy: 0 },
         collider: { type: 'box', width: 32, height: 48 },
-        input: { moveSpeed: 200, jumpForce: -400 },
+        input: { moveSpeed: 150, jumpForce: 280 },
       },
       tags: ['player'],
     },

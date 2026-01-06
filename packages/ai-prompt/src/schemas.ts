@@ -18,7 +18,7 @@ export const ENTITY_PATTERNS = {
         transform: { x: 100, y: 400 },
         sprite: { texture: 'player', width: 32, height: 48, tint: '#3498dbff' },
         collider: { type: 'box', width: 32, height: 48 },
-        input: { moveSpeed: 200, jumpForce: 400, canJump: true },
+        input: { moveSpeed: 150, jumpForce: 280, canJump: true },
         health: { current: 100, max: 100 },
       },
       tags: ['player'],
@@ -153,7 +153,7 @@ export const GENRE_DEFAULTS = {
   platformer: {
     description: 'Side-scrolling game with gravity and jumping',
     gravity: { x: 0, y: 1 },
-    playerInput: { moveSpeed: 200, jumpForce: 400, canJump: true },
+    playerInput: { moveSpeed: 150, jumpForce: 280, canJump: true },
     enemyAI: { type: 'patrol', speed: 100, patrolRange: 100 },
     typicalEntities: ['player', 'platforms', 'enemies', 'collectibles'],
     tips: [
@@ -167,7 +167,7 @@ export const GENRE_DEFAULTS = {
   shooter: {
     description: 'Top-down or side-scrolling shooting game',
     gravity: { x: 0, y: 0 },
-    playerInput: { moveSpeed: 250, jumpForce: 0, canJump: false },
+    playerInput: { moveSpeed: 200, jumpForce: 0, canJump: false },
     enemyAI: { type: 'chase', speed: 150, detectionRadius: 300 },
     typicalEntities: ['player', 'enemies', 'projectiles', 'powerups'],
     tips: [
@@ -181,7 +181,7 @@ export const GENRE_DEFAULTS = {
   puzzle: {
     description: 'Logic or physics puzzle game',
     gravity: { x: 0, y: 1 },
-    playerInput: { moveSpeed: 150, jumpForce: 300, canJump: true },
+    playerInput: { moveSpeed: 120, jumpForce: 250, canJump: true },
     enemyAI: null,
     typicalEntities: ['player', 'blocks', 'switches', 'doors', 'collectibles'],
     tips: [
@@ -294,7 +294,7 @@ export function getSchemaContext(): string {
 - "trigger" - Event trigger zone
 
 ### Genre Settings
-- Platformer: gravity {x:0, y:1}, jumpForce: 300-500
+- Platformer: gravity {x:0, y:1}, jumpForce: 250-320
 - Shooter: gravity {x:0, y:0}, no jump needed
 - Puzzle: varies by design
 
@@ -368,7 +368,7 @@ export function getGenreExample(genre: 'platformer' | 'shooter' | 'puzzle'): str
             transform: { x: 400, y: 500 },
             sprite: { texture: 'ship', width: 48, height: 48, tint: '#3498dbff' },
             collider: { type: 'circle', radius: 20 },
-            input: { moveSpeed: 300, jumpForce: 0 },
+            input: { moveSpeed: 200, jumpForce: 0 },
             health: { current: 3, max: 3 },
           },
           tags: ['player'],
@@ -405,7 +405,7 @@ export function getGenreExample(genre: 'platformer' | 'shooter' | 'puzzle'): str
             transform: { x: 100, y: 400 },
             sprite: { texture: 'player', width: 32, height: 32, tint: '#3498dbff' },
             collider: { type: 'box', width: 32, height: 32 },
-            input: { moveSpeed: 150, jumpForce: 300, canJump: true },
+            input: { moveSpeed: 120, jumpForce: 250, canJump: true },
           },
           tags: ['player'],
         },

@@ -24,6 +24,8 @@ export interface GameSpec {
   activeScene?: string; // Scene ID
   systems: string[];
   settings?: GameSettings;
+  // Tilemap support
+  tilemap?: TilemapSpec;
 }
 
 export interface GameMetadata {
@@ -281,4 +283,67 @@ export interface ChatMessage {
   content: string;
   /** Timestamp */
   timestamp: string;
+}
+
+// ============================================
+// Tilemap Types
+// ============================================
+
+/** Definition of a single tile in the tileset */
+export interface TileDefinition {
+  /** Unique tile ID (1-based, 0 = empty) */
+  id: number;
+  /** Display name */
+  name: string;
+  /** Fallback color (hex string) */
+  color: string;
+  /** Whether this tile has collision */
+  collision: boolean;
+  /** Custom properties for game logic */
+  properties?: Record<string, unknown>;
+  /** Image rectangle for sprite sheet tiles */
+  imageRect?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+/** A single layer in the tilemap */
+export interface TilemapLayer {
+  /** Unique layer ID */
+  id: string;
+  /** Layer name */
+  name: string;
+  /** Whether layer is visible */
+  visible: boolean;
+  /** Whether layer is locked for editing */
+  locked: boolean;
+  /** Layer opacity (0-1) */
+  opacity: number;
+  /** 2D array of tile IDs [y][x], 0 = empty */
+  data: number[][];
+}
+
+/** Complete tilemap specification */
+export interface TilemapSpec {
+  /** Unique tilemap ID */
+  id: string;
+  /** Tilemap name */
+  name: string;
+  /** Width in tiles */
+  width: number;
+  /** Height in tiles */
+  height: number;
+  /** Size of each tile in pixels */
+  tileSize: number;
+  /** Layers (rendered bottom to top) */
+  layers: TilemapLayer[];
+  /** Tile definitions */
+  tileset: TileDefinition[];
+  /** Tileset sprite sheet image (base64 data URL) */
+  tilesetImage?: string;
+  /** Number of columns in sprite sheet */
+  tilesetColumns?: number;
 }

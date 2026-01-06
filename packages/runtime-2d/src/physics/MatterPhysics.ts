@@ -128,9 +128,10 @@ export class MatterPhysics {
       body = Bodies.circle(x, y, radius);
     }
 
-    // Check if entity should be static
-    const isStatic = this.world.hasTag(eid, 'static');
-    Body.setStatic(body, isStatic);
+    // Check if entity should be static (via tag OR Collider.isStatic component field)
+    const hasStaticTag = this.world.hasTag(eid, 'static');
+    const hasStaticCollider = Collider.isStatic[eid] === 1;
+    Body.setStatic(body, hasStaticTag || hasStaticCollider);
 
     // Set as sensor if needed
     const isSensor = Collider.isSensor[eid] === 1;
@@ -209,11 +210,50 @@ export class MatterPhysics {
     this.engine.gravity.y = y;
   }
 
+  // Track static bodies by ID (for tilemaps)
+  private staticBodies: Map<string, Body> = new Map();
+
+  // Add a static body (for tilemap collision tiles)
+  addStaticBody(id: string, x: number, y: number, width: number, height: number): void {
+    // Remove existing body with same ID
+    if (this.staticBodies.has(id)) {
+      const existing = this.staticBodies.get(id)!;
+      World.remove(this.engine.world, existing);
+    }
+
+    const body = Bodies.rectangle(x, y, width, height, {
+      isStatic: true,
+      label: id,
+    });
+
+    this.staticBodies.set(id, body);
+    World.add(this.engine.world, body);
+  }
+
+  // Remove a static body by ID
+  removeStaticBody(id: string): void {
+    const body = this.staticBodies.get(id);
+    if (body) {
+      World.remove(this.engine.world, body);
+      this.staticBodies.delete(id);
+    }
+  }
+
+  // Clear all static bodies (for tilemap reload)
+  clearStaticBodies(): void {
+    for (const body of this.staticBodies.values()) {
+      World.remove(this.engine.world, body);
+    }
+    this.staticBodies.clear();
+  }
+
   cleanup(): void {
-    for (const [eid, body] of this.bodyMap) {
+    for (const body of this.bodyMap.values()) {
       World.remove(this.engine.world, body);
     }
     this.bodyMap.clear();
+    this.clearStaticBodies();
     this.collisionCallbacks = [];
+    this.groundContacts.clear();
   }
 }

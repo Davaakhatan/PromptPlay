@@ -98,14 +98,17 @@ export class Deserializer {
       Collider.height[eid] = components.collider.height ?? 0;
       Collider.radius[eid] = components.collider.radius ?? 0;
       Collider.isSensor[eid] = components.collider.isSensor ? 1 : 0;
+      Collider.isStatic[eid] = components.collider.isStatic ? 1 : 0;
       Collider.layer[eid] = components.collider.layer ?? 0;
     }
 
     // Deserialize Input
     if (components.input) {
       addComponent(w, Input, eid);
-      Input.moveSpeed[eid] = components.input.moveSpeed ?? 200;
-      Input.jumpForce[eid] = components.input.jumpForce ?? -400;
+      // Matter.js uses very small velocity values!
+      // Default gravity is 1, so velocities should be proportionally small
+      Input.moveSpeed[eid] = 5;   // Small value for smooth movement
+      Input.jumpForce[eid] = 8;   // Small jump (will be negated to -8 in InputSystem)
       Input.canJump[eid] = (components.input.canJump ?? true) ? 1 : 0;
     }
 

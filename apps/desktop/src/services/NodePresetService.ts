@@ -105,7 +105,7 @@ class NodePresetServiceClass {
       name,
       description: options?.description,
       category: options?.category || 'Custom',
-      icon: options?.icon || '📦',
+      icon: options?.icon || 'package',
       createdAt: now,
       updatedAt: now,
       nodes: relativeNodes,
@@ -357,7 +357,7 @@ export const BUILT_IN_PRESETS: NodePreset[] = [
     name: 'Player Controller',
     description: 'Basic WASD movement with keyboard input',
     category: 'Templates',
-    icon: '🎮',
+    icon: 'gamepad',
     createdAt: 0,
     updatedAt: 0,
     nodes: [
@@ -402,7 +402,7 @@ export const BUILT_IN_PRESETS: NodePreset[] = [
     name: 'Health & Damage',
     description: 'Check health and trigger events when low',
     category: 'Templates',
-    icon: '❤️',
+    icon: 'heart',
     createdAt: 0,
     updatedAt: 0,
     nodes: [
@@ -453,7 +453,7 @@ export const BUILT_IN_PRESETS: NodePreset[] = [
     name: 'Bounce Animation',
     description: 'Bouncy easing animation loop',
     category: 'Templates',
-    icon: '⚾',
+    icon: 'bounce',
     createdAt: 0,
     updatedAt: 0,
     nodes: [
@@ -498,7 +498,7 @@ export const BUILT_IN_PRESETS: NodePreset[] = [
     name: 'Follow Target',
     description: 'Smooth follow behavior with smooth damp',
     category: 'Templates',
-    icon: '🎯',
+    icon: 'target',
     createdAt: 0,
     updatedAt: 0,
     nodes: [
@@ -549,7 +549,7 @@ export const BUILT_IN_PRESETS: NodePreset[] = [
     name: 'Spring Motion',
     description: 'Physics-based spring animation',
     category: 'Templates',
-    icon: '🔄',
+    icon: 'spring',
     createdAt: 0,
     updatedAt: 0,
     nodes: [

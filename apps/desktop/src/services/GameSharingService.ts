@@ -312,7 +312,7 @@ export class GameSharingService {
     const demoComments: GameComment[] = [
       {
         id: 'comment-1',
-        author: { id: 'user1', name: 'GamerPro', avatar: '🎮' },
+        author: { id: 'user1', name: 'GamerPro', avatar: 'GP' },
         content: 'Great game! Love the mechanics.',
         createdAt: new Date(Date.now() - 3600000),
         likes: 5,
@@ -434,7 +434,7 @@ export class GameSharingService {
         slug: 'space-blaster',
         title: 'Space Blaster',
         description: 'Defend Earth from alien invaders in this retro-style space shooter!',
-        author: { id: 'user2', name: 'SpaceGamer', avatar: '🚀' },
+        author: { id: 'user2', name: 'SpaceGamer', avatar: 'SG' },
         screenshots: [],
         genre: 'shooter',
         tags: ['shooter', 'space', 'retro', 'action'],
@@ -474,7 +474,7 @@ export class GameSharingService {
         slug: 'coin-collector',
         title: 'Coin Collector',
         description: 'Race against time to collect all the coins before they disappear!',
-        author: { id: 'user4', name: 'CoinHunter', avatar: '💰' },
+        author: { id: 'user4', name: 'CoinHunter', avatar: 'CH' },
         screenshots: [],
         genre: 'platformer',
         tags: ['platformer', 'coins', 'fast-paced'],

@@ -6,5 +6,6 @@ export const Collider = defineComponent({
   height: Types.f32,
   radius: Types.f32,
   isSensor: Types.ui8,
+  isStatic: Types.ui8, // 1 = static body (doesn't move, for platforms/ground)
   layer: Types.ui8, // Collision layer mask
 });

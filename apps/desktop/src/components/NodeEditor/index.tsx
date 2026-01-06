@@ -1,12 +1,66 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { NodeGraph, NodeInstance, Connection } from '../../types/NodeEditor';
+import type { NodeGraph, NodeInstance, Connection, NodeContext } from '../../types/NodeEditor';
 import { NODE_LIBRARY } from '../../services/NodeLibrary';
 import { useNodeGraphHistory } from '../../hooks/useNodeGraphHistory';
 import { NodePresetService, BUILT_IN_PRESETS, type NodePreset } from '../../services/NodePresetService';
+import { NodeExecutor } from '../../services/NodeExecutor';
 import NodeCanvas from './NodeCanvas';
+
+// Helper function to render preset icon as SVG
+function PresetIcon({ icon, className = "w-5 h-5" }: { icon?: string; className?: string }) {
+  const iconMap: Record<string, JSX.Element> = {
+    gamepad: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 00.659-.663 47.703 47.703 0 00-.31-4.82 47.677 47.677 0 00-4.095.302.64.64 0 01-.657-.643v0z" />
+      </svg>
+    ),
+    heart: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+      </svg>
+    ),
+    bounce: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75" />
+        <circle cx="12" cy="19.5" r="2" strokeWidth={1.5} />
+      </svg>
+    ),
+    target: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+        <circle cx="12" cy="12" r="5" strokeWidth={1.5} />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
+      </svg>
+    ),
+    spring: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+      </svg>
+    ),
+    package: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  };
+
+  return iconMap[icon || 'package'] || iconMap['package'];
+}
+
+// Execution log entry
+interface ExecutionLog {
+  id: string;
+  timestamp: number;
+  type: 'info' | 'success' | 'warning' | 'error' | 'event';
+  message: string;
+  nodeId?: string;
+  nodeType?: string;
+}
 
 interface NodeEditorProps {
   graph?: NodeGraph | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gameSpec?: any;
   onGraphChange?: (graph: NodeGraph) => void;
   onClose?: () => void;
   onSave?: () => void;
@@ -23,7 +77,7 @@ function createDefaultGraph(): NodeGraph {
   };
 }
 
-export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose, onSave }: NodeEditorProps) {
+export default function NodeEditor({ graph: initialGraph, gameSpec, onGraphChange, onClose, onSave }: NodeEditorProps) {
   const [graph, setGraph] = useState<NodeGraph>(initialGraph || createDefaultGraph());
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedNodeIds] = useState<Set<string>>(new Set());
@@ -33,8 +87,12 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
   const [presetName, setPresetName] = useState('');
   const [presetDescription, setPresetDescription] = useState('');
   const [userPresets, setUserPresets] = useState<NodePreset[]>([]);
+  const [showExecutionConsole, setShowExecutionConsole] = useState(false);
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
   const isInitialized = useRef(false);
   const presetMenuRef = useRef<HTMLDivElement>(null);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
 
   // Load user presets
   useEffect(() => {
@@ -83,6 +141,154 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
   const showNotification = useCallback((message: string) => {
     setNotification(message);
     setTimeout(() => setNotification(null), 2000);
+  }, []);
+
+  // Auto-scroll execution console
+  useEffect(() => {
+    if (consoleEndRef.current) {
+      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [executionLogs]);
+
+  // Add log entry
+  const addLog = useCallback((type: ExecutionLog['type'], message: string, nodeId?: string, nodeType?: string) => {
+    setExecutionLogs(prev => [...prev, {
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      type,
+      message,
+      nodeId,
+      nodeType,
+    }]);
+  }, []);
+
+  // Test execution handler
+  const handleTestExecution = useCallback((simulateKey?: string) => {
+    if (graph.nodes.length === 0) {
+      showNotification('Add some nodes first');
+      return;
+    }
+
+    // Check for event nodes
+    const eventNodes = graph.nodes.filter(n => {
+      const def = NODE_LIBRARY[n.type];
+      return def?.category === 'events';
+    });
+
+    if (eventNodes.length === 0) {
+      showNotification('Add an event node (On Start, On Update, etc.) to begin execution');
+      return;
+    }
+
+    setShowExecutionConsole(true);
+    if (!simulateKey) {
+      setExecutionLogs([]);
+    }
+    setIsExecuting(true);
+
+    if (!simulateKey) {
+      addLog('info', 'Starting test execution...');
+      addLog('info', `Graph: "${graph.name}" with ${graph.nodes.length} nodes`);
+    }
+
+    // Create entities from gameSpec or use defaults
+    const mockEntities = new Map<string, Record<string, unknown>>();
+
+    if (gameSpec?.entities && gameSpec.entities.length > 0) {
+      // Use actual entities from game spec
+      gameSpec.entities.forEach((entity: { name: string; x?: number; y?: number }) => {
+        mockEntities.set(entity.name, {
+          ...entity,
+          x: entity.x ?? 0,
+          y: entity.y ?? 0,
+          velocityX: 0,
+          velocityY: 0,
+        });
+      });
+      if (!simulateKey) {
+        addLog('info', `Loaded ${gameSpec.entities.length} entities from game spec`);
+      }
+    } else {
+      // Use default mock entities
+      mockEntities.set('Player', { name: 'Player', x: 100, y: 100, velocityX: 0, velocityY: 0 });
+      mockEntities.set('Enemy', { name: 'Enemy', x: 300, y: 200, velocityX: 0, velocityY: 0 });
+      if (!simulateKey) {
+        addLog('warning', 'No game spec - using default Player/Enemy entities');
+      }
+    }
+
+    // Create pressed keys set for input simulation
+    const pressedKeys = new Set<string>();
+    if (simulateKey) {
+      pressedKeys.add(simulateKey);
+    }
+
+    const context: NodeContext = {
+      deltaTime: 0.016,
+      gameSpec: gameSpec || { entities: Array.from(mockEntities.values()) },
+      entities: mockEntities,
+      pressedKeys,
+      getEntity: (name: string) => {
+        const entity = mockEntities.get(name);
+        if (entity) {
+          addLog('info', `[GET] Entity "${name}"`, undefined, 'get_entity');
+        } else {
+          addLog('warning', `[GET] Entity not found: "${name}"`, undefined, 'get_entity');
+        }
+        return entity || null;
+      },
+      updateEntity: (name: string, data: unknown) => {
+        mockEntities.set(name, data as Record<string, unknown>);
+        addLog('success', `[SET] Entity "${name}" updated`, undefined, 'update_entity');
+      },
+      emit: (event: string, data?: unknown) => {
+        addLog('event', `[EMIT] "${event}"${data ? `: ${JSON.stringify(data)}` : ''}`, undefined, 'emit');
+      },
+    };
+
+    try {
+      // Create executor with logging callback
+      const executor = new NodeExecutor(graph, context, (type, message, nodeId, nodeType) => {
+        const logType = type === 'node' ? 'info' : type === 'flow' ? 'event' : 'success';
+        addLog(logType, message, nodeId, nodeType);
+      });
+
+      if (simulateKey) {
+        // Simulate key press by running update with key in pressedKeys
+        addLog('event', `[KEY] Simulating key press: ${simulateKey}`);
+        addLog('info', '[UPDATE] Running 1 update frame with key pressed...');
+        executor.triggerEvent('update', { deltaTime: 0.016 });
+      } else {
+        // Normal execution
+        addLog('event', '[EVENT] Triggering "start"...');
+        executor.triggerEvent('start');
+
+        // Simulate a few update frames
+        addLog('info', '[UPDATE] Running 3 update frames...');
+        for (let i = 0; i < 3; i++) {
+          executor.triggerEvent('update', { deltaTime: 0.016 });
+        }
+
+        addLog('success', 'Execution completed!');
+
+        // Show final entity states
+        addLog('info', 'Final states:');
+        mockEntities.forEach((entity, name) => {
+          const { x, y, velocityX, velocityY } = entity as { x: number; y: number; velocityX: number; velocityY: number };
+          addLog('info', `  ${name}: pos(${x?.toFixed?.(1) ?? x}, ${y?.toFixed?.(1) ?? y}) vel(${velocityX?.toFixed?.(1) ?? velocityX}, ${velocityY?.toFixed?.(1) ?? velocityY})`);
+        });
+      }
+
+    } catch (error) {
+      addLog('error', `Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    setIsExecuting(false);
+  }, [graph, gameSpec, showNotification, addLog]);
+
+  // Clear execution logs
+  const handleClearLogs = useCallback(() => {
+    setExecutionLogs([]);
   }, []);
 
   const handleGraphChange = useCallback((newGraph: NodeGraph, actionDescription?: string) => {
@@ -279,11 +485,22 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
         e.preventDefault();
         handleSave();
       }
+      // Key simulation when console is open (W, A, S, D, Space)
+      else if (showExecutionConsole && !modKey && !e.shiftKey && !e.altKey) {
+        const key = e.key.toUpperCase();
+        if (['W', 'A', 'S', 'D'].includes(key)) {
+          e.preventDefault();
+          handleTestExecution(key);
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          handleTestExecution('Space');
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleSave]);
+  }, [handleUndo, handleRedo, handleSave, showExecutionConsole, handleTestExecution]);
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f1a]">
@@ -303,6 +520,40 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Test Execution Button */}
+          <button
+            onClick={() => handleTestExecution()}
+            disabled={isExecuting}
+            className={`px-3 py-1 text-sm rounded flex items-center gap-1.5 transition-all ${
+              isExecuting
+                ? 'bg-green-500/30 text-green-300 cursor-wait'
+                : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+            }`}
+            title="Test Execution (Run Script)"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            {isExecuting ? 'Running...' : 'Test'}
+          </button>
+
+          {/* Console Toggle Button */}
+          <button
+            onClick={() => setShowExecutionConsole(!showExecutionConsole)}
+            className={`px-2 py-1 text-sm rounded flex items-center gap-1 transition-all ${
+              showExecutionConsole
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'text-gray-400 hover:text-white hover:bg-white/10'
+            }`}
+            title="Toggle Console"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+
+          <div className="w-px h-5 bg-[#3f3f5a] mx-1" />
+
           {/* Save Button */}
           <button
             onClick={handleSave}
@@ -356,7 +607,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
                     onClick={() => handleInsertBuiltInPreset(preset)}
                     className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2"
                   >
-                    <span className="text-lg">{preset.icon}</span>
+                    <PresetIcon icon={preset.icon} className="w-5 h-5 text-gray-400" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{preset.name}</div>
                       <div className="text-xs text-gray-500 truncate">{preset.description}</div>
@@ -374,7 +625,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
                         onClick={() => handleInsertPreset(preset)}
                         className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 group"
                       >
-                        <span className="text-lg">{preset.icon || <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}</span>
+                        <PresetIcon icon={preset.icon} className="w-5 h-5 text-gray-400" />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{preset.name}</div>
                           {preset.description && (
@@ -421,7 +672,7 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden">
         <NodeCanvas
           graph={graph}
           onGraphChange={handleGraphChangeWithAction}
@@ -429,6 +680,82 @@ export default function NodeEditor({ graph: initialGraph, onGraphChange, onClose
           selectedNodeId={selectedNodeId}
         />
       </div>
+
+      {/* Execution Console Panel */}
+      {showExecutionConsole && (
+        <div className="h-[200px] flex-shrink-0 bg-[#0a0a12] border-t border-[#3f3f5a] flex flex-col">
+          {/* Console Header */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-[#1e1e2e] border-b border-[#3f3f5a]">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm font-medium text-white">Execution Console</span>
+              <span className="text-xs text-gray-500">({executionLogs.length} entries)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Input simulation buttons */}
+              <div className="flex items-center gap-0.5 mr-2 px-2 py-0.5 bg-[#2a2a3e] rounded">
+                <span className="text-[10px] text-gray-500 mr-1">Keys:</span>
+                {['W', 'A', 'S', 'D', 'Space'].map(key => (
+                  <button
+                    key={key}
+                    onClick={() => handleTestExecution(key)}
+                    className="px-1.5 py-0.5 text-[10px] text-gray-400 hover:text-white hover:bg-white/20 rounded font-mono"
+                    title={`Simulate ${key} key`}
+                  >
+                    {key === 'Space' ? 'SPC' : key}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleClearLogs}
+                className="px-2 py-0.5 text-xs text-gray-400 hover:text-white hover:bg-white/10 rounded"
+                title="Clear Console"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setShowExecutionConsole(false)}
+                className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded"
+                title="Close Console"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Console Content */}
+          <div className="flex-1 overflow-y-auto p-2 font-mono text-xs space-y-0.5">
+            {executionLogs.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">
+                Click "Test" to run your visual script
+              </div>
+            ) : (
+              executionLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`px-2 py-0.5 rounded ${
+                    log.type === 'error' ? 'bg-red-500/10 text-red-400' :
+                    log.type === 'warning' ? 'bg-amber-500/10 text-amber-400' :
+                    log.type === 'success' ? 'bg-green-500/10 text-green-400' :
+                    log.type === 'event' ? 'bg-purple-500/10 text-purple-400' :
+                    'text-gray-300'
+                  }`}
+                >
+                  <span className="text-gray-600 mr-2">
+                    {new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
+                  </span>
+                  {log.message}
+                </div>
+              ))
+            )}
+            <div ref={consoleEndRef} />
+          </div>
+        </div>
+      )}
 
       {/* Node inspector sidebar */}
       {selectedNodeId && (

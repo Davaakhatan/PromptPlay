@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "identifier": "com.promptplay.desktop",
   "build": {
-    "beforeDevCommand": "pnpm dev:frontend",
+    "beforeDevCommand": "npx vite",
     "devUrl": "http://localhost:5173",
     "beforeBuildCommand": "pnpm build:frontend",
     "frontendDist": "../dist"

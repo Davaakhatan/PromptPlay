@@ -131,10 +131,53 @@ export class Runtime2D {
     await this.renderer.initialize();
     this.physics.initialize();
 
+    // Load tilemap if present in spec
+    if (spec.tilemap) {
+      this.renderer.setTilemap(spec.tilemap);
+      // Add tilemap collision bodies
+      this.addTilemapCollision(spec.tilemap);
+    }
+
     // Do initial render so entities are visible at their gameSpec positions
     this.render();
 
     this.isInitialized = true;
+  }
+
+  // Add collision bodies for tilemap tiles marked as collision
+  private addTilemapCollision(tilemap: NonNullable<GameSpec['tilemap']>): void {
+    const { width, height, tileSize, layers, tileset } = tilemap;
+
+    // Create a map of collision tile IDs for fast lookup
+    const collisionTileIds = new Set(
+      tileset.filter(t => t.collision).map(t => t.id)
+    );
+
+    if (collisionTileIds.size === 0) return;
+
+    // Check all layers for collision tiles
+    for (const layer of layers) {
+      if (!layer.visible) continue;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const tileId = layer.data[y]?.[x] || 0;
+          if (tileId === 0 || !collisionTileIds.has(tileId)) continue;
+
+          // Create a static physics body for this tile
+          const tileX = x * tileSize + tileSize / 2;
+          const tileY = y * tileSize + tileSize / 2;
+
+          this.physics.addStaticBody(
+            `tile_${layer.id}_${x}_${y}`,
+            tileX,
+            tileY,
+            tileSize,
+            tileSize
+          );
+        }
+      }
+    }
   }
 
   start(): void {

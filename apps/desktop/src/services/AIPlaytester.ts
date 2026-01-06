@@ -585,7 +585,7 @@ export class AIPlaytesterService {
             transform: { x: 100, y: 400 },
             sprite: { texture: 'player', width: 32, height: 48, tint: '#3498dbff' },
             collider: { type: 'box', width: 32, height: 48 },
-            input: { moveSpeed: 200, jumpForce: 400, canJump: true },
+            input: { moveSpeed: 150, jumpForce: 280, canJump: true },
             health: { current: 100, max: 100 },
           },
           tags: ['player'],
