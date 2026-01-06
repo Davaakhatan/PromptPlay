@@ -1085,12 +1085,12 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 
 #### WP14.8: Terrain Editor Fix
 **File:** `apps/desktop/src/components/TerrainEditor.tsx`
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Implement heightmap generation
-- [ ] Add brush-based terrain sculpting
-- [ ] Implement texture painting
-- [ ] Add terrain LOD system
+- [x] Implement heightmap generation
+- [x] Add brush-based terrain sculpting
+- [x] Implement texture painting
+- [x] Add terrain LOD system
 
 ---
 
@@ -1150,7 +1150,7 @@ WP1 (Monorepo) → WP2 (ECS) → WP3 (Runtime) → WP5 (Editor)
 | WebGPU Integration | High | ✅ Complete |
 | Tilemap Editor | High | ✅ Complete |
 | Animation Timeline | Medium | ✅ Complete |
-| Terrain Editor | Medium | ⏳ Pending |
+| Terrain Editor | Medium | ✅ Complete |
 | Shader Editor | Medium | ⏳ Pending |
 | AI Chat Context | Low | ⏳ Pending |
 | Video Recording | Low | ⏳ Pending |

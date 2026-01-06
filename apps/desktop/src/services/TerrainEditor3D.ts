@@ -1154,6 +1154,302 @@ class TerrainEditor3DService {
 
     return h0 * (1 - fz) + h1 * fz + config.position[1];
   }
+
+  /**
+   * LOD (Level of Detail) System
+   */
+
+  /**
+   * Generate LOD heightmap at specified resolution divisor
+   * @param terrainId - Terrain ID
+   * @param lodLevel - Resolution divisor (1 = full, 2 = half, 4 = quarter, etc.)
+   */
+  generateLODHeightmap(terrainId: string, lodLevel: number): HeightmapData | null {
+    const terrain = this.terrains.get(terrainId);
+    if (!terrain) return null;
+
+    const { width, height, data, minHeight, maxHeight } = terrain.heightmap;
+    const lodWidth = Math.ceil(width / lodLevel);
+    const lodHeight = Math.ceil(height / lodLevel);
+
+    const lodData = new Float32Array(lodWidth * lodHeight);
+
+    for (let y = 0; y < lodHeight; y++) {
+      for (let x = 0; x < lodWidth; x++) {
+        // Sample from original heightmap with averaging
+        const srcX = x * lodLevel;
+        const srcY = y * lodLevel;
+
+        // Average surrounding samples for better quality
+        let sum = 0;
+        let count = 0;
+
+        for (let dy = 0; dy < lodLevel && srcY + dy < height; dy++) {
+          for (let dx = 0; dx < lodLevel && srcX + dx < width; dx++) {
+            sum += data[(srcY + dy) * width + (srcX + dx)];
+            count++;
+          }
+        }
+
+        lodData[y * lodWidth + x] = count > 0 ? sum / count : 0;
+      }
+    }
+
+    return {
+      width: lodWidth,
+      height: lodHeight,
+      data: lodData,
+      minHeight,
+      maxHeight,
+    };
+  }
+
+  /**
+   * Generate mesh geometry for terrain at specified LOD level
+   * Returns vertex positions, normals, UVs, and indices
+   */
+  generateTerrainMesh(
+    terrainId: string,
+    lodLevel: number = 1
+  ): {
+    positions: Float32Array;
+    normals: Float32Array;
+    uvs: Float32Array;
+    indices: Uint32Array;
+    vertexCount: number;
+    triangleCount: number;
+  } | null {
+    const terrain = this.terrains.get(terrainId);
+    if (!terrain) return null;
+
+    const lodHeightmap = lodLevel === 1 ? terrain.heightmap : this.generateLODHeightmap(terrainId, lodLevel);
+    if (!lodHeightmap) return null;
+
+    const { width, height, data } = lodHeightmap;
+    const { config } = terrain;
+
+    const vertexCount = width * height;
+    const positions = new Float32Array(vertexCount * 3);
+    const normals = new Float32Array(vertexCount * 3);
+    const uvs = new Float32Array(vertexCount * 2);
+
+    // Generate vertices
+    for (let z = 0; z < height; z++) {
+      for (let x = 0; x < width; x++) {
+        const idx = z * width + x;
+        const vIdx = idx * 3;
+        const uIdx = idx * 2;
+
+        // Position
+        const worldX = ((x / (width - 1)) - 0.5) * config.width + config.position[0];
+        const worldY = data[idx] + config.position[1];
+        const worldZ = ((z / (height - 1)) - 0.5) * config.depth + config.position[2];
+
+        positions[vIdx] = worldX;
+        positions[vIdx + 1] = worldY;
+        positions[vIdx + 2] = worldZ;
+
+        // UVs
+        uvs[uIdx] = x / (width - 1);
+        uvs[uIdx + 1] = z / (height - 1);
+      }
+    }
+
+    // Calculate normals
+    for (let z = 0; z < height; z++) {
+      for (let x = 0; x < width; x++) {
+        const idx = z * width + x;
+        const vIdx = idx * 3;
+
+        // Get heights of neighbors (with clamping)
+        const hL = data[z * width + Math.max(0, x - 1)];
+        const hR = data[z * width + Math.min(width - 1, x + 1)];
+        const hD = data[Math.max(0, z - 1) * width + x];
+        const hU = data[Math.min(height - 1, z + 1) * width + x];
+
+        // Calculate normal
+        const scale = config.width / (width - 1);
+        const nx = (hL - hR) / (2 * scale);
+        const nz = (hD - hU) / (2 * scale);
+        const ny = 1;
+
+        // Normalize
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        normals[vIdx] = nx / len;
+        normals[vIdx + 1] = ny / len;
+        normals[vIdx + 2] = nz / len;
+      }
+    }
+
+    // Generate indices for triangles
+    const triangleCount = (width - 1) * (height - 1) * 2;
+    const indices = new Uint32Array(triangleCount * 3);
+
+    let iIdx = 0;
+    for (let z = 0; z < height - 1; z++) {
+      for (let x = 0; x < width - 1; x++) {
+        const topLeft = z * width + x;
+        const topRight = topLeft + 1;
+        const bottomLeft = (z + 1) * width + x;
+        const bottomRight = bottomLeft + 1;
+
+        // First triangle
+        indices[iIdx++] = topLeft;
+        indices[iIdx++] = bottomLeft;
+        indices[iIdx++] = topRight;
+
+        // Second triangle
+        indices[iIdx++] = topRight;
+        indices[iIdx++] = bottomLeft;
+        indices[iIdx++] = bottomRight;
+      }
+    }
+
+    return {
+      positions,
+      normals,
+      uvs,
+      indices,
+      vertexCount,
+      triangleCount,
+    };
+  }
+
+  /**
+   * Calculate appropriate LOD level based on camera distance
+   */
+  calculateLODLevel(
+    distance: number,
+    lodDistances: number[] = [0, 100, 200, 400, 800]
+  ): number {
+    for (let i = lodDistances.length - 1; i >= 0; i--) {
+      if (distance >= lodDistances[i]) {
+        return Math.pow(2, i); // 1, 2, 4, 8, 16
+      }
+    }
+    return 1;
+  }
+
+  /**
+   * Generate all LOD levels for terrain
+   */
+  generateAllLODLevels(
+    terrainId: string,
+    levels: number[] = [1, 2, 4, 8, 16]
+  ): Map<number, ReturnType<typeof this.generateTerrainMesh>> {
+    const lodMeshes = new Map<number, ReturnType<typeof this.generateTerrainMesh>>();
+
+    for (const level of levels) {
+      const mesh = this.generateTerrainMesh(terrainId, level);
+      if (mesh) {
+        lodMeshes.set(level, mesh);
+      }
+    }
+
+    return lodMeshes;
+  }
+
+  /**
+   * Get terrain chunk for chunked LOD rendering
+   * Useful for very large terrains
+   */
+  getTerrainChunk(
+    terrainId: string,
+    chunkX: number,
+    chunkZ: number,
+    chunkSize: number,
+    lodLevel: number = 1
+  ): {
+    positions: Float32Array;
+    normals: Float32Array;
+    uvs: Float32Array;
+    indices: Uint32Array;
+  } | null {
+    const terrain = this.terrains.get(terrainId);
+    if (!terrain) return null;
+
+    const { width, height, data } = terrain.heightmap;
+    const { config } = terrain;
+
+    const startX = chunkX * chunkSize;
+    const startZ = chunkZ * chunkSize;
+    const endX = Math.min(startX + chunkSize + 1, width);
+    const endZ = Math.min(startZ + chunkSize + 1, height);
+
+    const chunkWidth = Math.ceil((endX - startX) / lodLevel);
+    const chunkHeight = Math.ceil((endZ - startZ) / lodLevel);
+
+    const vertexCount = chunkWidth * chunkHeight;
+    const positions = new Float32Array(vertexCount * 3);
+    const normals = new Float32Array(vertexCount * 3);
+    const uvs = new Float32Array(vertexCount * 2);
+
+    // Generate chunk vertices
+    for (let z = 0; z < chunkHeight; z++) {
+      for (let x = 0; x < chunkWidth; x++) {
+        const srcX = startX + x * lodLevel;
+        const srcZ = startZ + z * lodLevel;
+        const srcIdx = Math.min(srcZ, height - 1) * width + Math.min(srcX, width - 1);
+
+        const idx = z * chunkWidth + x;
+        const vIdx = idx * 3;
+        const uIdx = idx * 2;
+
+        // Position
+        const worldX = ((srcX / (width - 1)) - 0.5) * config.width + config.position[0];
+        const worldY = data[srcIdx] + config.position[1];
+        const worldZ = ((srcZ / (height - 1)) - 0.5) * config.depth + config.position[2];
+
+        positions[vIdx] = worldX;
+        positions[vIdx + 1] = worldY;
+        positions[vIdx + 2] = worldZ;
+
+        // UVs (relative to full terrain)
+        uvs[uIdx] = srcX / (width - 1);
+        uvs[uIdx + 1] = srcZ / (height - 1);
+
+        // Normal calculation (simplified)
+        const hL = data[srcIdx - Math.min(1, srcX)];
+        const hR = data[srcIdx + Math.min(1, width - 1 - srcX)];
+        const hD = data[srcIdx - Math.min(width, srcZ * width)];
+        const hU = data[srcIdx + Math.min(width, (height - 1 - srcZ) * width)];
+
+        const scale = config.width / (width - 1) * lodLevel;
+        const nx = (hL - hR) / (2 * scale);
+        const nz = (hD - hU) / (2 * scale);
+        const ny = 1;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+        normals[vIdx] = nx / len;
+        normals[vIdx + 1] = ny / len;
+        normals[vIdx + 2] = nz / len;
+      }
+    }
+
+    // Generate indices
+    const triangleCount = (chunkWidth - 1) * (chunkHeight - 1) * 2;
+    const indices = new Uint32Array(triangleCount * 3);
+
+    let iIdx = 0;
+    for (let z = 0; z < chunkHeight - 1; z++) {
+      for (let x = 0; x < chunkWidth - 1; x++) {
+        const topLeft = z * chunkWidth + x;
+        const topRight = topLeft + 1;
+        const bottomLeft = (z + 1) * chunkWidth + x;
+        const bottomRight = bottomLeft + 1;
+
+        indices[iIdx++] = topLeft;
+        indices[iIdx++] = bottomLeft;
+        indices[iIdx++] = topRight;
+
+        indices[iIdx++] = topRight;
+        indices[iIdx++] = bottomLeft;
+        indices[iIdx++] = bottomRight;
+      }
+    }
+
+    return { positions, normals, uvs, indices };
+  }
 }
 
 export const terrainEditor3D = new TerrainEditor3DService();
