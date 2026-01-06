@@ -496,11 +496,19 @@ function App() {
           title: 'Open Game Project',
         });
 
-        if (!dialogResult || typeof dialogResult !== 'string') {
+        // Handle null (cancelled) or array result
+        if (!dialogResult) {
           setLoading(false);
           return;
         }
-        selected = dialogResult;
+
+        // Ensure we have a string path
+        selected = Array.isArray(dialogResult) ? dialogResult[0] : dialogResult;
+        if (typeof selected !== 'string') {
+          setLoading(false);
+          setError('Invalid project path selected');
+          return;
+        }
       }
 
       setProjectPath(selected);
@@ -560,8 +568,9 @@ function App() {
         entityCount: spec.entities?.length || 0,
       });
     } catch (err) {
-      console.error('Failed to open project:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
+      console.error('Failed to open project:', errorMessage);
+      setError(errorMessage);
       setLoading(false);
       setIsPlaying(false);
     }
@@ -2104,7 +2113,7 @@ function App() {
             <h2 className="text-lg font-semibold text-text-primary">
               {leftPanelMode === 'files' ? 'Files' : 'Scene'}
             </h2>
-            {projectPath && (
+            {projectPath && typeof projectPath === 'string' && (
               <p className="text-xs text-text-secondary mt-1 truncate" title={projectPath}>
                 {projectPath.split('/').pop()}
               </p>
