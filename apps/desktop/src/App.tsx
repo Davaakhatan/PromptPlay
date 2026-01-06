@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -123,6 +123,22 @@ function App() {
 
   // v6.0 Extended Platforms
   const [showExtendedPlatforms, setShowExtendedPlatforms] = useState(false);
+
+  // Notification timeout ref for auto-dismiss
+  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper function to show notification with auto-dismiss
+  const showNotification = useCallback((message: string, duration: number = 2000) => {
+    // Clear any existing timeout
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+    setNotification(message);
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimeoutRef.current = null;
+    }, duration);
+  }, []);
 
   // Entity search shortcut (Cmd/Ctrl+K)
   useEntitySearchShortcut(() => {
@@ -2766,42 +2782,42 @@ function App() {
             setHasUnsavedChanges(true);
           }
         }}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
 
       {/* Professional Tools Panel (v4.0 - Materials, Shaders, Particles, Terrain, Weather, Day/Night) */}
       <ProfessionalToolsPanel
         isOpen={showProfessionalTools}
         onClose={() => setShowProfessionalTools(false)}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
 
       {/* Performance Panel (v4.1 - Instancing, LOD, Culling, Streaming, Memory) */}
       <PerformancePanel
         isOpen={showPerformance}
         onClose={() => setShowPerformance(false)}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
 
       {/* Multiplayer Panel (v5.0 - Lobbies, Matchmaking, Leaderboards, State Sync) */}
       <MultiplayerPanel
         isOpen={showMultiplayer}
         onClose={() => setShowMultiplayer(false)}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
 
       {/* Monetization Panel (v5.1 - IAP, Ads, Analytics, A/B Testing, Crash Reporting) */}
       <MonetizationPanel
         isOpen={showMonetization}
         onClose={() => setShowMonetization(false)}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
 
       {/* Extended Platforms Panel (v6.0 - Console, VR/AR, Steam, Mobile, WebGPU) */}
       <ExtendedPlatformsPanel
         isOpen={showExtendedPlatforms}
         onClose={() => setShowExtendedPlatforms(false)}
-        onNotification={setNotification}
+        onNotification={showNotification}
       />
     </div>
   );
