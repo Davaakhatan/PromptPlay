@@ -2351,7 +2351,27 @@ function App() {
             />
           )}
 
-          {projectPath && viewMode === 'game' && !is3DMode && (
+          {/* Loading state when project is open but gameSpec not yet loaded */}
+          {projectPath && !gameSpec && loading && (
+            <div className="flex-1 flex items-center justify-center bg-[#1a1a2e]">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading project...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error state when project failed to load */}
+          {projectPath && !gameSpec && !loading && !error && (
+            <div className="flex-1 flex items-center justify-center bg-[#1a1a2e]">
+              <div className="text-center">
+                <p className="text-red-400 mb-2">Failed to load game.json</p>
+                <p className="text-gray-500 text-sm">Make sure the project folder contains a valid game.json file</p>
+              </div>
+            </div>
+          )}
+
+          {projectPath && gameSpec && viewMode === 'game' && !is3DMode && (
             <GameCanvas
               gameSpec={gameSpec}
               isPlaying={isPlaying}
