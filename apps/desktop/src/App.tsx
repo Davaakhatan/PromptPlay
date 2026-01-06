@@ -55,6 +55,7 @@ import { PerformancePanel } from './components/PerformancePanel';
 import { MultiplayerPanel } from './components/MultiplayerPanel';
 import { MonetizationPanel } from './components/MonetizationPanel';
 import { ExtendedPlatformsPanel } from './components/ExtendedPlatformsPanel';
+import { logError, getErrorMessage } from './utils/errorUtils';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
 type LeftPanelMode = 'files' | 'scenes' | 'entities' | 'prefabs' | 'assets' | 'tilemap';
@@ -465,7 +466,7 @@ function App() {
         setNotification('Game reloaded');
         setTimeout(() => setNotification(null), 2000);
       } catch (err) {
-        console.error('Failed to reload game:', err);
+        logError('Failed to reload game', err);
       }
     } else {
       // Show notification for other files
@@ -568,8 +569,8 @@ function App() {
         entityCount: spec.entities?.length || 0,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown error');
-      console.error('Failed to open project:', errorMessage);
+      const errorMessage = getErrorMessage(err);
+      logError('Failed to open project', err);
       setError(errorMessage);
       setLoading(false);
       setIsPlaying(false);
@@ -626,8 +627,8 @@ function App() {
       setNotification('Game imported successfully');
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
-      console.error('Failed to import game:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      logError('Failed to import game', err);
+      setError(getErrorMessage(err));
       setLoading(false);
     }
   }, [initializeHistory]);
@@ -1021,8 +1022,8 @@ function App() {
       setNotification('Saved');
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
-      console.error('Failed to save project:', err);
-      setError('Failed to save project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to save project', err);
+      setError('Failed to save project: ' + getErrorMessage(err));
     }
   };
 
@@ -1057,8 +1058,8 @@ function App() {
       setNotification('Saved to ' + selectedPath.split('/').pop());
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
-      console.error('Failed to save project:', err);
-      setError('Failed to save project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to save project', err);
+      setError('Failed to save project: ' + getErrorMessage(err));
     }
   };
 
@@ -1135,8 +1136,8 @@ function App() {
       setNotification('Project created');
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
-      console.error('Failed to create project:', err);
-      setError('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to create project', err);
+      setError('Failed to create project: ' + getErrorMessage(err));
     }
   };
 
@@ -1403,8 +1404,8 @@ function App() {
       setNotification(`${templateId} project created`);
       setTimeout(() => setNotification(null), 2000);
     } catch (err) {
-      console.error('Failed to create project from template:', err);
-      setError('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to create project from template', err);
+      setError('Failed to create project: ' + getErrorMessage(err));
     }
   };
 
@@ -1655,8 +1656,8 @@ function App() {
       setNotification('Game exported successfully!');
       setTimeout(() => setNotification(null), 3000);
     } catch (err) {
-      console.error('Failed to export game:', err);
-      setError('Failed to export game: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to export game', err);
+      setError('Failed to export game: ' + getErrorMessage(err));
     } finally {
       setIsExporting(false);
     }

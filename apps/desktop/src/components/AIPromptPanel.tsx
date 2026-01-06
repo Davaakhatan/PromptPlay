@@ -8,6 +8,7 @@ import DiffPreview from './DiffPreview';
 import { simulateAIResponse } from '../services/aiDemoSimulator';
 import { chatHistoryService, ChatSession } from '../services/ChatHistoryService';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { logError } from '../utils/errorUtils';
 
 interface SceneContext {
   selectedEntityId?: string | null;
@@ -76,7 +77,7 @@ export default function AIPromptPanel({
       }
     },
     onError: (error) => {
-      console.error('Voice input error:', error);
+      logError('Voice input error', error);
     },
   });
 
@@ -87,7 +88,7 @@ export default function AIPromptPanel({
         const hasKey = await invoke<boolean>('ai_check_api_key');
         setHasApiKey(hasKey);
       } catch (err) {
-        console.error('Failed to check API key:', err);
+        logError('Failed to check API key', err);
       }
     };
     checkApiKey();
@@ -417,7 +418,7 @@ export default function AIPromptPanel({
       };
       setMessages(prev => [...prev, systemMessage]);
     } catch (err) {
-      console.error('Failed to set API key:', err);
+      logError('Failed to set API key', err);
     }
   }, [apiKey]);
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FolderIcon, FileIcon, ChevronRightIcon, ChevronDownIcon } from './Icons';
+import { logError } from '../utils/errorUtils';
 
 interface FileInfo {
   name: string;
@@ -42,7 +43,7 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
         return newFiles;
       });
     } catch (err) {
-      console.error('Failed to load directory:', err);
+      logError('Failed to load directory', err);
     } finally {
       setLoading(false);
     }

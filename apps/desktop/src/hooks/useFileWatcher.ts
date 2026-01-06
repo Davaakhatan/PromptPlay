@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { logError } from '../utils/errorUtils';
 
 interface UseFileWatcherOptions {
   projectPath: string | null;
@@ -16,7 +17,7 @@ export function useFileWatcher({ projectPath, onFileChanged }: UseFileWatcherOpt
       try {
         await invoke('start_file_watcher', { path: projectPath });
       } catch (err) {
-        console.error('Failed to start file watcher:', err);
+        logError('Failed to start file watcher', err);
       }
     };
 
@@ -30,7 +31,7 @@ export function useFileWatcher({ projectPath, onFileChanged }: UseFileWatcherOpt
 
     return () => {
       // Stop watching when component unmounts or project changes
-      invoke('stop_file_watcher').catch(console.error);
+      invoke('stop_file_watcher').catch((err) => logError('Failed to stop file watcher', err));
       unlisten.then((fn) => fn());
     };
   }, [projectPath, onFileChanged]);
