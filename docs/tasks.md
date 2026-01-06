@@ -3,9 +3,9 @@
 ## Overview
 This document provides a comprehensive task breakdown for the PromptPlay Desktop project (Tauri 2.0), organized by work package and priority.
 
-**Status:** Architecture Pivot to Desktop (December 2024)
-**Previous Version:** Web-based MVP (Complete)
-**Current Version:** Tauri Desktop Engine
+**Status:** v6.1 Debug & Polish (January 2025)
+**Previous Version:** v6.0 Extended Platforms (Complete)
+**Current Version:** Tauri Desktop Engine v6.1
 
 ---
 

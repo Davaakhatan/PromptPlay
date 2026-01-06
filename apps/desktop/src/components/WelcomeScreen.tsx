@@ -277,7 +277,7 @@ export function WelcomeScreen({
         </div>
 
         <div className="text-center mt-4 text-xs text-text-tertiary/50">
-          v3.0.0 • The AI-First 2D & 3D Game Engine
+          v6.1.0 • The AI-First 2D & 3D Game Engine
         </div>
       </div>
     </div>

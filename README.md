@@ -2,7 +2,7 @@
 
 > **The AI-First Game Engine** - Create 2D & 3D games by describing them in plain English
 
-[![Version](https://img.shields.io/badge/Version-3.0.0-brightgreen.svg)](https://github.com/Davaakhatan/PromptPlay/releases)
+[![Version](https://img.shields.io/badge/Version-6.1.0-brightgreen.svg)](https://github.com/Davaakhatan/PromptPlay/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
@@ -400,6 +400,21 @@ PromptPlay/
 - [x] Mobile App Stores (iOS App Store, Google Play)
 - [x] WebGPU Rendering (compute shaders, PBR, next-gen graphics)
 - [x] Extended Platforms Panel (unified export interface)
+
+### Completed (v6.1) - Debug & Polish
+
+- [x] 3D Entity Dragging (raycasting, drag plane, depth constraints)
+- [x] AI Art Generation Indicators (demo mode, loading states)
+- [x] Platform Export Documentation (simulation mode, setup guides)
+- [x] Node Editor Execution Logic (full runtime with console logging)
+- [x] WebGPU Renderer Integration (fallback to WebGL, performance tools)
+- [x] Tilemap Editor Improvements (keyboard shortcuts, sprite sheet import)
+- [x] Animation Timeline Enhancements (easing curves, multi-track, copy/paste)
+- [x] Terrain Editor (heightmap generation, brush sculpting, texture painting)
+- [x] Shader Editor (real-time preview, GLSL/WGSL, uniform controls, error highlighting)
+- [x] AI Chat Context (scene state, entity hierarchy, @ mention autocomplete)
+- [x] Video Recording Quality (resolution presets, framerate, format, audio)
+- [x] TypeScript Strict Mode Compliance (all errors resolved)
 
 ### v7.0 - Future
 
