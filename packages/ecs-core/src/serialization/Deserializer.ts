@@ -102,15 +102,8 @@ export class Deserializer {
       Collider.layer[eid] = components.collider.layer ?? 0;
     }
 
-    // Deserialize Input
-    if (components.input) {
-      addComponent(w, Input, eid);
-      // Matter.js uses very small velocity values!
-      // Default gravity is 1, so velocities should be proportionally small
-      Input.moveSpeed[eid] = 5;   // Small value for smooth movement
-      Input.jumpForce[eid] = 8;   // Small jump (will be negated to -8 in InputSystem)
-      Input.canJump[eid] = (components.input.canJump ?? true) ? 1 : 0;
-    }
+
+    
 
     // Deserialize Health
     if (components.health) {

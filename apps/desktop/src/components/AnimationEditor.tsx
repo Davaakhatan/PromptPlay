@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { AnimationComponent, AnimationState, EntitySpec } from '@promptplay/shared-types';
 import AnimationTimeline from './AnimationTimeline';
-import { CloseIcon, ImageIcon } from './Icons';
+import { ImageIcon } from './Icons';
 
 interface AnimationEditorProps {
   entity: EntitySpec;
@@ -44,6 +45,7 @@ export default function AnimationEditor({
   const previewRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
+  const accumulatedTimeRef = useRef<number>(0);
 
   const frameWidth = animation.frameWidth || 32;
   const frameHeight = animation.frameHeight || 32;
@@ -67,28 +69,44 @@ export default function AnimationEditor({
     }
   }, [animation.spriteSheet, projectPath]);
 
-  // Animation playback loop
+  // Animation playback loop with proper frame synchronization
   useEffect(() => {
     if (!isPlaying || !activeState) return;
+
+    const frameDuration = activeState.frameDuration;
+    const frameStart = activeState.frameStart;
+    const frameEnd = activeState.frameEnd;
+    const shouldLoop = activeState.loop;
+    const totalStateFrames = frameEnd - frameStart + 1;
 
     const animate = (timestamp: number) => {
       if (!lastFrameTimeRef.current) {
         lastFrameTimeRef.current = timestamp;
+        accumulatedTimeRef.current = 0;
       }
 
-      const elapsed = timestamp - lastFrameTimeRef.current;
+      const deltaTime = timestamp - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = timestamp;
+      accumulatedTimeRef.current += deltaTime;
 
-      if (elapsed >= activeState.frameDuration) {
-        lastFrameTimeRef.current = timestamp;
+      // Calculate how many frames to advance based on accumulated time
+      // This handles frame skipping when browser is slow
+      if (accumulatedTimeRef.current >= frameDuration) {
+        const framesToAdvance = Math.floor(accumulatedTimeRef.current / frameDuration);
+        accumulatedTimeRef.current = accumulatedTimeRef.current % frameDuration;
 
         setCurrentFrame(prev => {
-          const nextFrame = prev + 1;
-          if (nextFrame > activeState.frameEnd) {
-            if (activeState.loop) {
-              return activeState.frameStart;
+          let nextFrame = prev + framesToAdvance;
+
+          // Handle wrapping/stopping
+          if (nextFrame > frameEnd) {
+            if (shouldLoop) {
+              // Properly wrap around for looping
+              const overflow = nextFrame - frameEnd - 1;
+              nextFrame = frameStart + (overflow % totalStateFrames);
             } else {
               setIsPlaying(false);
-              return activeState.frameEnd;
+              return frameEnd;
             }
           }
           return nextFrame;
@@ -108,14 +126,30 @@ export default function AnimationEditor({
   }, [isPlaying, activeState]);
 
   // Sync state changes to parent
+  // Using a ref to track if we should sync to avoid infinite loops
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    onAnimationChange({
-      ...animation,
-      states,
-      currentState,
-      currentFrame,
-    });
-  }, [states, currentState, currentFrame]);
+    // Debounce the sync to avoid excessive updates during playback
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = setTimeout(() => {
+      onAnimationChange({
+        ...animation,
+        states,
+        currentState,
+        currentFrame,
+      });
+    }, isPlaying ? 100 : 0); // Debounce during playback, immediate when paused
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [states, currentState, currentFrame, isPlaying, animation, onAnimationChange]);
 
   const handlePlayPauseToggle = useCallback(() => {
     if (!isPlaying && activeState) {
@@ -123,7 +157,9 @@ export default function AnimationEditor({
       if (currentFrame >= activeState.frameEnd) {
         setCurrentFrame(activeState.frameStart);
       }
+      // Reset timing refs for clean playback start
       lastFrameTimeRef.current = 0;
+      accumulatedTimeRef.current = 0;
     }
     setIsPlaying(prev => !prev);
   }, [isPlaying, activeState, currentFrame]);
@@ -158,42 +194,43 @@ export default function AnimationEditor({
 
   const framePos = getFramePosition(currentFrame);
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-panel-solid border border-subtle rounded-xl shadow-2xl w-[900px] h-[600px] flex flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+      <div className="bg-surface rounded-lg shadow-xl w-full max-w-[900px] h-[600px] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-subtle border-b border-subtle">
+        <div className="flex items-center justify-between p-4 border-b border-subtle">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-text-primary">Animation Editor</h2>
-            <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded">
+            <h2 className="text-lg font-semibold text-white">Animation Editor</h2>
+            <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded">
               {entity.name}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+            className="text-text-secondary hover:text-white transition-colors"
           >
-            <CloseIcon size={18} />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
+        {/* Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Preview Panel */}
-          <div className="w-64 border-r border-subtle flex flex-col">
-            <div className="px-3 py-2 bg-subtle/50 border-b border-subtle">
-              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Preview
-              </h3>
+          <div className="w-64 border-r border-subtle flex flex-col bg-black/20">
+            <div className="px-4 py-3 border-b border-subtle">
+              <h3 className="text-sm font-medium text-white">Preview</h3>
             </div>
 
             {/* Preview canvas */}
             <div
               ref={previewRef}
-              className="flex-1 flex items-center justify-center bg-[#1a1a2e] relative overflow-hidden"
+              className="flex-1 flex items-center justify-center bg-black/30 relative overflow-hidden"
             >
               {spriteSheetUrl ? (
                 <div
-                  className="relative border border-dashed border-white/20"
+                  className="relative border border-dashed border-white/20 rounded"
                   style={{
                     width: frameWidth * 3,
                     height: frameHeight * 3,
@@ -214,16 +251,16 @@ export default function AnimationEditor({
                   />
                 </div>
               ) : (
-                <div className="text-center text-text-tertiary">
+                <div className="text-center text-text-tertiary p-4">
                   <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No sprite sheet</p>
+                  <p className="text-sm text-white">No sprite sheet</p>
                   <p className="text-xs mt-1">Set spriteSheet path in animation component</p>
                 </div>
               )}
 
               {/* Checkerboard background pattern */}
               <div
-                className="absolute inset-0 pointer-events-none opacity-20"
+                className="absolute inset-0 pointer-events-none opacity-10 -z-10"
                 style={{
                   backgroundImage: 'linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%)',
                   backgroundSize: '16px 16px',
@@ -233,30 +270,30 @@ export default function AnimationEditor({
             </div>
 
             {/* Frame info */}
-            <div className="px-3 py-2 bg-subtle/50 border-t border-subtle space-y-1">
+            <div className="bg-black/30 border-t border-subtle p-3 space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-text-tertiary">State</span>
-                <span className="text-text-primary font-medium">{currentState}</span>
+                <span className="text-text-secondary">State</span>
+                <span className="text-white font-medium">{currentState}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-text-tertiary">Frame</span>
-                <span className="text-text-primary font-mono">{currentFrame}</span>
+                <span className="text-text-secondary">Frame</span>
+                <span className="text-white font-mono">{currentFrame}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-text-tertiary">Size</span>
-                <span className="text-text-primary font-mono">{frameWidth} x {frameHeight}</span>
+                <span className="text-text-secondary">Size</span>
+                <span className="text-white font-mono">{frameWidth} × {frameHeight}</span>
               </div>
               {activeState && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-text-tertiary">Duration</span>
-                  <span className="text-text-primary font-mono">{activeState.frameDuration}ms</span>
+                  <span className="text-text-secondary">Duration</span>
+                  <span className="text-white font-mono">{activeState.frameDuration}ms</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Timeline Panel */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <AnimationTimeline
               states={states}
               currentState={currentState}
@@ -274,26 +311,27 @@ export default function AnimationEditor({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 bg-subtle border-t border-subtle flex items-center justify-between">
-          <div className="text-xs text-text-tertiary">
-            {states.length} state{states.length !== 1 ? 's' : ''} | {totalFrames} total frames
+        <div className="p-4 border-t border-subtle flex items-center justify-between">
+          <div className="text-sm text-text-secondary">
+            {states.length} state{states.length !== 1 ? 's' : ''} • {totalFrames} total frames
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm text-text-secondary hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded transition-colors"
             >
-              Apply
+              Apply Changes
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

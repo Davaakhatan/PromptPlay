@@ -196,6 +196,67 @@ export interface AudioComponent {
 }
 
 // Animation state machine types
+// Predefined easing types
+export type EasingType =
+  | 'linear'
+  | 'ease-in-quad'
+  | 'ease-out-quad'
+  | 'ease-in-out-quad'
+  | 'ease-in-cubic'
+  | 'ease-out-cubic'
+  | 'ease-in-out-cubic'
+  | 'ease-in-quart'
+  | 'ease-out-quart'
+  | 'ease-in-out-quart'
+  | 'ease-in-sine'
+  | 'ease-out-sine'
+  | 'ease-in-out-sine'
+  | 'ease-in-expo'
+  | 'ease-out-expo'
+  | 'ease-in-out-expo'
+  | 'ease-in-elastic'
+  | 'ease-out-elastic'
+  | 'ease-in-out-elastic'
+  | 'ease-in-bounce'
+  | 'ease-out-bounce'
+  | 'ease-in-out-bounce'
+  | 'custom';
+
+// Custom bezier curve control points
+export interface BezierCurve {
+  x1: number; // First control point X (0-1)
+  y1: number; // First control point Y
+  x2: number; // Second control point X (0-1)
+  y2: number; // Second control point Y
+}
+
+// Animatable property types
+export type AnimatableProperty =
+  | 'position.x'
+  | 'position.y'
+  | 'rotation'
+  | 'scale.x'
+  | 'scale.y'
+  | 'opacity'
+  | 'tint'
+  | 'frame';
+
+// Keyframe for property animation
+export interface AnimationKeyframe {
+  frame: number; // Frame index within the state
+  value: number; // Property value at this keyframe
+  easing?: EasingType; // Easing to next keyframe
+  customEasing?: BezierCurve;
+}
+
+// Track for a single animatable property
+export interface AnimationTrack {
+  id: string;
+  property: AnimatableProperty;
+  keyframes: AnimationKeyframe[];
+  enabled: boolean;
+}
+
 export interface AnimationState {
   name: string;
   frameStart: number; // Starting frame index in sprite sheet
@@ -203,6 +264,11 @@ export interface AnimationState {
   frameDuration: number; // Duration per frame in ms
   loop: boolean;
   transitions?: AnimationTransition[];
+  // Easing for animation interpolation (default for all tracks)
+  easing?: EasingType;
+  customEasing?: BezierCurve; // Only used when easing is 'custom'
+  // Multi-track property animation
+  tracks?: AnimationTrack[];
 }
 
 export interface AnimationTransition {
