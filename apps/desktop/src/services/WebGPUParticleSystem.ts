@@ -255,7 +255,7 @@ export class WebGPUParticleSystem {
     // Try to use WebGPU
     if (webGPURenderer.initialized && webGPURenderer.device) {
       try {
-        const device = webGPURenderer.device;
+        // Device is available via webGPURenderer.device
 
         // Create particle buffer
         const particleBuffer = webGPURenderer.createGPUBuffer(
@@ -323,7 +323,6 @@ export class WebGPUParticleSystem {
 
   private async updateGPU(deltaTime: number, emitCount: number): Promise<void> {
     const startTime = performance.now();
-    const device = webGPURenderer.device!;
 
     // Update params buffer
     const paramsData = new Float32Array([

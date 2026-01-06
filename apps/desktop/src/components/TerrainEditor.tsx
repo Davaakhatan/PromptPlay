@@ -112,7 +112,6 @@ export default function TerrainEditor({
   const [previewMode, setPreviewMode] = useState<'heightmap' | 'textured' | 'wireframe'>('heightmap');
 
   // Canvas refs
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -154,23 +153,6 @@ export default function TerrainEditor({
       setIsGenerating(false);
     }
   }, [onTerrainChange]);
-
-  // Custom heightmap generation
-  const handleGenerateHeightmap = useCallback((
-    generator: 'perlin' | 'fbm' | 'ridged' | 'voronoi' | 'hydraulic',
-    params: Record<string, number>
-  ) => {
-    if (!terrain) return;
-
-    setIsGenerating(true);
-    try {
-      terrainEditor3D.generateHeightmap(terrain.id, generator, params);
-      setTerrain({ ...terrain });
-      onTerrainChange?.(terrain);
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [terrain, onTerrainChange]);
 
   // Apply brush stroke
   const handleBrushStroke = useCallback((x: number, z: number) => {

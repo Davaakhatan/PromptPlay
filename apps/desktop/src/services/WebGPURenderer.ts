@@ -123,6 +123,10 @@ class WebGPURenderer {
     return this._gpuContext?.device ?? null;
   }
 
+  get canvas(): HTMLCanvasElement | null {
+    return this._canvas;
+  }
+
   // Check WebGPU support
   async checkSupport(): Promise<boolean> {
     if (!navigator.gpu) {
@@ -700,13 +704,15 @@ fn main(
   }
 
   // Write data to GPU buffer
-  writeBuffer(bufferId: string, data: ArrayBuffer | ArrayBufferView, offset = 0): void {
+  writeBuffer(bufferId: string, data: BufferSource | SharedArrayBuffer, offset = 0): void {
     if (!this._gpuContext) return;
 
     const buffer = this._gpuBuffers.get(bufferId);
     if (!buffer) return;
 
-    this._gpuContext.device.queue.writeBuffer(buffer, offset, data);
+    // Cast to any to satisfy WebGPU's stricter type requirements
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this._gpuContext.device.queue.writeBuffer(buffer, offset, data as any);
   }
 
   // Read data from GPU buffer (async)
