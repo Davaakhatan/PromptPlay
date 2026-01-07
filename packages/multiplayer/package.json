@@ -1,0 +1,21 @@
+{
+  "name": "@promptplay/multiplayer",
+  "version": "1.0.0",
+  "description": "Multiplayer networking for PromptPlay games",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@promptplay/ecs-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^2.0.0"
+  }
+}
