@@ -1,4 +1,5 @@
 import type { Prefab, PrefabCategory, EntitySpec } from '@promptplay/shared-types';
+import { logError } from '../utils/errorUtils';
 
 // Built-in prefabs
 const builtInPrefabs: Prefab[] = [
@@ -231,7 +232,7 @@ class PrefabService {
         this.customPrefabs = JSON.parse(stored);
       }
     } catch (err) {
-      console.error('Failed to load custom prefabs:', err);
+      logError('Failed to load custom prefabs', err);
       this.customPrefabs = [];
     }
   }
@@ -240,7 +241,7 @@ class PrefabService {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.customPrefabs));
     } catch (err) {
-      console.error('Failed to save custom prefabs:', err);
+      logError('Failed to save custom prefabs', err);
     }
   }
 

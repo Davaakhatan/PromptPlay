@@ -310,6 +310,8 @@ fn main() {
             commands::write_binary_file,
             commands::delete_path,
             commands::get_file_info,
+            commands::pick_directory,
+            commands::pick_file,
             watcher_commands::start_file_watcher,
             watcher_commands::stop_file_watcher,
             watcher_commands::get_watched_path,

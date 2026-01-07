@@ -1,6 +1,29 @@
 import type { GameSpec } from '@promptplay/shared-types';
 
 /**
+ * GameSharingService configuration
+ */
+export interface GameSharingConfig {
+  /** API URL for the game sharing backend */
+  apiUrl?: string;
+  /** Whether to run in demo mode (no real API calls) */
+  demoMode?: boolean;
+  /** Request timeout in milliseconds */
+  timeout?: number;
+  /** File storage URL (for game assets) */
+  storageUrl?: string;
+}
+
+/**
+ * API response wrapper
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
  * Published game metadata
  */
 export interface PublishedGame {
@@ -100,14 +123,83 @@ export interface GameSearchResults {
  * Publish and share games to the PromptPlay gallery
  */
 export class GameSharingService {
-  private baseUrl = 'https://play.promptplay.dev'; // Placeholder
+  private baseUrl = 'https://play.promptplay.dev';
   private authToken: string | null = null;
+  private config: GameSharingConfig = {
+    demoMode: true,
+    timeout: 30000,
+  };
+
+  /**
+   * Configure the service with API settings
+   */
+  configure(config: GameSharingConfig): void {
+    this.config = { ...this.config, ...config };
+    if (config.apiUrl) {
+      this.baseUrl = config.apiUrl.replace(/\/api$/, '');
+    }
+    console.log('[GameSharingService] Configured:', {
+      apiUrl: this.config.apiUrl,
+      demoMode: this.config.demoMode,
+    });
+  }
+
+  /**
+   * Check if running in demo mode
+   */
+  isDemoMode(): boolean {
+    return this.config.demoMode !== false && !this.config.apiUrl;
+  }
 
   /**
    * Set authentication token
    */
   setAuthToken(token: string): void {
     this.authToken = token;
+  }
+
+  /**
+   * Make an authenticated API request
+   */
+  private async apiRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    if (!this.config.apiUrl) {
+      throw new Error('API URL not configured');
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      this.config.timeout || 30000
+    );
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+      };
+
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+
+      const response = await fetch(`${this.config.apiUrl}${endpoint}`, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
@@ -126,11 +218,59 @@ export class GameSharingService {
       return { success: false, error: 'Description must be at least 10 characters' };
     }
 
-    // Generate slug from title
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        if (!this.authToken) {
+          return { success: false, error: 'Authentication required' };
+        }
+
+        const response = await this.apiRequest<ApiResponse<{
+          game: PublishedGame;
+          url: string;
+          embedCode: string;
+        }>>('/games', {
+          method: 'POST',
+          body: JSON.stringify({
+            gameSpec,
+            title: options.title,
+            description: options.description,
+            tags: options.tags,
+            thumbnail: options.thumbnail,
+            screenshots: options.screenshots,
+            isPublic: options.isPublic,
+            allowDownload: options.allowDownload,
+            allowEmbed: options.allowEmbed,
+          }),
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            game: {
+              ...response.data.game,
+              createdAt: new Date(response.data.game.createdAt),
+              updatedAt: new Date(response.data.game.updatedAt),
+            },
+            url: response.data.url,
+            embedCode: response.data.embedCode,
+          };
+        }
+
+        return { success: false, error: response.error || 'Failed to publish game' };
+      } catch (error) {
+        console.error('[GameSharingService] Publish error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to publish game',
+        };
+      }
+    }
+
+    // Demo mode fallback
     const slug = this.generateSlug(options.title);
     const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    // In production, this would upload to the server
     const embedUrl = `${this.baseUrl}/embed/${slug}`;
     const gameUrl = `${this.baseUrl}/games/${slug}`;
 
@@ -175,14 +315,50 @@ export class GameSharingService {
    */
   async updateGame(
     gameId: string,
-    _gameSpec: GameSpec,
-    _options: Partial<PublishOptions>
+    gameSpec: GameSpec,
+    options: Partial<PublishOptions>
   ): Promise<PublishResult> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
 
-    // In production, this would update the game on the server
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{
+          game: PublishedGame;
+          url: string;
+        }>>(`/games/${gameId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            gameSpec,
+            ...options,
+          }),
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            game: {
+              ...response.data.game,
+              createdAt: new Date(response.data.game.createdAt),
+              updatedAt: new Date(response.data.game.updatedAt),
+            },
+            url: response.data.url,
+          };
+        }
+
+        return { success: false, error: response.error || 'Failed to update game' };
+      } catch (error) {
+        console.error('[GameSharingService] Update error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update game',
+        };
+      }
+    }
+
+    // Demo mode fallback
     return {
       success: true,
       url: `${this.baseUrl}/games/${gameId}`,
@@ -192,12 +368,33 @@ export class GameSharingService {
   /**
    * Delete a published game
    */
-  async deleteGame(_gameId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteGame(gameId: string): Promise<{ success: boolean; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
 
-    // In production, this would delete from the server
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<void>>(`/games/${gameId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.success) {
+          return { success: true };
+        }
+
+        return { success: false, error: response.error || 'Failed to delete game' };
+      } catch (error) {
+        console.error('[GameSharingService] Delete error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to delete game',
+        };
+      }
+    }
+
+    // Demo mode fallback
     return { success: true };
   }
 
@@ -205,6 +402,40 @@ export class GameSharingService {
    * Search for games
    */
   async searchGames(params: GameSearchParams = {}): Promise<GameSearchResults> {
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const queryParams = new URLSearchParams();
+        if (params.query) queryParams.set('q', params.query);
+        if (params.genre) queryParams.set('genre', params.genre);
+        if (params.tags?.length) queryParams.set('tags', params.tags.join(','));
+        if (params.author) queryParams.set('author', params.author);
+        if (params.featured) queryParams.set('featured', 'true');
+        if (params.sortBy) queryParams.set('sort', params.sortBy);
+        if (params.page) queryParams.set('page', String(params.page));
+        if (params.limit) queryParams.set('limit', String(params.limit));
+
+        const response = await this.apiRequest<ApiResponse<GameSearchResults>>(
+          `/games?${queryParams.toString()}`
+        );
+
+        if (response.success && response.data) {
+          return {
+            ...response.data,
+            games: response.data.games.map(game => ({
+              ...game,
+              createdAt: new Date(game.createdAt),
+              updatedAt: new Date(game.updatedAt),
+            })),
+          };
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Search error:', error);
+        // Fall through to demo data
+      }
+    }
+
+    // Demo mode fallback
     const demoGames = this.getDemoGames();
 
     let filtered = [...demoGames];
@@ -269,6 +500,27 @@ export class GameSharingService {
    * Get featured games
    */
   async getFeaturedGames(): Promise<PublishedGame[]> {
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<PublishedGame[]>>(
+          '/games/featured'
+        );
+
+        if (response.success && response.data) {
+          return response.data.map(game => ({
+            ...game,
+            createdAt: new Date(game.createdAt),
+            updatedAt: new Date(game.updatedAt),
+          }));
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Featured games error:', error);
+        // Fall through to demo data
+      }
+    }
+
+    // Demo mode fallback
     const demoGames = this.getDemoGames();
     return demoGames.filter((g) => g.isFeatured).slice(0, 6);
   }
@@ -277,6 +529,27 @@ export class GameSharingService {
    * Get game details
    */
   async getGame(idOrSlug: string): Promise<PublishedGame | null> {
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<PublishedGame>>(
+          `/games/${encodeURIComponent(idOrSlug)}`
+        );
+
+        if (response.success && response.data) {
+          return {
+            ...response.data,
+            createdAt: new Date(response.data.createdAt),
+            updatedAt: new Date(response.data.updatedAt),
+          };
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Get game error:', error);
+        // Fall through to demo data
+      }
+    }
+
+    // Demo mode fallback
     const demoGames = this.getDemoGames();
     return demoGames.find((g) => g.id === idOrSlug || g.slug === idOrSlug) || null;
   }
@@ -284,31 +557,101 @@ export class GameSharingService {
   /**
    * Like a game
    */
-  async likeGame(_gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
+  async likeGame(gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
     if (!this.authToken) {
       return { success: false, likes: 0, error: 'Authentication required' };
     }
 
-    // In production, this would call the API
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{ likes: number }>>(
+          `/games/${gameId}/like`,
+          { method: 'POST' }
+        );
+
+        if (response.success && response.data) {
+          return { success: true, likes: response.data.likes };
+        }
+
+        return { success: false, likes: 0, error: response.error || 'Failed to like game' };
+      } catch (error) {
+        console.error('[GameSharingService] Like error:', error);
+        return {
+          success: false,
+          likes: 0,
+          error: error instanceof Error ? error.message : 'Failed to like game',
+        };
+      }
+    }
+
+    // Demo mode fallback
     return { success: true, likes: 1 };
   }
 
   /**
    * Unlike a game
    */
-  async unlikeGame(_gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
+  async unlikeGame(gameId: string): Promise<{ success: boolean; likes: number; error?: string }> {
     if (!this.authToken) {
       return { success: false, likes: 0, error: 'Authentication required' };
     }
 
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{ likes: number }>>(
+          `/games/${gameId}/unlike`,
+          { method: 'POST' }
+        );
+
+        if (response.success && response.data) {
+          return { success: true, likes: response.data.likes };
+        }
+
+        return { success: false, likes: 0, error: response.error || 'Failed to unlike game' };
+      } catch (error) {
+        console.error('[GameSharingService] Unlike error:', error);
+        return {
+          success: false,
+          likes: 0,
+          error: error instanceof Error ? error.message : 'Failed to unlike game',
+        };
+      }
+    }
+
+    // Demo mode fallback
     return { success: true, likes: 0 };
   }
 
   /**
    * Get game comments
    */
-  async getComments(_gameId: string, _page = 1, _limit = 20): Promise<{ comments: GameComment[]; total: number }> {
-    // Demo comments
+  async getComments(gameId: string, page = 1, limit = 20): Promise<{ comments: GameComment[]; total: number }> {
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{
+          comments: GameComment[];
+          total: number;
+        }>>(`/games/${gameId}/comments?page=${page}&limit=${limit}`);
+
+        if (response.success && response.data) {
+          return {
+            comments: response.data.comments.map(comment => ({
+              ...comment,
+              createdAt: new Date(comment.createdAt),
+            })),
+            total: response.data.total,
+          };
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Get comments error:', error);
+        // Fall through to demo data
+      }
+    }
+
+    // Demo mode fallback
     const demoComments: GameComment[] = [
       {
         id: 'comment-1',
@@ -334,7 +677,7 @@ export class GameSharingService {
   /**
    * Add a comment
    */
-  async addComment(_gameId: string, content: string): Promise<{ success: boolean; comment?: GameComment; error?: string }> {
+  async addComment(gameId: string, content: string): Promise<{ success: boolean; comment?: GameComment; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
@@ -343,6 +686,38 @@ export class GameSharingService {
       return { success: false, error: 'Comment is too short' };
     }
 
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<GameComment>>(
+          `/games/${gameId}/comments`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ content }),
+          }
+        );
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            comment: {
+              ...response.data,
+              createdAt: new Date(response.data.createdAt),
+            },
+          };
+        }
+
+        return { success: false, error: response.error || 'Failed to add comment' };
+      } catch (error) {
+        console.error('[GameSharingService] Add comment error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to add comment',
+        };
+      }
+    }
+
+    // Demo mode fallback
     const comment: GameComment = {
       id: `comment_${Date.now()}`,
       author: { id: 'current-user', name: 'You' },
@@ -353,6 +728,190 @@ export class GameSharingService {
     };
 
     return { success: true, comment };
+  }
+
+  /**
+   * Rate a game
+   */
+  async rateGame(gameId: string, rating: number): Promise<{
+    success: boolean;
+    rating?: number;
+    ratingCount?: number;
+    error?: string;
+  }> {
+    if (!this.authToken) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    if (rating < 1 || rating > 5) {
+      return { success: false, error: 'Rating must be between 1 and 5' };
+    }
+
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{
+          rating: number;
+          ratingCount: number;
+        }>>(`/games/${gameId}/rate`, {
+          method: 'POST',
+          body: JSON.stringify({ rating }),
+        });
+
+        if (response.success && response.data) {
+          return {
+            success: true,
+            rating: response.data.rating,
+            ratingCount: response.data.ratingCount,
+          };
+        }
+
+        return { success: false, error: response.error || 'Failed to rate game' };
+      } catch (error) {
+        console.error('[GameSharingService] Rate error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to rate game',
+        };
+      }
+    }
+
+    // Demo mode fallback
+    return { success: true, rating: 4.5, ratingCount: 100 };
+  }
+
+  /**
+   * Record a game play (for analytics)
+   */
+  async recordPlay(gameId: string): Promise<{ success: boolean; plays?: number }> {
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<{ plays: number }>>(
+          `/games/${gameId}/play`,
+          { method: 'POST' }
+        );
+
+        if (response.success && response.data) {
+          return { success: true, plays: response.data.plays };
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Record play error:', error);
+        // Silent failure for analytics
+      }
+    }
+
+    // Demo mode fallback (just succeed silently)
+    return { success: true };
+  }
+
+  /**
+   * Delete a comment
+   */
+  async deleteComment(gameId: string, commentId: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.authToken) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<void>>(
+          `/games/${gameId}/comments/${commentId}`,
+          { method: 'DELETE' }
+        );
+
+        if (response.success) {
+          return { success: true };
+        }
+
+        return { success: false, error: response.error || 'Failed to delete comment' };
+      } catch (error) {
+        console.error('[GameSharingService] Delete comment error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to delete comment',
+        };
+      }
+    }
+
+    // Demo mode fallback
+    return { success: true };
+  }
+
+  /**
+   * Report a game (for moderation)
+   */
+  async reportGame(gameId: string, reason: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.authToken) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    if (!reason || reason.length < 10) {
+      return { success: false, error: 'Please provide a detailed reason (at least 10 characters)' };
+    }
+
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<void>>(
+          `/games/${gameId}/report`,
+          {
+            method: 'POST',
+            body: JSON.stringify({ reason }),
+          }
+        );
+
+        if (response.success) {
+          return { success: true };
+        }
+
+        return { success: false, error: response.error || 'Failed to submit report' };
+      } catch (error) {
+        console.error('[GameSharingService] Report error:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to submit report',
+        };
+      }
+    }
+
+    // Demo mode fallback
+    return { success: true };
+  }
+
+  /**
+   * Get user's published games
+   */
+  async getMyGames(page = 1, limit = 12): Promise<GameSearchResults> {
+    if (!this.authToken) {
+      return { games: [], total: 0, page: 1, totalPages: 0 };
+    }
+
+    // Use real API if configured
+    if (!this.isDemoMode()) {
+      try {
+        const response = await this.apiRequest<ApiResponse<GameSearchResults>>(
+          `/games/my?page=${page}&limit=${limit}`
+        );
+
+        if (response.success && response.data) {
+          return {
+            ...response.data,
+            games: response.data.games.map(game => ({
+              ...game,
+              createdAt: new Date(game.createdAt),
+              updatedAt: new Date(game.updatedAt),
+            })),
+          };
+        }
+      } catch (error) {
+        console.error('[GameSharingService] Get my games error:', error);
+      }
+    }
+
+    // Demo mode fallback - return empty for own games
+    return { games: [], total: 0, page: 1, totalPages: 0 };
   }
 
   /**

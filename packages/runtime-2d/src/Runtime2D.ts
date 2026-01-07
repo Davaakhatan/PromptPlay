@@ -12,6 +12,8 @@ import { AIBehaviorSystem } from './systems/AIBehaviorSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { ParticleSystem } from './systems/ParticleSystem';
 import { CollisionEventSystem } from './systems/CollisionEventSystem';
+import { GameStateSystem } from './systems/GameStateSystem';
+import { SoundManager } from './audio/SoundManager';
 
 export interface Runtime2DConfig {
   width?: number;
@@ -38,6 +40,8 @@ export class Runtime2D {
   private cameraSystem: CameraSystem;
   private particleSystem: ParticleSystem;
   private collisionSystem: CollisionEventSystem;
+  private gameStateSystem: GameStateSystem;
+  private soundManager: SoundManager;
 
   private currentSpec: GameSpec | null = null;
   private isInitialized = false;
@@ -79,6 +83,8 @@ export class Runtime2D {
     this.cameraSystem = new CameraSystem(width, height);
     this.particleSystem = new ParticleSystem();
     this.collisionSystem = new CollisionEventSystem(this.physics);
+    this.gameStateSystem = new GameStateSystem();
+    this.soundManager = new SoundManager();
 
     // Debug overlay
     this.showDebug = config.showDebug ?? false;
@@ -126,6 +132,12 @@ export class Runtime2D {
 
     // Add collision event system
     this.world.addSystem(this.collisionSystem);
+
+    // Add game state system for scoring/lives/win-lose
+    this.world.addSystem(this.gameStateSystem);
+
+    // Set up default collision rules for common game mechanics
+    this.setupDefaultCollisionRules();
 
     // Initialize renderer and physics
     await this.renderer.initialize();
@@ -178,6 +190,119 @@ export class Runtime2D {
         }
       }
     }
+  }
+
+  // Set up default collision rules for common game mechanics
+  private setupDefaultCollisionRules(): void {
+    // Helper to handle collectible pickup
+    const handleCollectible = (coinEid: number, points: number = 100) => {
+      // Get position before removing
+      const x = this.world.getWorld() ? Transform.x[coinEid] : 0;
+      const y = this.world.getWorld() ? Transform.y[coinEid] : 0;
+
+      // Remove the collectible
+      this.collisionSystem.removeEntity(coinEid);
+
+      // Add score
+      this.gameStateSystem.addScore(points);
+      this.gameStateSystem.recordCollected();
+
+      // Play coin sound with pitch variance for variety
+      this.soundManager.play('coin', { pitchVariance: 0.1 });
+
+      // Screen shake for feedback
+      this.shakeCamera(2, 0.1);
+
+      // Emit particles at coin location for visual feedback
+      if (this.config.enableParticles !== false) {
+        this.emitParticles(x, y, 12, {
+          minSpeed: 50,
+          maxSpeed: 120,
+          startColor: 0xFFD700,
+          endColor: 0xFFA500,
+          minLifetime: 0.3,
+          maxLifetime: 0.6,
+        });
+      }
+    };
+
+    // Player + Collectible = collect
+    this.collisionSystem.addRule('player', 'collectible', (_playerEid, coinEid) => {
+      handleCollectible(coinEid, 100);
+    });
+
+    // Player + Coin = collect
+    this.collisionSystem.addRule('player', 'coin', (_playerEid, coinEid) => {
+      handleCollectible(coinEid, 100);
+    });
+
+    // Player + Enemy = take damage
+    this.collisionSystem.addRule('player', 'enemy', (playerEid, _enemyEid) => {
+      // Damage the player
+      const died = this.collisionSystem.damageEntity(playerEid, 1);
+      if (died) {
+        this.gameStateSystem.loseLife();
+        this.soundManager.play('death');
+      } else {
+        this.soundManager.play('damage');
+      }
+      // Screen shake on hit
+      this.shakeCamera(5, 0.2);
+    });
+
+    // Player + Hazard = take damage
+    this.collisionSystem.addRule('player', 'hazard', (playerEid, _hazardEid) => {
+      const died = this.collisionSystem.damageEntity(playerEid, 1);
+      if (died) {
+        this.gameStateSystem.loseLife();
+        this.soundManager.play('death');
+      } else {
+        this.soundManager.play('damage');
+      }
+      this.shakeCamera(8, 0.3);
+    });
+
+    // Player + Powerup = apply effect
+    this.collisionSystem.addRule('player', 'powerup', (_playerEid, powerupEid) => {
+      const x = this.world.getWorld() ? Transform.x[powerupEid] : 0;
+      const y = this.world.getWorld() ? Transform.y[powerupEid] : 0;
+
+      this.collisionSystem.removeEntity(powerupEid);
+      this.soundManager.play('powerup');
+
+      // Emit sparkle particles
+      if (this.config.enableParticles !== false) {
+        this.emitParticles(x, y, 20, {
+          minSpeed: 60,
+          maxSpeed: 150,
+          startColor: 0x00FF00,
+          endColor: 0x00FFFF,
+          minLifetime: 0.4,
+          maxLifetime: 0.8,
+        });
+      }
+    });
+
+    // Player + ExtraLife = gain life
+    this.collisionSystem.addRule('player', 'extralife', (_playerEid, lifeEid) => {
+      const x = this.world.getWorld() ? Transform.x[lifeEid] : 0;
+      const y = this.world.getWorld() ? Transform.y[lifeEid] : 0;
+
+      this.collisionSystem.removeEntity(lifeEid);
+      this.gameStateSystem.addLife();
+      this.soundManager.play('powerup', { pitch: 1.2 });
+
+      if (this.config.enableParticles !== false) {
+        this.emitParticles(x, y, 15, {
+          minSpeed: 40,
+          maxSpeed: 100,
+          startColor: 0xFF69B4,
+          endColor: 0xFF1493,
+          minLifetime: 0.5,
+          maxLifetime: 1.0,
+        });
+      }
+    });
   }
 
   start(): void {
@@ -242,6 +367,20 @@ export class Runtime2D {
         fps: this.gameLoop.getFps(),
         entityCount: this.world.getEntities().length,
         particleCount: this.particleSystem.getParticles().length,
+      });
+    }
+
+    // Update HUD with game state
+    const gameState = this.gameStateSystem.getState();
+    if (gameState) {
+      this.renderer.setHUD({
+        score: gameState.score,
+        highScore: gameState.highScore,
+        lives: gameState.lives,
+        maxLives: gameState.maxLives,
+        level: gameState.level,
+        timeRemaining: gameState.timeRemaining,
+        gameState: gameState.state,
       });
     }
 
@@ -365,6 +504,21 @@ export class Runtime2D {
     this.particleSystem.burst(this.world, x, y, count, config);
   }
 
+  // Game state system
+  getGameStateSystem(): GameStateSystem {
+    return this.gameStateSystem;
+  }
+
+  // Get current game state (score, lives, etc.)
+  getGameState() {
+    return this.gameStateSystem.getState();
+  }
+
+  // Add score directly
+  addScore(points: number): void {
+    this.gameStateSystem.addScore(points);
+  }
+
   // Debug overlay
   toggleDebug(): void {
     this.showDebug = !this.showDebug;
@@ -383,6 +537,36 @@ export class Runtime2D {
   // Convenience method to add collision rule
   onTagCollision(tagA: string, tagB: string, handler: Parameters<CollisionEventSystem['addRule']>[2]): void {
     this.collisionSystem.addRule(tagA, tagB, handler);
+  }
+
+  // Sound manager
+  getSoundManager(): SoundManager {
+    return this.soundManager;
+  }
+
+  // Play a sound effect
+  playSound(name: string, volume?: number): void {
+    this.soundManager.play(name, { volume });
+  }
+
+  // Play background music
+  playMusic(name: string, volume?: number): void {
+    this.soundManager.playMusic(name, volume);
+  }
+
+  // Stop background music
+  stopMusic(fadeOut?: number): void {
+    this.soundManager.stopMusic(fadeOut);
+  }
+
+  // Set sound asset base path
+  setSoundAssetPath(path: string): void {
+    this.soundManager.setAssetBasePath(path);
+  }
+
+  // Preload sounds for better performance
+  async preloadSounds(sounds: string[]): Promise<void> {
+    await this.soundManager.preloadAll(sounds);
   }
 
   // Get entity at point using actual ECS Transform positions (same as renderer)
@@ -449,5 +633,6 @@ export class Runtime2D {
   destroy(): void {
     this.cleanup();
     this.input.cleanup();
+    this.soundManager.cleanup();
   }
 }

@@ -9,3 +9,4 @@ export { Animation } from './Animation';
 export { Audio } from './Audio';
 export { Camera } from './Camera';
 export { ParticleEmitter, Particle } from './Particle';
+export { GameState, GAME_STATE } from './GameState';

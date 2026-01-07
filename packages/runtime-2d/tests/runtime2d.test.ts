@@ -10,6 +10,9 @@ function createMockCanvas(): HTMLCanvasElement {
     fillText: vi.fn(),
     strokeRect: vi.fn(),
     beginPath: vi.fn(),
+    closePath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
     arc: vi.fn(),
     fill: vi.fn(),
     stroke: vi.fn(),
@@ -20,6 +23,8 @@ function createMockCanvas(): HTMLCanvasElement {
     rotate: vi.fn(),
     drawImage: vi.fn(),
     setTransform: vi.fn(),
+    bezierCurveTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
     getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
     createLinearGradient: vi.fn(() => ({
       addColorStop: vi.fn(),
@@ -29,6 +34,11 @@ function createMockCanvas(): HTMLCanvasElement {
     fillStyle: '',
     strokeStyle: '',
     globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    shadowColor: '',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
     font: '',
     textAlign: 'left',
     textBaseline: 'top',
@@ -165,7 +175,8 @@ describe('Runtime2D', () => {
       await runtime.loadGameSpec(spec);
 
       const world = runtime.getWorld();
-      expect(world.getEntities().length).toBe(3);
+      // 3 user entities + 1 internal _gameManager entity
+      expect(world.getEntities().length).toBe(4);
     });
 
     it('should create entities with correct names', async () => {
@@ -184,7 +195,8 @@ describe('Runtime2D', () => {
 
       await runtime.loadGameSpec(spec);
       const firstWorld = runtime.getWorld();
-      expect(firstWorld.getEntities().length).toBe(3);
+      // 3 user entities + 1 internal _gameManager entity
+      expect(firstWorld.getEntities().length).toBe(4);
 
       // Load new spec
       const newSpec = {
@@ -193,7 +205,8 @@ describe('Runtime2D', () => {
       };
       await runtime.loadGameSpec(newSpec);
 
-      expect(runtime.getWorld().getEntities().length).toBe(1);
+      // 1 user entity + 1 internal _gameManager entity
+      expect(runtime.getWorld().getEntities().length).toBe(2);
     });
   });
 
@@ -261,7 +274,8 @@ describe('Runtime2D', () => {
     it('should return world instance', () => {
       const world = runtime.getWorld();
       expect(world).toBeDefined();
-      expect(world.getEntities().length).toBe(3);
+      // 3 user entities + 1 internal _gameManager entity
+      expect(world.getEntities().length).toBe(4);
     });
 
     it('should return physics instance', () => {

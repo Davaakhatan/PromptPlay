@@ -10,17 +10,47 @@ export interface ExecutionState {
 
 export type ExecutionLogCallback = (type: 'node' | 'flow' | 'value', message: string, nodeId?: string, nodeType?: string) => void;
 
+/**
+ * Custom error for node execution failures
+ */
+export class NodeExecutionError extends Error {
+  constructor(
+    message: string,
+    public readonly nodeId: string,
+    public readonly nodeType: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'NodeExecutionError';
+  }
+}
+
+export type ErrorCallback = (error: NodeExecutionError) => void;
+
 export class NodeExecutor {
   private graph: NodeGraph;
   private context: NodeContext;
   private state: ExecutionState;
   private eventListeners: Map<string, Set<string>> = new Map();
   private logCallback?: ExecutionLogCallback;
+  private errorCallback?: ErrorCallback;
+  private continueOnError: boolean = true;
 
-  constructor(graph: NodeGraph, context: NodeContext, logCallback?: ExecutionLogCallback) {
+  constructor(
+    graph: NodeGraph,
+    context: NodeContext,
+    options?: {
+      logCallback?: ExecutionLogCallback;
+      errorCallback?: ErrorCallback;
+      /** If true, continue executing other nodes after an error. Default: true */
+      continueOnError?: boolean;
+    }
+  ) {
     this.graph = graph;
     this.context = context;
-    this.logCallback = logCallback;
+    this.logCallback = options?.logCallback;
+    this.errorCallback = options?.errorCallback;
+    this.continueOnError = options?.continueOnError ?? true;
     this.state = {
       nodeOutputs: new Map(),
       activeFlows: new Set(),
@@ -31,6 +61,21 @@ export class NodeExecutor {
 
   private log(type: 'node' | 'flow' | 'value', message: string, nodeId?: string, nodeType?: string): void {
     this.logCallback?.(type, message, nodeId, nodeType);
+  }
+
+  private handleError(error: NodeExecutionError): void {
+    // Log to console for debugging
+    console.error(`[NodeExecutor] ${error.message}`, error);
+
+    // Call error callback if provided
+    if (this.errorCallback) {
+      this.errorCallback(error);
+    }
+
+    // Optionally throw if not continuing on error
+    if (!this.continueOnError) {
+      throw error;
+    }
   }
 
   // Find all event nodes and register them
@@ -103,7 +148,13 @@ export class NodeExecutor {
           this.log('flow', `  Branch: ${outputs.condition ? 'TRUE' : 'FALSE'}`, node.id, node.type);
         }
       } catch (error) {
-        console.error(`Error executing node ${node.id} (${node.type}):`, error);
+        const nodeError = new NodeExecutionError(
+          `Error executing node "${definition.title}" (${node.type}): ${error instanceof Error ? error.message : String(error)}`,
+          node.id,
+          node.type,
+          error instanceof Error ? error : undefined
+        );
+        this.handleError(nodeError);
         return;
       }
     }
@@ -180,9 +231,19 @@ export class NodeExecutor {
     const definition = NODE_LIBRARY[node.type];
     if (!definition || !definition.execute) return;
 
-    const inputs = this.gatherInputs(node, definition, {});
-    const outputs = definition.execute(inputs, this.context);
-    this.state.nodeOutputs.set(node.id, outputs);
+    try {
+      const inputs = this.gatherInputs(node, definition, {});
+      const outputs = definition.execute(inputs, this.context);
+      this.state.nodeOutputs.set(node.id, outputs);
+    } catch (error) {
+      const nodeError = new NodeExecutionError(
+        `Error executing value node "${definition.title}" (${node.type}): ${error instanceof Error ? error.message : String(error)}`,
+        node.id,
+        node.type,
+        error instanceof Error ? error : undefined
+      );
+      this.handleError(nodeError);
+    }
   }
 
   private findConnectionTo(nodeId: string, portId: string): Connection | undefined {
@@ -244,9 +305,36 @@ export function createNodeContext(
   };
 }
 
-// Singleton executor manager for the running game
+/**
+ * Optimized executor manager with rate limiting and performance tracking
+ */
 class ExecutorManager {
   private executors: Map<string, NodeExecutor> = new Map();
+  private lastUpdateTime: number = 0;
+  private frameCount: number = 0;
+  private updateTimes: number[] = [];
+  private readonly MAX_UPDATE_SAMPLES = 60;
+
+  // Rate limiting configuration
+  private minUpdateInterval: number = 0; // 0 = no limit (default)
+  private maxExecutorsPerFrame: number = Infinity; // Infinity = no limit
+
+  /**
+   * Configure rate limiting
+   */
+  configure(options: {
+    /** Minimum ms between updates (0 = no limit) */
+    minUpdateInterval?: number;
+    /** Max executors to update per frame (Infinity = no limit) */
+    maxExecutorsPerFrame?: number;
+  }): void {
+    if (options.minUpdateInterval !== undefined) {
+      this.minUpdateInterval = Math.max(0, options.minUpdateInterval);
+    }
+    if (options.maxExecutorsPerFrame !== undefined) {
+      this.maxExecutorsPerFrame = Math.max(1, options.maxExecutorsPerFrame);
+    }
+  }
 
   register(graphId: string, executor: NodeExecutor): void {
     this.executors.set(graphId, executor);
@@ -260,14 +348,100 @@ class ExecutorManager {
     return this.executors.get(graphId);
   }
 
+  /**
+   * Get all registered executor IDs
+   */
+  getRegisteredIds(): string[] {
+    return Array.from(this.executors.keys());
+  }
+
+  /**
+   * Get executor count
+   */
+  get count(): number {
+    return this.executors.size;
+  }
+
+  /**
+   * Trigger event on all executors with rate limiting
+   */
   triggerAll(eventType: string, eventData?: unknown): void {
-    for (const executor of this.executors.values()) {
-      executor.triggerEvent(eventType, eventData);
+    const executorArray = Array.from(this.executors.values());
+    const limit = Math.min(executorArray.length, this.maxExecutorsPerFrame);
+
+    for (let i = 0; i < limit; i++) {
+      executorArray[i].triggerEvent(eventType, eventData);
     }
   }
 
+  /**
+   * Optimized update with rate limiting and performance tracking
+   */
   updateAll(deltaTime: number): void {
+    const now = performance.now();
+
+    // Rate limiting check
+    if (this.minUpdateInterval > 0) {
+      const elapsed = now - this.lastUpdateTime;
+      if (elapsed < this.minUpdateInterval) {
+        return; // Skip this update
+      }
+    }
+
+    this.lastUpdateTime = now;
+    this.frameCount++;
+
+    // Execute updates
     this.triggerAll('update', { deltaTime });
+
+    // Track performance
+    const updateDuration = performance.now() - now;
+    this.updateTimes.push(updateDuration);
+    if (this.updateTimes.length > this.MAX_UPDATE_SAMPLES) {
+      this.updateTimes.shift();
+    }
+  }
+
+  /**
+   * Get performance statistics
+   */
+  getPerformanceStats(): {
+    frameCount: number;
+    executorCount: number;
+    avgUpdateTime: number;
+    maxUpdateTime: number;
+    minUpdateTime: number;
+  } {
+    const times = this.updateTimes;
+    const avg = times.length > 0
+      ? times.reduce((a, b) => a + b, 0) / times.length
+      : 0;
+    const max = times.length > 0 ? Math.max(...times) : 0;
+    const min = times.length > 0 ? Math.min(...times) : 0;
+
+    return {
+      frameCount: this.frameCount,
+      executorCount: this.executors.size,
+      avgUpdateTime: avg,
+      maxUpdateTime: max,
+      minUpdateTime: min,
+    };
+  }
+
+  /**
+   * Reset performance tracking
+   */
+  resetStats(): void {
+    this.frameCount = 0;
+    this.updateTimes = [];
+  }
+
+  /**
+   * Clear all executors
+   */
+  clear(): void {
+    this.executors.clear();
+    this.resetStats();
   }
 }
 

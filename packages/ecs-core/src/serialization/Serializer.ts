@@ -66,7 +66,7 @@ export class Serializer {
         texture: textureName,
         width: Sprite.width[eid],
         height: Sprite.height[eid],
-        tint: Sprite.tint[eid],
+        tint: '#' + Sprite.tint[eid].toString(16).padStart(8, '0'),
         visible: Sprite.visible[eid] === 1,
         zIndex: Sprite.zIndex[eid],
         // Sprite sheet

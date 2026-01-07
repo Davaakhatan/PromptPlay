@@ -92,7 +92,7 @@ describe('Serialization - Comprehensive Tests', () => {
       expect(entity.components.health?.current).toBe(75);
 
       expect(entity.components.aiBehavior).toBeDefined();
-      expect(entity.components.aiBehavior?.behaviorType).toBe('chase');
+      expect(entity.components.aiBehavior?.type).toBe('chase');
       expect(entity.components.aiBehavior?.speed).toBe(6);
     });
 
@@ -131,12 +131,12 @@ describe('Serialization - Comprehensive Tests', () => {
       const eid = entities[0];
       const w = world.getWorld();
 
-      // Verify Transform
+      // Verify Transform (use toBeCloseTo for f32 precision)
       expect(Transform.x[eid]).toBe(300);
       expect(Transform.y[eid]).toBe(200);
       expect(Transform.rotation[eid]).toBe(90);
-      expect(Transform.scaleX[eid]).toBe(1.2);
-      expect(Transform.scaleY[eid]).toBe(0.8);
+      expect(Transform.scaleX[eid]).toBeCloseTo(1.2, 5);
+      expect(Transform.scaleY[eid]).toBeCloseTo(0.8, 5);
 
       // Verify Velocity
       expect(Velocity.vx[eid]).toBe(-3);

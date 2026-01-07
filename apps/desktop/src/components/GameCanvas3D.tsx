@@ -7,6 +7,7 @@ import {
 } from '@promptplay/runtime-3d';
 import { useWebGPU, type RendererType } from '../hooks/useWebGPU';
 import { RendererStats } from './RendererStats';
+import { logError } from '../utils/errorUtils';
 
 interface GameCanvas3DProps {
   gameSpec: Game3DSpec | null;
@@ -144,7 +145,7 @@ export function GameCanvas3D({
           renderer.render();
         }
       } catch (error) {
-        console.error('Error in editor animation loop:', error);
+        logError('Error in editor animation loop', error);
       }
     };
     animate();
@@ -344,7 +345,7 @@ export function GameCanvas3D({
           }
         }
       } catch (error) {
-        console.error('Error in canvas click handler:', error);
+        logError('Error in canvas click handler', error);
       }
     },
     [gameSpec, isDragging, onEntitySelect]

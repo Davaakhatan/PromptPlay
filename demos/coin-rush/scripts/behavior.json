@@ -1,0 +1,23 @@
+{
+  "id": "bt_1767760189746",
+  "name": "New Behavior Tree",
+  "rootId": "root_1767760189746",
+  "nodes": [
+    {
+      "id": "root_1767760189746",
+      "type": "bt_selector",
+      "position": {
+        "x": 561,
+        "y": 151
+      },
+      "data": {}
+    }
+  ],
+  "connections": [],
+  "blackboard": {},
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

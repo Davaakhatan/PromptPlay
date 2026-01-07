@@ -102,8 +102,14 @@ export class Deserializer {
       Collider.layer[eid] = components.collider.layer ?? 0;
     }
 
-
-    
+    // Deserialize Input
+    if (components.input) {
+      addComponent(w, Input, eid);
+      Input.moveSpeed[eid] = components.input.moveSpeed ?? 200;
+      Input.jumpForce[eid] = components.input.jumpForce ?? 400;
+      Input.canJump[eid] = components.input.canJump !== false ? 1 : 0;
+      Input.isGrounded[eid] = 0;
+    }
 
     // Deserialize Health
     if (components.health) {

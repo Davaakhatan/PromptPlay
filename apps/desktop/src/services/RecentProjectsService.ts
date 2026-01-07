@@ -1,6 +1,7 @@
 /**
  * Recent Projects Service - Track and manage recently opened projects
  */
+import { logError } from '../utils/errorUtils';
 
 export interface RecentProject {
   path: string;
@@ -28,7 +29,7 @@ export function getRecentProjects(): RecentProject[] {
       );
     }
   } catch (e) {
-    console.error('Failed to load recent projects:', e);
+    logError('Failed to load recent projects', e);
   }
   return [];
 }

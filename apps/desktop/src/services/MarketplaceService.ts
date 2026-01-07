@@ -4,6 +4,18 @@
  */
 
 /**
+ * Configuration for the marketplace service
+ */
+export interface MarketplaceConfig {
+  /** API server URL (e.g., 'https://api.example.com') */
+  apiUrl?: string;
+  /** Enable demo mode (simulated data) */
+  demoMode?: boolean;
+  /** Request timeout in ms */
+  timeout?: number;
+}
+
+/**
  * Asset categories
  */
 export type AssetCategory =
@@ -94,9 +106,18 @@ export interface AssetUploadData {
  * Marketplace Service
  */
 export class MarketplaceService {
-  // Placeholder API URL for production
-  // private baseUrl = 'https://api.promptplay.dev';
+  private config: MarketplaceConfig = {
+    demoMode: true,
+    timeout: 30000,
+  };
   private authToken: string | null = null;
+
+  /**
+   * Configure the marketplace service
+   */
+  configure(config: Partial<MarketplaceConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
 
   /**
    * Set authentication token
@@ -106,11 +127,100 @@ export class MarketplaceService {
   }
 
   /**
+   * Clear authentication token
+   */
+  clearAuthToken(): void {
+    this.authToken = null;
+  }
+
+  /**
+   * Make an authenticated API request
+   */
+  private async apiRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    if (!this.config.apiUrl) {
+      throw new Error('API URL not configured');
+    }
+
+    const url = `${this.config.apiUrl}${endpoint}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      this.config.timeout || 30000
+    );
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API error ${response.status}: ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out');
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Search for assets
    */
   async searchAssets(params: AssetSearchParams = {}): Promise<AssetSearchResults> {
-    // In production, this would call the API
-    // For now, return demo data
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        const queryParams = new URLSearchParams();
+        if (params.query) queryParams.set('q', params.query);
+        if (params.category) queryParams.set('category', params.category);
+        if (params.tags?.length) queryParams.set('tags', params.tags.join(','));
+        if (params.author) queryParams.set('author', params.author);
+        if (params.license) queryParams.set('license', params.license);
+        if (params.minRating) queryParams.set('minRating', String(params.minRating));
+        if (params.sortBy) queryParams.set('sortBy', params.sortBy);
+        if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder);
+        if (params.page) queryParams.set('page', String(params.page));
+        if (params.limit) queryParams.set('limit', String(params.limit));
+
+        const result = await this.apiRequest<AssetSearchResults>(
+          `/assets?${queryParams.toString()}`
+        );
+
+        // Convert date strings to Date objects
+        result.assets = result.assets.map((a) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+          updatedAt: new Date(a.updatedAt),
+        }));
+
+        return result;
+      } catch (error) {
+        console.error('[Marketplace] Search failed, falling back to demo:', error);
+      }
+    }
+
+    // Demo mode - return filtered demo data
     const demoAssets = this.getDemoAssets();
 
     let filtered = [...demoAssets];
@@ -184,6 +294,22 @@ export class MarketplaceService {
    * Get asset details
    */
   async getAsset(id: string): Promise<MarketplaceAsset | null> {
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        const asset = await this.apiRequest<MarketplaceAsset>(`/assets/${id}`);
+        return {
+          ...asset,
+          createdAt: new Date(asset.createdAt),
+          updatedAt: new Date(asset.updatedAt),
+        };
+      } catch (error) {
+        console.error('[Marketplace] Get asset failed:', error);
+        // Fall through to demo data
+      }
+    }
+
+    // Demo mode
     const demoAssets = this.getDemoAssets();
     return demoAssets.find((a) => a.id === id) || null;
   }
@@ -192,13 +318,32 @@ export class MarketplaceService {
    * Download an asset
    */
   async downloadAsset(id: string): Promise<AssetDownloadResult> {
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        const result = await this.apiRequest<AssetDownloadResult>(
+          `/assets/${id}/download`,
+          { method: 'POST' }
+        );
+        if (result.asset) {
+          result.asset.createdAt = new Date(result.asset.createdAt);
+          result.asset.updatedAt = new Date(result.asset.updatedAt);
+        }
+        return result;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Download failed',
+        };
+      }
+    }
+
+    // Demo mode
     const asset = await this.getAsset(id);
     if (!asset) {
       return { success: false, error: 'Asset not found' };
     }
 
-    // In production, this would download the actual asset data
-    // For demo, return placeholder data
     return {
       success: true,
       asset,
@@ -223,16 +368,90 @@ export class MarketplaceService {
       return { success: false, error: 'Description must be at least 10 characters' };
     }
 
-    // In production, this would upload to the API
-    const assetId = `asset_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        const result = await this.apiRequest<{ assetId: string }>(
+          '/assets',
+          {
+            method: 'POST',
+            body: JSON.stringify(data),
+          }
+        );
+        return { success: true, assetId: result.assetId };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Upload failed',
+        };
+      }
+    }
 
+    // Demo mode
+    const assetId = `asset_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     return { success: true, assetId };
+  }
+
+  /**
+   * Update an asset
+   */
+  async updateAsset(
+    id: string,
+    data: Partial<AssetUploadData>
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.authToken) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        await this.apiRequest(`/assets/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        });
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Update failed',
+        };
+      }
+    }
+
+    // Demo mode - pretend success
+    return { success: true };
+  }
+
+  /**
+   * Delete an asset
+   */
+  async deleteAsset(id: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.authToken) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        await this.apiRequest(`/assets/${id}`, { method: 'DELETE' });
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Delete failed',
+        };
+      }
+    }
+
+    // Demo mode - pretend success
+    return { success: true };
   }
 
   /**
    * Rate an asset
    */
-  async rateAsset(_id: string, rating: number): Promise<{ success: boolean; error?: string }> {
+  async rateAsset(id: string, rating: number): Promise<{ success: boolean; error?: string }> {
     if (!this.authToken) {
       return { success: false, error: 'Authentication required' };
     }
@@ -241,7 +460,23 @@ export class MarketplaceService {
       return { success: false, error: 'Rating must be between 1 and 5' };
     }
 
-    // In production, this would call the API
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        await this.apiRequest(`/assets/${id}/rate`, {
+          method: 'POST',
+          body: JSON.stringify({ rating }),
+        });
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Rating failed',
+        };
+      }
+    }
+
+    // Demo mode - pretend success
     return { success: true };
   }
 
@@ -249,6 +484,21 @@ export class MarketplaceService {
    * Get featured assets
    */
   async getFeaturedAssets(): Promise<MarketplaceAsset[]> {
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        const assets = await this.apiRequest<MarketplaceAsset[]>('/assets/featured');
+        return assets.map((a) => ({
+          ...a,
+          createdAt: new Date(a.createdAt),
+          updatedAt: new Date(a.updatedAt),
+        }));
+      } catch (error) {
+        console.error('[Marketplace] Get featured failed:', error);
+      }
+    }
+
+    // Demo mode
     const demoAssets = this.getDemoAssets();
     return demoAssets.filter((a) => a.downloads > 500).slice(0, 6);
   }
@@ -257,6 +507,16 @@ export class MarketplaceService {
    * Get popular tags
    */
   async getPopularTags(): Promise<{ tag: string; count: number }[]> {
+    // Use real API if configured
+    if (!this.config.demoMode && this.config.apiUrl) {
+      try {
+        return await this.apiRequest<{ tag: string; count: number }[]>('/assets/tags');
+      } catch (error) {
+        console.error('[Marketplace] Get tags failed:', error);
+      }
+    }
+
+    // Demo mode
     const demoAssets = this.getDemoAssets();
     const tagCounts = new Map<string, number>();
 

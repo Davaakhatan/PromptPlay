@@ -3,6 +3,7 @@ import { Runtime2D } from '@promptplay/runtime-2d';
 import type { GameSpec, TilemapSpec } from '@promptplay/shared-types';
 import { GridIcon, DebugIcon, MoveIcon, RotateIcon, ScaleIcon, ZoomInIcon, ZoomOutIcon, FitAllIcon } from './Icons';
 import type { TilemapTool } from './TilemapEditor';
+import { logError } from '../utils/errorUtils';
 
 interface GameCanvasProps {
   gameSpec: GameSpec | null;
@@ -378,7 +379,7 @@ export default function GameCanvas({
       } catch (err) {
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Failed to load game');
-          console.error('Game loading error:', err);
+          logError('Game loading error', err);
         }
       }
     };

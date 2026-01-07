@@ -1,0 +1,78 @@
+{
+  "id": "sm_1767760188420",
+  "name": "New State Machine",
+  "states": [
+    {
+      "id": "state_idle_1767760188420",
+      "name": "Idle",
+      "position": {
+        "x": 200,
+        "y": 200
+      },
+      "isInitial": true,
+      "color": "#6b7280"
+    },
+    {
+      "id": "state_walk_1767760188421",
+      "name": "Walk",
+      "position": {
+        "x": 450,
+        "y": 200
+      },
+      "color": "#f59e0b"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "trans_1767760188420",
+      "fromStateId": "state_idle_1767760188420",
+      "toStateId": "state_walk_1767760188421",
+      "conditions": [
+        {
+          "id": "cond_1767760188420",
+          "type": "parameter",
+          "parameter": "speed",
+          "operator": "greater",
+          "value": 0
+        }
+      ],
+      "conditionMode": "all",
+      "priority": 0
+    },
+    {
+      "id": "trans_1767760188421",
+      "fromStateId": "state_walk_1767760188421",
+      "toStateId": "state_idle_1767760188420",
+      "conditions": [
+        {
+          "id": "cond_1767760188421",
+          "type": "parameter",
+          "parameter": "speed",
+          "operator": "equals",
+          "value": 0
+        }
+      ],
+      "conditionMode": "all",
+      "priority": 0
+    }
+  ],
+  "parameters": [
+    {
+      "id": "param_1767760188420",
+      "name": "speed",
+      "type": "float",
+      "defaultValue": 0
+    },
+    {
+      "id": "param_1767760188421",
+      "name": "isGrounded",
+      "type": "bool",
+      "defaultValue": true
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

@@ -60,9 +60,7 @@ export class InputSystem implements ISystem {
         this.physics.setVelocity(eid, vx, -jumpForce);
       }
     }
-
-    // Clear pressed/released states for next frame
-    this.inputManager.update();
+    // Note: Don't call inputManager.update() here - Runtime2D handles it after all systems
   }
 
   cleanup?(world: any): void {

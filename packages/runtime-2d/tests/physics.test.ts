@@ -213,8 +213,9 @@ describe('MatterPhysics', () => {
     it('should set gravity', () => {
       physics.setGravity(0, 2);
 
+      // MatterPhysics scales gravity by 0.001
       expect(engine.gravity.x).toBe(0);
-      expect(engine.gravity.y).toBe(2);
+      expect(engine.gravity.y).toBe(0.002);
     });
 
     it('should apply gravity to bodies', () => {

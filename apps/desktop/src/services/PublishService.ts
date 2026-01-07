@@ -1,5 +1,41 @@
 import type { GameSpec } from '@promptplay/shared-types';
 
+// JSZip types (dynamically loaded to avoid bundling issues)
+interface JSZipInstance {
+  file(name: string, data: string | Blob | ArrayBuffer): JSZipInstance;
+  generateAsync(options: {
+    type: 'blob' | 'base64' | 'string';
+    compression?: string;
+    compressionOptions?: { level: number };
+  }): Promise<Blob | string>;
+}
+
+interface JSZipConstructor {
+  new (): JSZipInstance;
+}
+
+// Lazy-load JSZip when needed
+let JSZipModule: JSZipConstructor | null = null;
+
+async function getJSZip(): Promise<JSZipConstructor> {
+  if (JSZipModule) return JSZipModule;
+
+  try {
+    // Dynamic import - jszip is an optional dependency
+    // Using @vite-ignore to prevent Vite from pre-analyzing this optional import
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const modulePath = 'jszip';
+    const module = await (import(/* @vite-ignore */ modulePath) as Promise<any>);
+    JSZipModule = module.default as JSZipConstructor;
+    return JSZipModule;
+  } catch {
+    throw new Error(
+      'JSZip is not installed. Run: pnpm install\n' +
+        'ZIP export requires the jszip package.'
+    );
+  }
+}
+
 /**
  * Publish target platforms
  */
@@ -148,14 +184,34 @@ export class PublishService {
       height: options?.height || 600,
     });
 
-    // TODO: In a real implementation, we'd create a ZIP file here
-    // with: this.generateReadme(gameSpec, options) and JSON.stringify(gameSpec, null, 2)
-    // For now, return the HTML as the primary output
+    // Generate README
+    const readme = this.generateReadme(gameSpec, options);
+
+    // Generate game.json (editable game spec)
+    const gameJson = JSON.stringify(gameSpec, null, 2);
+
+    // Create ZIP file using JSZip
+    const JSZip = await getJSZip();
+    const zip = new JSZip();
+    const folderName = this.sanitizeFilename(title);
+
+    // Add files to ZIP
+    zip.file(`${folderName}/index.html`, html);
+    zip.file(`${folderName}/game.json`, gameJson);
+    zip.file(`${folderName}/README.md`, readme);
+
+    // Generate the ZIP blob
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+    });
+
     return {
       success: true,
       platform: 'zip',
-      output: html,
-      filename: `${this.sanitizeFilename(title)}.zip`,
+      output: zipBlob as Blob,
+      filename: `${folderName}.zip`,
       instructions: [
         'Extract the ZIP file to a folder',
         'Open index.html to play the game',
@@ -285,18 +341,51 @@ export class PublishService {
       offlineSupport,
     });
 
-    // Return as a package with multiple files
-    const pwaPackage = {
-      'index.html': html,
-      'manifest.json': manifest,
-      ...(offlineSupport && { 'sw.js': serviceWorker }),
-    };
+    // Create ZIP file using JSZip
+    const JSZip = await getJSZip();
+    const zip = new JSZip();
+    const folderName = this.sanitizeFilename(title);
+
+    zip.file(`${folderName}/index.html`, html);
+    zip.file(`${folderName}/manifest.json`, manifest);
+    if (offlineSupport) {
+      zip.file(`${folderName}/sw.js`, serviceWorker);
+    }
+
+    // Generate README for PWA
+    const pwaReadme = `# ${title} - PWA
+
+## Installation
+1. Deploy all files to an HTTPS web server (required for PWA)
+2. On mobile: Open the URL and tap "Add to Home Screen"
+3. The game will work offline once installed
+
+## Files
+- \`index.html\` - Main game file with touch controls
+- \`manifest.json\` - Web app manifest for PWA
+${offlineSupport ? '- `sw.js` - Service worker for offline support' : ''}
+
+## Local Testing
+Use a local HTTPS server:
+- npx serve -s
+- python -m http.server
+
+Created with [PromptPlay](https://github.com/promptplay)
+`;
+    zip.file(`${folderName}/README.md`, pwaReadme);
+
+    // Generate the ZIP blob
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+    });
 
     return {
       success: true,
       platform: 'pwa',
-      output: JSON.stringify(pwaPackage),
-      filename: `${this.sanitizeFilename(title)}-pwa.zip`,
+      output: zipBlob as Blob,
+      filename: `${folderName}-pwa.zip`,
       instructions: [
         '1. Extract all files to a folder',
         '2. Deploy to any HTTPS web server (required for PWA)',
@@ -1203,9 +1292,8 @@ self.addEventListener('fetch', (event) => {
   }
 
   /**
-   * Generate README file (for future ZIP export implementation)
+   * Generate README file for ZIP export
    */
-  // @ts-ignore - Unused for now, will be used for ZIP export
   private generateReadme(
     gameSpec: GameSpec,
     options?: PublishConfig['options']

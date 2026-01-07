@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { logError } from '../utils/errorUtils';
 
 export interface ChatMessage {
   id: string;
@@ -50,7 +51,7 @@ class ChatHistoryService {
 
       return [];
     } catch (err) {
-      console.error('Failed to load chat history:', err);
+      logError('Failed to load chat history', err);
       return [];
     }
   }
@@ -79,7 +80,7 @@ class ChatHistoryService {
         content: JSON.stringify(data, null, 2),
       });
     } catch (err) {
-      console.error('Failed to save chat history:', err);
+      logError('Failed to save chat history', err);
     }
   }
 

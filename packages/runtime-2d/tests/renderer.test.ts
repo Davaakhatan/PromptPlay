@@ -17,6 +17,8 @@ describe('Canvas2DRenderer', () => {
       height: 600,
       backgroundColor: 0x1a1a2e,
     });
+    // Disable HUD by default for tests (it's enabled by default)
+    renderer.toggleHUD();
   });
 
   function createSpriteEntity(options: {

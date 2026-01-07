@@ -199,6 +199,13 @@ export function createMockImage(): HTMLImageElement {
 // Mock Image constructor
 (global as any).Image = vi.fn(() => createMockImage());
 
+// Mock navigator.getGamepads for gamepad input tests
+Object.defineProperty(global.navigator, 'getGamepads', {
+  value: vi.fn(() => []),
+  writable: true,
+  configurable: true,
+});
+
 // Mock KeyboardEvent
 export function createKeyboardEvent(type: string, code: string, options: Partial<KeyboardEvent> = {}): KeyboardEvent {
   return {

@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { compilationService, CompilationError, ScriptModule } from '../services/CompilationService';
+import { logError } from '../utils/errorUtils';
 
 interface UseScriptWatcherOptions {
   projectPath: string | null;
@@ -55,7 +56,7 @@ export function useScriptWatcher({
 
       return tsFiles;
     } catch (err) {
-      console.error('Failed to scan for scripts:', err);
+      logError('Failed to scan for scripts', err);
       return [];
     }
   }, [projectPath]);
@@ -138,7 +139,7 @@ export function useScriptWatcher({
           setIsCompiling(false);
         }
       } catch (err) {
-        console.error('Error checking file:', file.path, err);
+        logError(`Error checking file: ${file.path}`, err);
       }
     }
   }, [projectPath, enabled, scanForScripts, compileScript, onFileChange]);

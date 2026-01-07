@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { open, save } from '@tauri-apps/plugin-dialog';
+import { save } from '@tauri-apps/plugin-dialog';
 import type { GameSpec, SceneSpec, EntitySpec, Game3DSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
 import GameCanvas3D from './components/GameCanvas3D';
@@ -483,39 +483,52 @@ function App() {
 
   const openProject = useCallback(async (path?: string) => {
     let gameJsonStr = '';
+    let selected = path;
+
     try {
       setLoading(true);
       setError(null);
 
-      let selected = path;
-
       // If no path provided, show dialog
       if (!selected) {
-        const dialogResult = await open({
-          directory: true,
-          multiple: false,
-          title: 'Open Game Project',
-        });
+        try {
+          // Use our custom Rust command instead of the dialog plugin
+          // to avoid cyclic structure serialization issues
+          const dialogResult = await invoke<string | null>('pick_directory', {
+            title: 'Open Game Project',
+          });
 
-        // Handle null (cancelled) or array result
-        if (!dialogResult) {
-          setLoading(false);
-          return;
-        }
+          // Handle null (cancelled)
+          if (!dialogResult) {
+            setLoading(false);
+            return;
+          }
 
-        // Ensure we have a string path
-        selected = Array.isArray(dialogResult) ? dialogResult[0] : dialogResult;
-        if (typeof selected !== 'string') {
+          selected = dialogResult;
+        } catch (dialogErr) {
+          // Dialog error - don't set projectPath, just show error
+          logError('Failed to open file dialog', dialogErr);
           setLoading(false);
-          setError('Invalid project path selected');
+          setError('Failed to open file dialog. Please try again.');
           return;
         }
       }
 
-      setProjectPath(selected);
-      gameJsonStr = await invoke<string>('load_game_spec', { projectPath: selected });
+      // Load the game spec BEFORE setting projectPath to avoid triggering
+      // dependent effects (FileTree, useFileWatcher) if the load fails
+      try {
+        gameJsonStr = await invoke<string>('load_game_spec', { projectPath: selected });
+      } catch (loadErr) {
+        logError('Failed to load game.json', loadErr);
+        setLoading(false);
+        setError(getErrorMessage(loadErr) || 'Failed to load game.json');
+        return;
+      }
+
       const spec = JSON.parse(gameJsonStr) as GameSpec;
 
+      // Only set projectPath AFTER successful load
+      setProjectPath(selected);
       setGameSpec(spec);
       // Load tilemap from gameSpec if present
       setCurrentTilemap(spec.tilemap as Tilemap | undefined || null);
@@ -574,6 +587,9 @@ function App() {
       setError(errorMessage);
       setLoading(false);
       setIsPlaying(false);
+      // Reset projectPath if we failed mid-way
+      setProjectPath(null);
+      setGameSpec(null);
     }
   }, [initializeHistory]);
 
@@ -583,15 +599,13 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const selected = await open({
-        multiple: false,
+      // Use our custom Rust command instead of the dialog plugin
+      const selected = await invoke<string | null>('pick_file', {
         title: 'Import Game',
-        filters: [
-          { name: 'Game Files', extensions: ['json', 'promptplay'] },
-        ],
+        extensions: ['json', 'promptplay'],
       });
 
-      if (!selected || typeof selected !== 'string') {
+      if (!selected) {
         setLoading(false);
         return;
       }

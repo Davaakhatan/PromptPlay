@@ -9,6 +9,54 @@ pub struct ProjectInfo {
     pub name: String,
 }
 
+/// Open a directory picker dialog and return the selected path
+/// This is a workaround for the JavaScript dialog plugin cyclic structure issue
+#[tauri::command]
+pub async fn pick_directory(title: Option<String>) -> Result<Option<String>, String> {
+    use std::sync::mpsc;
+
+    let (tx, rx) = mpsc::channel();
+
+    std::thread::spawn(move || {
+        let folder = rfd::FileDialog::new()
+            .set_title(&title.unwrap_or_else(|| "Select Directory".to_string()))
+            .pick_folder();
+
+        let result = folder.map(|p| p.to_string_lossy().to_string());
+        let _ = tx.send(result);
+    });
+
+    rx.recv()
+        .map_err(|e| format!("Dialog error: {}", e))
+}
+
+/// Open a file picker dialog and return the selected path
+#[tauri::command]
+pub async fn pick_file(title: Option<String>, extensions: Option<Vec<String>>) -> Result<Option<String>, String> {
+    use std::sync::mpsc;
+
+    let (tx, rx) = mpsc::channel();
+
+    std::thread::spawn(move || {
+        let mut dialog = rfd::FileDialog::new()
+            .set_title(&title.unwrap_or_else(|| "Select File".to_string()));
+
+        // Add file extension filters if provided
+        if let Some(exts) = extensions {
+            let ext_refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
+            dialog = dialog.add_filter("Files", &ext_refs);
+        }
+
+        let file = dialog.pick_file();
+
+        let result = file.map(|p| p.to_string_lossy().to_string());
+        let _ = tx.send(result);
+    });
+
+    rx.recv()
+        .map_err(|e| format!("Dialog error: {}", e))
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
     pub name: String,

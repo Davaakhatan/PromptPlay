@@ -128,14 +128,19 @@ export class MatterPhysics {
       body = Bodies.circle(x, y, radius);
     }
 
-    // Check if entity should be static (via tag OR Collider.isStatic component field)
-    const hasStaticTag = this.world.hasTag(eid, 'static');
-    const hasStaticCollider = Collider.isStatic[eid] === 1;
-    Body.setStatic(body, hasStaticTag || hasStaticCollider);
-
     // Set as sensor if needed
     const isSensor = Collider.isSensor[eid] === 1;
     body.isSensor = isSensor;
+
+    // Check if entity should be static (via tag OR Collider.isStatic component field)
+    // Recognize 'static', 'ground', 'platform', 'collectible' tags as static bodies
+    // Also make sensors static by default (sensors are typically trigger zones that shouldn't move)
+    const hasStaticTag = this.world.hasTag(eid, 'static') ||
+                         this.world.hasTag(eid, 'ground') ||
+                         this.world.hasTag(eid, 'platform') ||
+                         this.world.hasTag(eid, 'collectible');
+    const hasStaticCollider = Collider.isStatic[eid] === 1;
+    Body.setStatic(body, hasStaticTag || hasStaticCollider || isSensor);
 
     // Store entity ID in body for collision callbacks
     body.label = `entity_${eid}`;
@@ -205,9 +210,13 @@ export class MatterPhysics {
   }
 
   // Set gravity
+  // Game specs use pixels/second² (e.g., 980), but Matter.js uses normalized values (default ~1)
+  // Scale down by 1000 to convert to Matter.js scale
+  private static GRAVITY_SCALE = 0.001;
+
   setGravity(x: number, y: number): void {
-    this.engine.gravity.x = x;
-    this.engine.gravity.y = y;
+    this.engine.gravity.x = x * MatterPhysics.GRAVITY_SCALE;
+    this.engine.gravity.y = y * MatterPhysics.GRAVITY_SCALE;
   }
 
   // Track static bodies by ID (for tilemaps)

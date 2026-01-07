@@ -1,5 +1,5 @@
 import { hasComponent } from 'bitecs';
-import { GameWorld, Transform, Sprite } from '@promptplay/ecs-core';
+import { GameWorld, Transform, Sprite, Health } from '@promptplay/ecs-core';
 import { CameraState } from '../systems/CameraSystem';
 
 // Tilemap types (matches @promptplay/shared-types)
@@ -52,6 +52,18 @@ export interface DebugInfo {
   showDebug: boolean;
 }
 
+// HUD info for game state display
+export interface HUDInfo {
+  score: number;
+  highScore: number;
+  lives: number;
+  maxLives: number;
+  level: number;
+  timeRemaining: number;
+  showHUD: boolean;
+  gameState: number; // 0=menu, 1=playing, 2=paused, 3=gameOver, 4=won
+}
+
 // Texture cache entry
 interface TextureEntry {
   image: HTMLImageElement;
@@ -80,6 +92,24 @@ export class Canvas2DRenderer {
     particleCount: 0,
     showDebug: false,
   };
+
+  // HUD overlay
+  private hudInfo: HUDInfo = {
+    score: 0,
+    highScore: 0,
+    lives: 3,
+    maxLives: 3,
+    level: 1,
+    timeRemaining: 0,
+    showHUD: true,
+    gameState: 1,
+  };
+
+  // Health bar settings
+  private showHealthBars: boolean = true;
+  private healthBarHeight: number = 6;
+  private healthBarWidth: number = 40;
+  private healthBarOffset: number = 10; // Distance above entity
 
   // Texture cache: textureId -> TextureEntry
   private textureCache: Map<number, TextureEntry> = new Map();
@@ -137,6 +167,31 @@ export class Canvas2DRenderer {
 
   toggleDebug(): void {
     this.debugInfo.showDebug = !this.debugInfo.showDebug;
+  }
+
+  setHUD(info: Partial<HUDInfo>): void {
+    Object.assign(this.hudInfo, info);
+  }
+
+  toggleHUD(): void {
+    this.hudInfo.showHUD = !this.hudInfo.showHUD;
+  }
+
+  // Health bar configuration
+  setHealthBarConfig(config: {
+    show?: boolean;
+    width?: number;
+    height?: number;
+    offset?: number;
+  }): void {
+    if (config.show !== undefined) this.showHealthBars = config.show;
+    if (config.width !== undefined) this.healthBarWidth = config.width;
+    if (config.height !== undefined) this.healthBarHeight = config.height;
+    if (config.offset !== undefined) this.healthBarOffset = config.offset;
+  }
+
+  toggleHealthBars(): void {
+    this.showHealthBars = !this.showHealthBars;
   }
 
   // Set tilemap for rendering
@@ -294,11 +349,21 @@ export class Canvas2DRenderer {
       this.renderEntity(eid);
     }
 
+    // Render health bars above entities
+    if (this.showHealthBars) {
+      this.renderHealthBars(renderables.map(r => r.eid));
+    }
+
     // Render particles
     this.renderParticles();
 
     // Restore camera transformation
     this.ctx.restore();
+
+    // Render HUD overlay (not affected by camera)
+    if (this.hudInfo.showHUD) {
+      this.renderHUD();
+    }
 
     // Render debug overlay (not affected by camera)
     if (this.debugInfo.showDebug) {
@@ -416,6 +481,61 @@ export class Canvas2DRenderer {
     }
   }
 
+  private renderHealthBars(entityIds: number[]): void {
+    const w = this.world.getWorld();
+    const ctx = this.ctx;
+
+    for (const eid of entityIds) {
+      // Only render health bar if entity has Health component
+      if (!hasComponent(w, Health, eid)) continue;
+
+      const currentHealth = Health.current[eid];
+      const maxHealth = Health.max[eid];
+
+      // Skip if full health or no max health set
+      if (maxHealth <= 0 || currentHealth >= maxHealth) continue;
+
+      const x = Transform.x[eid];
+      const y = Transform.y[eid];
+      const spriteHeight = Sprite.height[eid];
+
+      // Position bar above entity
+      const barX = x - this.healthBarWidth / 2;
+      const barY = y - spriteHeight / 2 - this.healthBarOffset - this.healthBarHeight;
+
+      // Health percentage
+      const healthPercent = Math.max(0, Math.min(1, currentHealth / maxHealth));
+
+      // Draw background (dark)
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(barX - 1, barY - 1, this.healthBarWidth + 2, this.healthBarHeight + 2);
+
+      // Draw health bar background (red for missing health)
+      ctx.fillStyle = '#ff3333';
+      ctx.fillRect(barX, barY, this.healthBarWidth, this.healthBarHeight);
+
+      // Draw current health (green to yellow to red based on percentage)
+      let healthColor: string;
+      if (healthPercent > 0.6) {
+        healthColor = '#33ff33'; // Green
+      } else if (healthPercent > 0.3) {
+        healthColor = '#ffff33'; // Yellow
+      } else {
+        healthColor = '#ff6633'; // Orange-red
+      }
+      ctx.fillStyle = healthColor;
+      ctx.fillRect(barX, barY, this.healthBarWidth * healthPercent, this.healthBarHeight);
+
+      // Draw border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(barX, barY, this.healthBarWidth, this.healthBarHeight);
+
+      ctx.restore();
+    }
+  }
+
   private renderTilemap(): void {
     if (!this.tilemap) return;
 
@@ -478,6 +598,133 @@ export class Canvas2DRenderer {
     const b = Math.round(sb + (eb - sb) * t);
 
     return (r << 16) | (g << 8) | b;
+  }
+
+  private renderHUD(): void {
+    const ctx = this.ctx;
+    const { score, lives, maxLives, level, timeRemaining, gameState } = this.hudInfo;
+
+    // HUD offset to avoid editor UI overlays
+    // Left offset clears the "Playing/Editing" badge, right offset clears toolbar buttons
+    const leftOffset = 130;
+    const rightOffset = 350; // Large offset to clear toolbar buttons
+    const topOffset = 70; // Below the top UI bar
+
+    // Score display (top-left, offset to avoid "Playing" badge)
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText(`Score: ${score}`, leftOffset, topOffset);
+
+    // Level display
+    ctx.font = '16px Arial, sans-serif';
+    ctx.fillText(`Level ${level}`, leftOffset, topOffset + 23);
+
+    // Lives display - render as hearts below score/level (left side, below Level text)
+    // Draw hearts using canvas shapes for better cross-platform compatibility
+    const heartSize = 18;
+    const heartSpacing = 24;
+    const heartY = topOffset + 48; // Below Level text
+
+    // Add "Lives:" label
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Lives:', leftOffset, heartY + heartSize / 2);
+
+    for (let i = 0; i < maxLives; i++) {
+      const heartX = leftOffset + 55 + (i * heartSpacing);
+      this.drawHeart(ctx, heartX, heartY, heartSize, i < lives ? '#ff3366' : '#555555');
+    }
+
+    // Time remaining (if > 0)
+    if (timeRemaining > 0) {
+      const seconds = Math.ceil(timeRemaining / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px Arial, sans-serif';
+      ctx.fillStyle = seconds <= 10 ? '#ff4444' : '#ffffff';
+      ctx.fillText(`${minutes}:${secs.toString().padStart(2, '0')}`, this.width / 2, 35);
+    }
+
+    ctx.restore();
+
+    // Game state overlays
+    if (gameState === 3) {
+      // Game Over
+      this.renderGameOverlay('GAME OVER', '#ff4444', 'Press R to restart');
+    } else if (gameState === 4) {
+      // Won
+      this.renderGameOverlay('YOU WIN!', '#44ff44', 'Press R to play again');
+    } else if (gameState === 2) {
+      // Paused
+      this.renderGameOverlay('PAUSED', '#ffffff', 'Press P to continue');
+    }
+  }
+
+  private renderGameOverlay(title: string, color: string, subtitle: string): void {
+    const ctx = this.ctx;
+
+    // Darken background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    // Title
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 48px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(title, this.width / 2, this.height / 2 - 20);
+
+    // Subtitle
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px Arial, sans-serif';
+    ctx.fillText(subtitle, this.width / 2, this.height / 2 + 30);
+    ctx.restore();
+  }
+
+  private drawHeart(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+    ctx.save();
+    // Reset shadow for heart drawing
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    ctx.fillStyle = color;
+
+    // Draw heart using two circles and a triangle for better compatibility
+    const radius = size * 0.3;
+    const leftCircleX = x - radius * 0.7;
+    const rightCircleX = x + radius * 0.7;
+    const circleY = y + radius;
+
+    // Left circle
+    ctx.beginPath();
+    ctx.arc(leftCircleX, circleY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right circle
+    ctx.beginPath();
+    ctx.arc(rightCircleX, circleY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Triangle pointing down
+    ctx.beginPath();
+    ctx.moveTo(x - size * 0.45, circleY);
+    ctx.lineTo(x + size * 0.45, circleY);
+    ctx.lineTo(x, y + size);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
   }
 
   private renderDebugOverlay(): void {

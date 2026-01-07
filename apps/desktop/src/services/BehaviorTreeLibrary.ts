@@ -193,7 +193,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     type: 'bt_action',
     category: 'action',
     title: 'Action',
-    description: 'Executes a custom action on the entity.',
+    description: 'Executes a custom action on the entity. Actions: move, attack, flee, patrol, idle.',
     icon: 'Act',
     color: '#22c55e',
     inputs: [
@@ -201,6 +201,15 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
       { id: 'targetX', name: 'Target X', type: 'number', defaultValue: 0 },
       { id: 'targetY', name: 'Target Y', type: 'number', defaultValue: 0 },
       { id: 'speed', name: 'Speed', type: 'number', defaultValue: 100 },
+      { id: 'targetEntity', name: 'Target Entity', type: 'string', defaultValue: 'Player' },
+      { id: 'damage', name: 'Damage', type: 'number', defaultValue: 10 },
+      { id: 'attackRange', name: 'Attack Range', type: 'number', defaultValue: 50 },
+      { id: 'attackCooldown', name: 'Attack Cooldown', type: 'number', defaultValue: 1.0 },
+      { id: 'safeDistance', name: 'Safe Distance', type: 'number', defaultValue: 200 },
+      { id: 'waypoints', name: 'Waypoints', type: 'string', defaultValue: '0,0;100,0;100,100;0,100' },
+      { id: 'waitTime', name: 'Wait Time', type: 'number', defaultValue: 0.5 },
+      { id: 'arrivalThreshold', name: 'Arrival Threshold', type: 'number', defaultValue: 5 },
+      { id: 'duration', name: 'Duration', type: 'number', defaultValue: 1.0 },
     ],
     outputs: [],
     maxChildren: 0,
@@ -256,7 +265,7 @@ export const BEHAVIOR_NODE_DEFINITIONS: BehaviorNodeDefinition[] = [
     type: 'bt_condition',
     category: 'condition',
     title: 'Condition',
-    description: 'Checks a condition and returns success or failure.',
+    description: 'Checks a condition. Types: distance, health, target_health, has_target, is_moving, in_range, can_see, always, never, random.',
     icon: 'If',
     color: '#f59e0b',
     inputs: [
@@ -757,22 +766,275 @@ export class BehaviorTreeExecutor {
 
   // === ACTION IMPLEMENTATIONS ===
 
-  private executeAction(node: BehaviorNodeInstance, _context: BehaviorContext, _state: BehaviorNodeState): BehaviorStatus {
+  private executeAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
     const actionType = (node.data.actionType as string) || 'move';
 
     switch (actionType) {
       case 'move':
-        // TODO: Implement actual movement
-        return 'success';
+        return this.executeMoveAction(node, context, state);
       case 'attack':
-        // TODO: Implement attack
-        return 'success';
+        return this.executeAttackAction(node, context, state);
       case 'flee':
-        // TODO: Implement flee
-        return 'success';
+        return this.executeFleeAction(node, context, state);
+      case 'patrol':
+        return this.executePatrolAction(node, context, state);
+      case 'idle':
+        return this.executeIdleAction(node, context, state);
       default:
         return 'success';
     }
+  }
+
+  /**
+   * Move toward a target position
+   */
+  private executeMoveAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+    const targetX = (node.data.targetX as number) ?? 0;
+    const targetY = (node.data.targetY as number) ?? 0;
+    const speed = (node.data.speed as number) ?? 100;
+    const arrivalThreshold = (node.data.arrivalThreshold as number) ?? 5;
+
+    // Get current entity position
+    const entity = context.entity as { x?: number; y?: number; name?: string } | null;
+    if (!entity || typeof entity.x !== 'number' || typeof entity.y !== 'number') {
+      return 'failure';
+    }
+
+    const currentX = entity.x;
+    const currentY = entity.y;
+
+    // Calculate direction and distance to target
+    const dx = targetX - currentX;
+    const dy = targetY - currentY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if we've arrived
+    if (distance <= arrivalThreshold) {
+      state.data.moving = false;
+      return 'success';
+    }
+
+    // Calculate movement for this frame
+    const moveDistance = speed * context.deltaTime;
+
+    // Normalize direction and apply movement
+    const normalizedDx = dx / distance;
+    const normalizedDy = dy / distance;
+
+    const newX = currentX + normalizedDx * Math.min(moveDistance, distance);
+    const newY = currentY + normalizedDy * Math.min(moveDistance, distance);
+
+    // Update entity position
+    context.updateEntity(entity.name || '', { x: newX, y: newY });
+
+    // Store velocity in blackboard for animation systems
+    context.blackboard['velocityX'] = normalizedDx * speed;
+    context.blackboard['velocityY'] = normalizedDy * speed;
+
+    state.data.moving = true;
+    return 'running';
+  }
+
+  /**
+   * Attack a target entity
+   */
+  private executeAttackAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+    const targetEntity = (node.data.targetEntity as string) || 'Player';
+    const damage = (node.data.damage as number) ?? 10;
+    const attackRange = (node.data.attackRange as number) ?? 50;
+    const attackCooldown = (node.data.attackCooldown as number) ?? 1.0;
+
+    // Check cooldown
+    const lastAttackTime = (state.data.lastAttackTime as number) ?? -Infinity;
+    state.runningTime += context.deltaTime;
+
+    if (state.runningTime - lastAttackTime < attackCooldown) {
+      return 'running';
+    }
+
+    // Get current entity and target
+    const entity = context.entity as { x?: number; y?: number; name?: string } | null;
+    const target = context.getEntity(targetEntity) as { x?: number; y?: number; health?: number } | null;
+
+    if (!entity || !target) {
+      return 'failure';
+    }
+
+    // Check if target is in range
+    const dx = (target.x ?? 0) - (entity.x ?? 0);
+    const dy = (target.y ?? 0) - (entity.y ?? 0);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > attackRange) {
+      // Target is out of range
+      return 'failure';
+    }
+
+    // Execute attack
+    const newHealth = (target.health ?? 100) - damage;
+    context.updateEntity(targetEntity, { health: newHealth });
+
+    // Emit attack event
+    context.emit('attack', {
+      attacker: entity.name,
+      target: targetEntity,
+      damage,
+      targetHealth: newHealth,
+    });
+
+    // Store last attack time
+    state.data.lastAttackTime = state.runningTime;
+
+    return 'success';
+  }
+
+  /**
+   * Flee away from a target entity
+   */
+  private executeFleeAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+    const targetEntity = (node.data.targetEntity as string) || 'Player';
+    const speed = (node.data.speed as number) ?? 120;
+    const safeDistance = (node.data.safeDistance as number) ?? 200;
+
+    // Get current entity and target
+    const entity = context.entity as { x?: number; y?: number; name?: string } | null;
+    const target = context.getEntity(targetEntity) as { x?: number; y?: number } | null;
+
+    if (!entity || typeof entity.x !== 'number' || typeof entity.y !== 'number') {
+      return 'failure';
+    }
+
+    if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
+      // No target to flee from - success
+      return 'success';
+    }
+
+    // Calculate direction away from target
+    const dx = entity.x - target.x;
+    const dy = entity.y - target.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if we're at safe distance
+    if (distance >= safeDistance) {
+      state.data.fleeing = false;
+      context.blackboard['velocityX'] = 0;
+      context.blackboard['velocityY'] = 0;
+      return 'success';
+    }
+
+    // Calculate flee direction (away from target)
+    const normalizedDx = distance > 0 ? dx / distance : 1;
+    const normalizedDy = distance > 0 ? dy / distance : 0;
+
+    // Apply movement
+    const moveDistance = speed * context.deltaTime;
+    const newX = entity.x + normalizedDx * moveDistance;
+    const newY = entity.y + normalizedDy * moveDistance;
+
+    // Update entity position
+    context.updateEntity(entity.name || '', { x: newX, y: newY });
+
+    // Store velocity in blackboard
+    context.blackboard['velocityX'] = normalizedDx * speed;
+    context.blackboard['velocityY'] = normalizedDy * speed;
+
+    state.data.fleeing = true;
+    return 'running';
+  }
+
+  /**
+   * Patrol between waypoints
+   */
+  private executePatrolAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+    const waypointsStr = (node.data.waypoints as string) || '0,0;100,0;100,100;0,100';
+    const speed = (node.data.speed as number) ?? 80;
+    const waitTime = (node.data.waitTime as number) ?? 0.5;
+    const arrivalThreshold = (node.data.arrivalThreshold as number) ?? 5;
+
+    // Parse waypoints
+    const waypoints = waypointsStr.split(';').map(wp => {
+      const [x, y] = wp.split(',').map(Number);
+      return { x: x || 0, y: y || 0 };
+    });
+
+    if (waypoints.length === 0) {
+      return 'failure';
+    }
+
+    // Get current waypoint index
+    let waypointIndex = (state.data.waypointIndex as number) ?? 0;
+    const waiting = (state.data.waiting as boolean) ?? false;
+    let waitElapsed = (state.data.waitElapsed as number) ?? 0;
+
+    // Handle waiting at waypoint
+    if (waiting) {
+      waitElapsed += context.deltaTime;
+      if (waitElapsed >= waitTime) {
+        state.data.waiting = false;
+        state.data.waitElapsed = 0;
+        waypointIndex = (waypointIndex + 1) % waypoints.length;
+        state.data.waypointIndex = waypointIndex;
+      } else {
+        state.data.waitElapsed = waitElapsed;
+        return 'running';
+      }
+    }
+
+    const targetWaypoint = waypoints[waypointIndex];
+
+    // Get current entity position
+    const entity = context.entity as { x?: number; y?: number; name?: string } | null;
+    if (!entity || typeof entity.x !== 'number' || typeof entity.y !== 'number') {
+      return 'failure';
+    }
+
+    // Calculate distance to waypoint
+    const dx = targetWaypoint.x - entity.x;
+    const dy = targetWaypoint.y - entity.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if arrived at waypoint
+    if (distance <= arrivalThreshold) {
+      state.data.waiting = true;
+      state.data.waitElapsed = 0;
+      context.blackboard['velocityX'] = 0;
+      context.blackboard['velocityY'] = 0;
+      return 'running';
+    }
+
+    // Move toward waypoint
+    const normalizedDx = dx / distance;
+    const normalizedDy = dy / distance;
+    const moveDistance = speed * context.deltaTime;
+
+    const newX = entity.x + normalizedDx * Math.min(moveDistance, distance);
+    const newY = entity.y + normalizedDy * Math.min(moveDistance, distance);
+
+    context.updateEntity(entity.name || '', { x: newX, y: newY });
+    context.blackboard['velocityX'] = normalizedDx * speed;
+    context.blackboard['velocityY'] = normalizedDy * speed;
+
+    return 'running';
+  }
+
+  /**
+   * Idle for a duration (do nothing)
+   */
+  private executeIdleAction(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
+    const duration = (node.data.duration as number) ?? 1.0;
+
+    state.data.elapsed = ((state.data.elapsed as number) || 0) + context.deltaTime;
+
+    // Set velocity to zero
+    context.blackboard['velocityX'] = 0;
+    context.blackboard['velocityY'] = 0;
+
+    if ((state.data.elapsed as number) >= duration) {
+      state.data.elapsed = 0;
+      return 'success';
+    }
+
+    return 'running';
   }
 
   private executeWait(node: BehaviorNodeInstance, context: BehaviorContext, state: BehaviorNodeState): BehaviorStatus {
@@ -818,20 +1080,166 @@ export class BehaviorTreeExecutor {
 
   // === CONDITION IMPLEMENTATIONS ===
 
-  private executeCondition(node: BehaviorNodeInstance, _context: BehaviorContext): BehaviorStatus {
+  private executeCondition(node: BehaviorNodeInstance, context: BehaviorContext): BehaviorStatus {
     const conditionType = (node.data.conditionType as string) || 'always';
-    const threshold = (node.data.threshold as number) || 100;
+    const targetEntity = (node.data.targetEntity as string) || 'Player';
+    const threshold = (node.data.threshold as number) ?? 100;
+    const comparison = (node.data.comparison as string) || 'less';
 
     switch (conditionType) {
       case 'always':
         return 'success';
+
       case 'never':
         return 'failure';
+
       case 'random':
         return Math.random() < (threshold / 100) ? 'success' : 'failure';
+
+      case 'distance':
+        return this.checkDistanceCondition(context, targetEntity, threshold, comparison);
+
+      case 'health':
+        return this.checkHealthCondition(context, threshold, comparison);
+
+      case 'target_health':
+        return this.checkTargetHealthCondition(context, targetEntity, threshold, comparison);
+
+      case 'has_target':
+        return this.checkHasTargetCondition(context, targetEntity);
+
+      case 'is_moving':
+        return this.checkIsMovingCondition(context);
+
+      case 'in_range':
+        return this.checkInRangeCondition(context, targetEntity, threshold);
+
+      case 'can_see':
+        return this.checkCanSeeCondition(context, targetEntity);
+
       default:
-        // TODO: Implement actual conditions
         return 'success';
+    }
+  }
+
+  /**
+   * Check distance to target entity
+   */
+  private checkDistanceCondition(context: BehaviorContext, targetEntity: string, threshold: number, comparison: string): BehaviorStatus {
+    const entity = context.entity as { x?: number; y?: number } | null;
+    const target = context.getEntity(targetEntity) as { x?: number; y?: number } | null;
+
+    if (!entity || !target) {
+      return 'failure';
+    }
+
+    const dx = (target.x ?? 0) - (entity.x ?? 0);
+    const dy = (target.y ?? 0) - (entity.y ?? 0);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    return this.compareValues(distance, threshold, comparison) ? 'success' : 'failure';
+  }
+
+  /**
+   * Check own health
+   */
+  private checkHealthCondition(context: BehaviorContext, threshold: number, comparison: string): BehaviorStatus {
+    const entity = context.entity as { health?: number; maxHealth?: number } | null;
+
+    if (!entity) {
+      return 'failure';
+    }
+
+    const health = entity.health ?? 100;
+    const maxHealth = entity.maxHealth ?? 100;
+    const healthPercent = (health / maxHealth) * 100;
+
+    return this.compareValues(healthPercent, threshold, comparison) ? 'success' : 'failure';
+  }
+
+  /**
+   * Check target's health
+   */
+  private checkTargetHealthCondition(context: BehaviorContext, targetEntity: string, threshold: number, comparison: string): BehaviorStatus {
+    const target = context.getEntity(targetEntity) as { health?: number; maxHealth?: number } | null;
+
+    if (!target) {
+      return 'failure';
+    }
+
+    const health = target.health ?? 100;
+    const maxHealth = target.maxHealth ?? 100;
+    const healthPercent = (health / maxHealth) * 100;
+
+    return this.compareValues(healthPercent, threshold, comparison) ? 'success' : 'failure';
+  }
+
+  /**
+   * Check if target entity exists
+   */
+  private checkHasTargetCondition(context: BehaviorContext, targetEntity: string): BehaviorStatus {
+    const target = context.getEntity(targetEntity);
+    return target ? 'success' : 'failure';
+  }
+
+  /**
+   * Check if entity is currently moving
+   */
+  private checkIsMovingCondition(context: BehaviorContext): BehaviorStatus {
+    const velocityX = (context.blackboard['velocityX'] as number) ?? 0;
+    const velocityY = (context.blackboard['velocityY'] as number) ?? 0;
+
+    const isMoving = Math.abs(velocityX) > 0.1 || Math.abs(velocityY) > 0.1;
+    return isMoving ? 'success' : 'failure';
+  }
+
+  /**
+   * Check if target is within range
+   */
+  private checkInRangeCondition(context: BehaviorContext, targetEntity: string, range: number): BehaviorStatus {
+    return this.checkDistanceCondition(context, targetEntity, range, 'less');
+  }
+
+  /**
+   * Check if target is visible (simplified line-of-sight)
+   * In a full implementation, this would check for obstacles
+   */
+  private checkCanSeeCondition(context: BehaviorContext, targetEntity: string): BehaviorStatus {
+    const entity = context.entity as { x?: number; y?: number; sightRange?: number } | null;
+    const target = context.getEntity(targetEntity) as { x?: number; y?: number } | null;
+
+    if (!entity || !target) {
+      return 'failure';
+    }
+
+    const sightRange = entity.sightRange ?? 300;
+    const dx = (target.x ?? 0) - (entity.x ?? 0);
+    const dy = (target.y ?? 0) - (entity.y ?? 0);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Simple range check - a full implementation would raycast for obstacles
+    return distance <= sightRange ? 'success' : 'failure';
+  }
+
+  /**
+   * Helper to compare values based on comparison type
+   */
+  private compareValues(actual: number, expected: number, comparison: string): boolean {
+    switch (comparison) {
+      case 'less':
+        return actual < expected;
+      case 'less_equal':
+        return actual <= expected;
+      case 'greater':
+        return actual > expected;
+      case 'greater_equal':
+        return actual >= expected;
+      case 'equals':
+        return Math.abs(actual - expected) < 0.001;
+      case 'not_equals':
+        return Math.abs(actual - expected) >= 0.001;
+      default:
+        return actual < expected;
     }
   }
 

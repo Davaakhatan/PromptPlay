@@ -247,10 +247,16 @@ export default function NodeEditor({ graph: initialGraph, gameSpec, onGraphChang
     };
 
     try {
-      // Create executor with logging callback
-      const executor = new NodeExecutor(graph, context, (type, message, nodeId, nodeType) => {
-        const logType = type === 'node' ? 'info' : type === 'flow' ? 'event' : 'success';
-        addLog(logType, message, nodeId, nodeType);
+      // Create executor with logging and error callbacks
+      const executor = new NodeExecutor(graph, context, {
+        logCallback: (type: 'node' | 'flow' | 'value', message: string, nodeId?: string, nodeType?: string) => {
+          const logType = type === 'node' ? 'info' : type === 'flow' ? 'event' : 'success';
+          addLog(logType, message, nodeId, nodeType);
+        },
+        errorCallback: (error) => {
+          addLog('error', `[ERROR] ${error.message}`, error.nodeId, error.nodeType);
+        },
+        continueOnError: true,
       });
 
       if (simulateKey) {

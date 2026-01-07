@@ -1,12 +1,13 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { open, save } from '@tauri-apps/plugin-dialog';
+import { save } from '@tauri-apps/plugin-dialog';
 import type { GameSpec, Prefab, ChatMessage } from '@promptplay/shared-types';
 import {
   exportGamePackage,
   importGamePackage,
   type ExportOptions,
 } from '../services/GamePackageService';
+import { logError, getErrorMessage } from '../utils/errorUtils';
 
 interface UseProjectOperationsOptions {
   gameSpec: GameSpec | null;
@@ -279,13 +280,12 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
       onLoadingChange(true);
       onErrorChange(null);
 
-      const selected = await open({
-        directory: true,
-        multiple: false,
+      // Use custom Rust command to avoid cyclic structure serialization issues
+      const selected = await invoke<string | null>('pick_directory', {
         title: 'Open Game Project',
       });
 
-      if (!selected || typeof selected !== 'string') {
+      if (!selected) {
         onLoadingChange(false);
         return;
       }
@@ -309,8 +309,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
 
       initializeHistory(spec);
     } catch (err) {
-      console.error('Failed to open project:', err);
-      onErrorChange(err instanceof Error ? err.message : String(err));
+      logError('Failed to open project', err);
+      onErrorChange(getErrorMessage(err));
       onLoadingChange(false);
       onPlayingChange(false);
     }
@@ -342,8 +342,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
       onNotification('Saved');
       setTimeout(() => onNotification(''), 2000);
     } catch (err) {
-      console.error('Failed to save project:', err);
-      onErrorChange('Failed to save project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to save project', err);
+      onErrorChange('Failed to save project: ' + getErrorMessage(err));
     }
   }, [gameSpec, projectPath, onUnsavedChange, onNotification, onErrorChange]);
 
@@ -417,8 +417,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
 
       return true;
     } catch (err) {
-      console.error('Failed to create project:', err);
-      onErrorChange('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to create project', err);
+      onErrorChange('Failed to create project: ' + getErrorMessage(err));
       return false;
     }
   }, [
@@ -465,8 +465,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
       onNotification(`${templateId} project created`);
       setTimeout(() => onNotification(''), 2000);
     } catch (err) {
-      console.error('Failed to create project from template:', err);
-      onErrorChange('Failed to create project: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to create project from template', err);
+      onErrorChange('Failed to create project: ' + getErrorMessage(err));
     }
   }, [
     onProjectPathChange,
@@ -509,8 +509,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
       onNotification('Game exported successfully!');
       setTimeout(() => onNotification(''), 3000);
     } catch (err) {
-      console.error('Failed to export game:', err);
-      onErrorChange('Failed to export game: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to export game', err);
+      onErrorChange('Failed to export game: ' + getErrorMessage(err));
     } finally {
       onExportingChange(false);
     }
@@ -538,8 +538,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
         setTimeout(() => onNotification(''), 3000);
       }
     } catch (err) {
-      console.error('Failed to export package:', err);
-      onErrorChange('Failed to export package: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to export package', err);
+      onErrorChange('Failed to export package: ' + getErrorMessage(err));
     } finally {
       onExportingChange(false);
     }
@@ -593,8 +593,8 @@ export function useProjectOperations(options: UseProjectOperationsOptions) {
 
       onLoadingChange(false);
     } catch (err) {
-      console.error('Failed to import package:', err);
-      onErrorChange('Failed to import package: ' + (err instanceof Error ? err.message : String(err)));
+      logError('Failed to import package', err);
+      onErrorChange('Failed to import package: ' + getErrorMessage(err));
       onLoadingChange(false);
     }
   }, [

@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild-wasm';
+import { logError } from '../utils/errorUtils';
 
 export interface CompilationResult {
   success: boolean;
@@ -46,7 +47,7 @@ class CompilationService {
         this.initialized = true;
         console.log('[CompilationService] esbuild initialized');
       } catch (err) {
-        console.error('[CompilationService] Failed to initialize esbuild:', err);
+        logError('[CompilationService] Failed to initialize esbuild', err);
         throw err;
       }
     })();

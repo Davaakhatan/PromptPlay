@@ -1,6 +1,22 @@
 import type { GameSpec } from '@promptplay/shared-types';
 
 /**
+ * Configuration for the collaboration service
+ */
+export interface CollaborationConfig {
+  /** WebSocket server URL (e.g., 'wss://collab.example.com') */
+  serverUrl?: string;
+  /** Enable demo mode (simulated collaboration) */
+  demoMode?: boolean;
+  /** Reconnection settings */
+  reconnect?: {
+    enabled: boolean;
+    maxAttempts: number;
+    delayMs: number;
+  };
+}
+
+/**
  * Collaborator info
  */
 export interface Collaborator {
@@ -90,26 +106,52 @@ export type CollaborationEvent =
 export type CollaborationEventHandler = (event: CollaborationEvent) => void;
 
 /**
+ * WebSocket message types
+ */
+interface WSMessage {
+  type: string;
+  payload: unknown;
+}
+
+/**
  * Collaboration Service
  * Real-time multiplayer editing and version control
  */
 export class CollaborationService {
-  // Placeholder URL for production WebSocket server
-  // private baseUrl = 'wss://collab.promptplay.dev';
+  private config: CollaborationConfig = {
+    demoMode: true,
+    reconnect: {
+      enabled: true,
+      maxAttempts: 5,
+      delayMs: 2000,
+    },
+  };
   private ws: WebSocket | null = null;
   private projectId: string | null = null;
   private userId: string | null = null;
+  private userName: string = 'Anonymous';
   private eventHandlers: CollaborationEventHandler[] = [];
   private collaborators: Map<string, Collaborator> = new Map();
   private operationQueue: Operation[] = [];
   private versions: ProjectVersion[] = [];
-  // Reconnection attempts reserved for production WebSocket implementation
+  private reconnectAttempts: number = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private cursorUpdateInterval: ReturnType<typeof setInterval> | null = null;
+  private pendingCursor: { x: number; y: number } | null = null;
+
+  /**
+   * Configure the collaboration service
+   */
+  configure(config: Partial<CollaborationConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
 
   /**
    * Initialize the service with user info
    */
-  initialize(userId: string): void {
+  initialize(userId: string, userName?: string): void {
     this.userId = userId;
+    this.userName = userName || 'Anonymous';
   }
 
   /**
@@ -121,25 +163,282 @@ export class CollaborationService {
     }
 
     this.projectId = projectId;
+    this.reconnectAttempts = 0;
 
-    // In demo mode, simulate connection
-    // In production, this would establish WebSocket connection
-    this.simulateConnection();
+    // Use demo mode if no server URL is configured
+    if (this.config.demoMode || !this.config.serverUrl) {
+      this.simulateConnection();
+      return { success: true };
+    }
 
-    return { success: true };
+    // Connect to real WebSocket server
+    try {
+      await this.connectWebSocket();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed',
+      };
+    }
+  }
+
+  /**
+   * Connect to WebSocket server
+   */
+  private connectWebSocket(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.config.serverUrl || !this.projectId || !this.userId) {
+        reject(new Error('Missing configuration'));
+        return;
+      }
+
+      // Construct WebSocket URL with query params
+      const url = new URL(this.config.serverUrl);
+      url.searchParams.set('projectId', this.projectId);
+      url.searchParams.set('userId', this.userId);
+      url.searchParams.set('userName', this.userName);
+
+      try {
+        this.ws = new WebSocket(url.toString());
+      } catch (error) {
+        reject(new Error(`Failed to create WebSocket: ${error}`));
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
+          this.ws.close();
+          reject(new Error('Connection timeout'));
+        }
+      }, 10000);
+
+      this.ws.onopen = () => {
+        clearTimeout(timeoutId);
+        console.log('[Collaboration] WebSocket connected');
+        this.reconnectAttempts = 0;
+
+        // Add current user as collaborator
+        if (this.userId) {
+          this.collaborators.set(this.userId, {
+            id: this.userId,
+            name: this.userName,
+            color: generateCollaboratorColor(0),
+            isOnline: true,
+            lastSeen: new Date(),
+          });
+        }
+
+        // Start cursor update batching
+        this.startCursorBatching();
+
+        resolve();
+      };
+
+      this.ws.onclose = (event) => {
+        console.log('[Collaboration] WebSocket closed:', event.code, event.reason);
+        this.handleDisconnect();
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[Collaboration] WebSocket error:', error);
+        clearTimeout(timeoutId);
+        reject(new Error('WebSocket connection error'));
+      };
+
+      this.ws.onmessage = (event) => {
+        this.handleWebSocketMessage(event);
+      };
+    });
+  }
+
+  /**
+   * Handle WebSocket messages
+   */
+  private handleWebSocketMessage(event: MessageEvent): void {
+    try {
+      const message: WSMessage = JSON.parse(event.data);
+
+      switch (message.type) {
+        case 'user-joined': {
+          const collaborator = message.payload as Collaborator;
+          collaborator.lastSeen = new Date(collaborator.lastSeen);
+          this.collaborators.set(collaborator.id, collaborator);
+          this.emit({ type: 'user-joined', collaborator });
+          break;
+        }
+
+        case 'user-left': {
+          const { userId } = message.payload as { userId: string };
+          this.collaborators.delete(userId);
+          this.emit({ type: 'user-left', userId });
+          break;
+        }
+
+        case 'cursor-moved': {
+          const { userId, cursor } = message.payload as {
+            userId: string;
+            cursor: { x: number; y: number };
+          };
+          const collaborator = this.collaborators.get(userId);
+          if (collaborator) {
+            collaborator.cursor = cursor;
+            this.emit({ type: 'cursor-moved', userId, cursor });
+          }
+          break;
+        }
+
+        case 'selection-changed': {
+          const { userId, selection } = message.payload as {
+            userId: string;
+            selection: string[];
+          };
+          const collaborator = this.collaborators.get(userId);
+          if (collaborator) {
+            collaborator.selection = selection;
+            this.emit({ type: 'selection-changed', userId, selection });
+          }
+          break;
+        }
+
+        case 'operation': {
+          const operation = message.payload as Operation;
+          operation.timestamp = new Date(operation.timestamp);
+          this.operationQueue.push(operation);
+          this.emit({ type: 'operation', operation });
+          break;
+        }
+
+        case 'state-sync': {
+          // Sync full state from server
+          const state = message.payload as {
+            collaborators: Collaborator[];
+            versions: ProjectVersion[];
+          };
+          this.collaborators.clear();
+          for (const collab of state.collaborators) {
+            collab.lastSeen = new Date(collab.lastSeen);
+            this.collaborators.set(collab.id, collab);
+          }
+          this.versions = state.versions.map((v) => ({
+            ...v,
+            createdAt: new Date(v.createdAt),
+          }));
+          break;
+        }
+
+        case 'comment-added': {
+          const comment = message.payload as ProjectComment;
+          comment.createdAt = new Date(comment.createdAt);
+          this.emit({ type: 'comment-added', comment });
+          break;
+        }
+
+        case 'version-created': {
+          const version = message.payload as ProjectVersion;
+          version.createdAt = new Date(version.createdAt);
+          this.versions.unshift(version);
+          this.emit({ type: 'version-created', version });
+          break;
+        }
+
+        case 'error': {
+          console.error('[Collaboration] Server error:', message.payload);
+          break;
+        }
+
+        default:
+          console.warn('[Collaboration] Unknown message type:', message.type);
+      }
+    } catch (error) {
+      console.error('[Collaboration] Failed to parse message:', error);
+    }
+  }
+
+  /**
+   * Handle disconnect and attempt reconnection
+   */
+  private handleDisconnect(): void {
+    this.stopCursorBatching();
+
+    if (
+      this.config.reconnect?.enabled &&
+      this.reconnectAttempts < (this.config.reconnect?.maxAttempts || 5)
+    ) {
+      this.reconnectAttempts++;
+      const delay = this.config.reconnect?.delayMs || 2000;
+
+      console.log(
+        `[Collaboration] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`
+      );
+
+      this.reconnectTimer = setTimeout(() => {
+        if (this.projectId) {
+          this.connectWebSocket().catch((error) => {
+            console.error('[Collaboration] Reconnect failed:', error);
+          });
+        }
+      }, delay * this.reconnectAttempts); // Exponential backoff
+    }
+  }
+
+  /**
+   * Send message to WebSocket server
+   */
+  private send(type: string, payload: unknown): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type, payload }));
+    }
+  }
+
+  /**
+   * Start batching cursor updates to reduce network traffic
+   */
+  private startCursorBatching(): void {
+    this.cursorUpdateInterval = setInterval(() => {
+      if (this.pendingCursor) {
+        this.send('cursor-moved', {
+          userId: this.userId,
+          cursor: this.pendingCursor,
+        });
+        this.pendingCursor = null;
+      }
+    }, 50); // Send cursor updates at most 20 times per second
+  }
+
+  /**
+   * Stop cursor batching
+   */
+  private stopCursorBatching(): void {
+    if (this.cursorUpdateInterval) {
+      clearInterval(this.cursorUpdateInterval);
+      this.cursorUpdateInterval = null;
+    }
   }
 
   /**
    * Disconnect from collaboration
    */
   disconnect(): void {
+    // Cancel reconnection attempts
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // Stop cursor batching
+    this.stopCursorBatching();
+
+    // Close WebSocket
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
+
     this.projectId = null;
     this.collaborators.clear();
     this.operationQueue = [];
+    this.reconnectAttempts = 0;
   }
 
   /**
@@ -172,11 +471,15 @@ export class CollaborationService {
   updateCursor(x: number, y: number): void {
     if (!this.userId) return;
 
-    // In production, send via WebSocket
-    // For demo, update locally
+    // Update local state
     const collaborator = this.collaborators.get(this.userId);
     if (collaborator) {
       collaborator.cursor = { x, y };
+    }
+
+    // Send via WebSocket (batched) or demo mode (local only)
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.pendingCursor = { x, y };
     }
   }
 
@@ -189,6 +492,14 @@ export class CollaborationService {
     const collaborator = this.collaborators.get(this.userId);
     if (collaborator) {
       collaborator.selection = entityNames;
+    }
+
+    // Send via WebSocket if connected
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('selection-changed', {
+        userId: this.userId,
+        selection: entityNames,
+      });
     }
 
     this.emit({
@@ -210,6 +521,11 @@ export class CollaborationService {
       userId: this.userId,
       timestamp: new Date(),
     };
+
+    // Send via WebSocket if connected
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('operation', fullOperation);
+    }
 
     this.operationQueue.push(fullOperation);
     this.emit({ type: 'operation', operation: fullOperation });
@@ -234,14 +550,20 @@ export class CollaborationService {
       gameSpec,
       author: {
         id: this.userId,
-        name: 'You',
+        name: this.userName,
       },
       createdAt: new Date(),
       isAutoSave: false,
     };
 
-    this.versions.unshift(version);
-    this.emit({ type: 'version-created', version });
+    // Send via WebSocket if connected
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('create-version', version);
+    } else {
+      // Demo mode - add locally
+      this.versions.unshift(version);
+      this.emit({ type: 'version-created', version });
+    }
 
     return version;
   }
@@ -277,7 +599,7 @@ export class CollaborationService {
       id: `comment_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       author: {
         id: this.userId,
-        name: 'You',
+        name: this.userName,
       },
       content,
       entityName,
@@ -287,7 +609,13 @@ export class CollaborationService {
       replies: [],
     };
 
-    this.emit({ type: 'comment-added', comment });
+    // Send via WebSocket if connected
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('add-comment', comment);
+    } else {
+      // Demo mode - emit locally
+      this.emit({ type: 'comment-added', comment });
+    }
 
     return comment;
   }
@@ -305,7 +633,11 @@ export class CollaborationService {
       return { success: false, error: 'Invalid email address' };
     }
 
-    // In production, this would send an invite email
+    // Send via WebSocket if connected
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('invite-collaborator', { email, projectId: this.projectId });
+    }
+
     return { success: true };
   }
 

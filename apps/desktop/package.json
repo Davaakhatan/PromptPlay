@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
+    "jszip": "^3.10.1",
     "@monaco-editor/react": "^4.6.0",
     "@promptplay/ai-prompt": "workspace:*",
     "@promptplay/ecs-core": "workspace:*",
