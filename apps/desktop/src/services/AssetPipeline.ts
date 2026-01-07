@@ -74,8 +74,9 @@ export class AssetPipeline {
     if (!response.ok) {
       throw new Error(`Failed to load manifest: ${response.statusText}`);
     }
-    this.manifest = await response.json();
-    return this.manifest;
+    const manifest: AssetManifest = await response.json();
+    this.manifest = manifest;
+    return manifest;
   }
 
   /**

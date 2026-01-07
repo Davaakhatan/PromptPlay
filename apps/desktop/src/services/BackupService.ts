@@ -189,7 +189,7 @@ class BackupService {
     const backup: BackupEntry = {
       id: this.generateId(),
       projectPath,
-      projectName: gameSpec.name || 'Untitled',
+      projectName: gameSpec.metadata?.title || 'Untitled',
       timestamp: Date.now(),
       size: this.calculateSize(gameSpec),
       type,

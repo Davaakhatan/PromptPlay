@@ -3,7 +3,7 @@
  * Preloads game assets using the AssetPipeline service
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { assetPipeline, AssetEntry, AssetType } from '../services/AssetPipeline';
 import type { GameSpec } from '@promptplay/shared-types';
 
@@ -49,13 +49,15 @@ function extractAssetsFromSpec(spec: GameSpec): AssetEntry[] {
 
   // Extract tilemap assets
   if (spec.tilemap) {
-    spec.tilemap.tilesets?.forEach((tileset, idx) => {
-      addAsset(tileset.image, 'tileset', `tileset-${idx}`);
-    });
+    // Add tileset image if present
+    if (spec.tilemap.tilesetImage) {
+      addAsset(spec.tilemap.tilesetImage, 'tileset', 'tileset-main');
+    }
   }
 
-  // Extract audio from config
-  const audio = spec.config?.audio;
+  // Extract audio from config (if present in extended config)
+  const config = spec.config as unknown as Record<string, unknown> | undefined;
+  const audio = config?.audio;
   if (audio && typeof audio === 'object') {
     const audioConfig = audio as Record<string, unknown>;
     if (audioConfig.backgroundMusic) {
@@ -107,7 +109,7 @@ export function useAssetPreloader(): UseAssetPreloaderResult {
     });
 
     try {
-      await assetPipeline.loadAll(assets, (loaded, total, currentAsset) => {
+      await assetPipeline.loadAll(assets, (loaded, total, _currentAsset) => {
         setState(prev => ({
           ...prev,
           loadedCount: loaded,

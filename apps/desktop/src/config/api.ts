@@ -5,7 +5,7 @@
 
 import { gameSharing } from '../services/GameSharingService';
 import { marketplace } from '../services/MarketplaceService';
-import { collaborationService } from '../services/CollaborationService';
+import { collaboration } from '../services/CollaborationService';
 
 /**
  * API configuration options
@@ -55,7 +55,7 @@ export function initializeApi(config?: Partial<ApiConfig>): void {
   });
 
   // Configure Collaboration Service
-  collaborationService.configure({
+  collaboration.configure({
     serverUrl: currentConfig.wsUrl,
   });
 

@@ -4,7 +4,6 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { GameSpec } from '@promptplay/shared-types';
 
 // Multiplayer connection states
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
@@ -103,7 +102,7 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
   const [localPlayer, setLocalPlayer] = useState<Player | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [latency, setLatency] = useState(0);
-  const [packetLoss, setPacketLoss] = useState(0);
+  const [packetLoss] = useState(0); // TODO: Implement packet loss tracking
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -306,16 +305,32 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
   // Create lobby
   const createLobby = useCallback(async (name: string, maxPlayers: number, isPublic: boolean): Promise<Lobby> => {
     return new Promise((resolve, reject) => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        wsRef.current?.removeEventListener('message', handleLobbyCreated);
+      };
+
       const handleLobbyCreated = (event: MessageEvent) => {
         const message = JSON.parse(event.data);
         if (message.type === 'lobby_created') {
-          wsRef.current?.removeEventListener('message', handleLobbyCreated);
+          cleanup();
           resolve(message.data as Lobby);
         } else if (message.type === 'error') {
-          wsRef.current?.removeEventListener('message', handleLobbyCreated);
+          cleanup();
           reject(new Error(message.data));
         }
       };
+
+      // Add timeout to prevent memory leak if server never responds
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error('Lobby creation timeout'));
+      }, 10000);
 
       wsRef.current?.addEventListener('message', handleLobbyCreated);
       sendMessage({
@@ -329,16 +344,32 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
   // Join lobby
   const joinLobby = useCallback(async (lobbyId: string): Promise<void> => {
     return new Promise((resolve, reject) => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        wsRef.current?.removeEventListener('message', handleLobbyJoined);
+      };
+
       const handleLobbyJoined = (event: MessageEvent) => {
         const message = JSON.parse(event.data);
         if (message.type === 'lobby_joined') {
-          wsRef.current?.removeEventListener('message', handleLobbyJoined);
+          cleanup();
           resolve();
         } else if (message.type === 'error') {
-          wsRef.current?.removeEventListener('message', handleLobbyJoined);
+          cleanup();
           reject(new Error(message.data));
         }
       };
+
+      // Add timeout to prevent memory leak if server never responds
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error('Lobby join timeout'));
+      }, 10000);
 
       wsRef.current?.addEventListener('message', handleLobbyJoined);
       sendMessage({

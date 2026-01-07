@@ -62,6 +62,7 @@ interface MobilePreviewProps {
   gameUrl?: string;
   onClose: () => void;
   projectPath?: string;
+  children?: React.ReactNode;
 }
 
 export function MobilePreview({ gameUrl, onClose, projectPath }: MobilePreviewProps) {

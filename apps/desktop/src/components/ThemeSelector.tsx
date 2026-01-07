@@ -14,7 +14,7 @@ export function ThemeSelector({ onClose }: ThemeSelectorProps) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(themeService.getTheme());
   const [themeMode, setThemeMode] = useState<ThemeMode>(themeService.getThemeMode());
   const [presetThemes] = useState(themeService.getPresetThemes());
-  const [customThemes, setCustomThemes] = useState(themeService.getCustomThemes());
+  const [customThemes] = useState(themeService.getCustomThemes());
 
   useEffect(() => {
     const unsubscribe = themeService.subscribe((theme) => {

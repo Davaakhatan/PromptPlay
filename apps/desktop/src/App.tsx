@@ -57,7 +57,7 @@ import { MultiplayerPanel } from './components/MultiplayerPanel';
 import { MonetizationPanel } from './components/MonetizationPanel';
 import { ExtendedPlatformsPanel } from './components/ExtendedPlatformsPanel';
 import { PreferencesPanel } from './components/PreferencesPanel';
-import { GettingStartedGuide, useHasCompletedGuide } from './components/GettingStartedGuide';
+import { GettingStartedGuide } from './components/GettingStartedGuide';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { KeyboardShortcutsPanel } from './components/KeyboardShortcutsPanel';
 import { BackupPanel } from './components/BackupPanel';
@@ -136,7 +136,6 @@ function App() {
   // Preferences & Guide
   const [showPreferences, setShowPreferences] = useState(false);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
-  const hasCompletedGuide = useHasCompletedGuide();
 
   // New feature panels
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);

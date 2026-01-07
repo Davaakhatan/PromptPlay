@@ -138,6 +138,7 @@ export class CollaborationService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private cursorUpdateInterval: ReturnType<typeof setInterval> | null = null;
   private pendingCursor: { x: number; y: number } | null = null;
+  private demoIntervalId: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Configure the collaboration service
@@ -429,6 +430,12 @@ export class CollaborationService {
     // Stop cursor batching
     this.stopCursorBatching();
 
+    // Stop demo mode interval
+    if (this.demoIntervalId) {
+      clearInterval(this.demoIntervalId);
+      this.demoIntervalId = null;
+    }
+
     // Close WebSocket
     if (this.ws) {
       this.ws.close();
@@ -682,7 +689,7 @@ export class CollaborationService {
     }, 2000);
 
     // Simulate cursor movements
-    setInterval(() => {
+    this.demoIntervalId = setInterval(() => {
       const alice = this.collaborators.get('demo-user-1');
       if (alice && alice.cursor) {
         alice.cursor = {

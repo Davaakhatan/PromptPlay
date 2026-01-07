@@ -238,7 +238,7 @@ export class NetworkManager {
 
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
-      this.send(createMessage('ping', { timestamp: Date.now() }));
+      this.send(createMessage('ping', {}));
     }, this.config.heartbeatInterval);
   }
 

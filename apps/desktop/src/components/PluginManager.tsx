@@ -41,15 +41,6 @@ export function PluginManager({ onClose }: PluginManagerProps) {
     await pluginService.uninstallPlugin(pluginId);
   };
 
-  const getStatusColor = (state: string) => {
-    switch (state) {
-      case 'active': return 'text-green-400';
-      case 'inactive': return 'text-gray-400';
-      case 'error': return 'text-red-400';
-      default: return 'text-gray-400';
-    }
-  };
-
   const getStatusBadge = (state: string) => {
     switch (state) {
       case 'active': return 'bg-green-600/20 text-green-400';

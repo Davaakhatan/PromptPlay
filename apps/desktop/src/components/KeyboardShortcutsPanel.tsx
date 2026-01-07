@@ -137,6 +137,16 @@ export function KeyboardShortcutsPanel({ onClose }: KeyboardShortcutsPanelProps)
       setShortcuts(prev => prev.map(s =>
         s.id === id ? { ...s, keys: defaultShortcut.keys } : s
       ));
+      // Save to localStorage
+      const customShortcuts: Record<string, string[]> = {};
+      shortcuts.forEach(s => {
+        if (s.id === id) {
+          customShortcuts[s.id] = defaultShortcut.keys;
+        } else {
+          customShortcuts[s.id] = s.keys;
+        }
+      });
+      localStorage.setItem('promptplay_shortcuts', JSON.stringify(customShortcuts));
     }
   };
 
@@ -250,12 +260,21 @@ export function KeyboardShortcutsPanel({ onClose }: KeyboardShortcutsPanelProps)
                               ))}
                             </div>
                             {shortcut.customizable && (
-                              <button
-                                onClick={() => setEditingId(shortcut.id)}
-                                className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm text-gray-300"
-                              >
-                                Edit
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setEditingId(shortcut.id)}
+                                  className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm text-gray-300"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => resetShortcut(shortcut.id)}
+                                  className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm text-gray-300"
+                                  title="Reset to default"
+                                >
+                                  Reset
+                                </button>
+                              </>
                             )}
                           </>
                         )}
