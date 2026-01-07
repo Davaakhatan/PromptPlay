@@ -10,6 +10,9 @@ export interface RecentProject {
   thumbnail?: string;
   genre?: string;
   entityCount?: number;
+  isFavorite?: boolean;
+  tags?: string[];
+  description?: string;
 }
 
 const STORAGE_KEY = 'promptplay_recent_projects';
@@ -176,3 +179,82 @@ class RecentProjectsManager {
 }
 
 export const recentProjectsManager = new RecentProjectsManager();
+
+/**
+ * Toggle favorite status for a project
+ */
+export function toggleFavorite(path: string): boolean {
+  const projects = getRecentProjects();
+  const project = projects.find(p => p.path === path);
+  if (!project) return false;
+
+  project.isFavorite = !project.isFavorite;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  recentProjectsManager.notifyChange();
+  return project.isFavorite;
+}
+
+/**
+ * Add a tag to a project
+ */
+export function addTag(path: string, tag: string): void {
+  const projects = getRecentProjects();
+  const project = projects.find(p => p.path === path);
+  if (!project) return;
+
+  if (!project.tags) project.tags = [];
+  if (!project.tags.includes(tag)) {
+    project.tags.push(tag);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    recentProjectsManager.notifyChange();
+  }
+}
+
+/**
+ * Remove a tag from a project
+ */
+export function removeTag(path: string, tag: string): void {
+  const projects = getRecentProjects();
+  const project = projects.find(p => p.path === path);
+  if (!project?.tags) return;
+
+  project.tags = project.tags.filter(t => t !== tag);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  recentProjectsManager.notifyChange();
+}
+
+/**
+ * Get all unique tags across all projects
+ */
+export function getAllTags(): string[] {
+  const projects = getRecentProjects();
+  const tagSet = new Set<string>();
+  projects.forEach(p => p.tags?.forEach(t => tagSet.add(t)));
+  return Array.from(tagSet).sort();
+}
+
+/**
+ * Filter projects by tag
+ */
+export function getProjectsByTag(tag: string): RecentProject[] {
+  return getRecentProjects().filter(p => p.tags?.includes(tag));
+}
+
+/**
+ * Get favorite projects
+ */
+export function getFavoriteProjects(): RecentProject[] {
+  return getRecentProjects().filter(p => p.isFavorite);
+}
+
+/**
+ * Search projects by name or path
+ */
+export function searchProjects(query: string): RecentProject[] {
+  const lowerQuery = query.toLowerCase();
+  return getRecentProjects().filter(p =>
+    p.name.toLowerCase().includes(lowerQuery) ||
+    p.path.toLowerCase().includes(lowerQuery) ||
+    p.tags?.some(t => t.toLowerCase().includes(lowerQuery))
+  );
+}
