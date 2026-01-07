@@ -31,6 +31,7 @@ import { screenCapture } from './services/ScreenCaptureService';
 import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
 import TilemapEditor, { Tilemap, TilemapTool } from './components/TilemapEditor';
 import MobileExportDialog from './components/MobileExportDialog';
+import MobilePreview from './components/MobilePreview';
 import PublishDialog from './components/PublishDialog';
 import AIPlaytestPanel from './components/AIPlaytestPanel';
 import NodeEditor, { createDefaultGraph } from './components/NodeEditor';
@@ -55,6 +56,8 @@ import { PerformancePanel } from './components/PerformancePanel';
 import { MultiplayerPanel } from './components/MultiplayerPanel';
 import { MonetizationPanel } from './components/MonetizationPanel';
 import { ExtendedPlatformsPanel } from './components/ExtendedPlatformsPanel';
+import { PreferencesPanel } from './components/PreferencesPanel';
+import { GettingStartedGuide, useHasCompletedGuide } from './components/GettingStartedGuide';
 import { logError, getErrorMessage } from './utils/errorUtils';
 
 type ViewMode = 'game' | 'code' | 'nodes' | 'shaders' | 'behavior' | 'states';
@@ -92,6 +95,7 @@ function App() {
   const [selectedLayerId, setSelectedLayerId] = useState<string>('');
   const [tilemapTool, setTilemapTool] = useState<TilemapTool>('brush');
   const [showMobileExport, setShowMobileExport] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showAIPlaytest, setShowAIPlaytest] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -124,6 +128,11 @@ function App() {
 
   // v6.0 Extended Platforms
   const [showExtendedPlatforms, setShowExtendedPlatforms] = useState(false);
+
+  // Preferences & Guide
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
+  const hasCompletedGuide = useHasCompletedGuide();
 
   // Notification timeout ref for auto-dismiss
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -2269,6 +2278,18 @@ function App() {
           </div>
           {/* User Menu & Cloud Actions */}
           <div className="flex items-center gap-2 px-3 h-10 bg-panel border-b border-subtle">
+            {/* Mobile Preview Toggle */}
+            {projectPath && gameSpec && viewMode === 'game' && !is3DMode && (
+              <button
+                onClick={() => setShowMobilePreview(!showMobilePreview)}
+                className={`p-1.5 rounded transition-colors ${showMobilePreview ? 'bg-blue-500/20 text-blue-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
+                title="Mobile Preview (Simulate Mobile Device)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={() => setShowCollaborators(!showCollaborators)}
               className={`p-1.5 rounded transition-colors ${showCollaborators ? 'bg-green-500/20 text-green-400' : 'text-text-tertiary hover:text-white hover:bg-white/10'}`}
@@ -2352,6 +2373,27 @@ function App() {
               </svg>
             </button>
             <div className="w-px h-5 bg-subtle mx-1" />
+            {/* Help & Settings */}
+            <button
+              onClick={() => setShowGettingStarted(true)}
+              className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-white/10 transition-colors"
+              title="Getting Started Guide"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowPreferences(true)}
+              className="p-1.5 rounded text-text-tertiary hover:text-white hover:bg-white/10 transition-colors"
+              title="Preferences"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            <div className="w-px h-5 bg-subtle mx-1" />
             <UserMenu
               onOpenAuth={() => setShowAuthDialog(true)}
               onOpenProfile={() => setShowAuthDialog(true)}
@@ -2395,7 +2437,7 @@ function App() {
             </div>
           )}
 
-          {projectPath && gameSpec && viewMode === 'game' && !is3DMode && (
+          {projectPath && gameSpec && viewMode === 'game' && !is3DMode && !showMobilePreview && (
             <GameCanvas
               gameSpec={gameSpec}
               isPlaying={isPlaying}
@@ -2423,6 +2465,40 @@ function App() {
                 setHasUnsavedChanges(true);
               }}
             />
+          )}
+
+          {/* Mobile Preview Mode */}
+          {projectPath && gameSpec && viewMode === 'game' && !is3DMode && showMobilePreview && (
+            <MobilePreview
+              onClose={() => setShowMobilePreview(false)}
+            >
+              <GameCanvas
+                gameSpec={gameSpec}
+                isPlaying={isPlaying}
+                selectedEntities={selectedEntities}
+                onEntitySelect={handleEntitySelect}
+                onReset={resetGame}
+                onUpdateEntity={handleUpdateEntity}
+                gridEnabled={false}
+                onGridToggle={() => {}}
+                debugEnabled={false}
+                onDebugToggle={() => {}}
+                gridSize={16}
+                tilemapMode={false}
+                onTilemapModeToggle={() => {}}
+                selectedTileId={selectedTileId}
+                selectedLayerId={selectedLayerId || gameSpec?.tilemap?.layers[0]?.id}
+                tilemapTool={tilemapTool}
+                onTilemapToolChange={setTilemapTool}
+                onTilemapChange={(tilemap) => {
+                  setCurrentTilemap(tilemap as Tilemap);
+                  if (gameSpec) {
+                    setGameSpec({ ...gameSpec, tilemap });
+                  }
+                  setHasUnsavedChanges(true);
+                }}
+              />
+            </MobilePreview>
           )}
 
           {projectPath && viewMode === 'game' && is3DMode && game3DSpec && (
@@ -2867,6 +2943,37 @@ function App() {
         isOpen={showExtendedPlatforms}
         onClose={() => setShowExtendedPlatforms(false)}
         onNotification={showNotification}
+      />
+
+      {/* Preferences Panel */}
+      <PreferencesPanel
+        isOpen={showPreferences}
+        onClose={() => setShowPreferences(false)}
+      />
+
+      {/* Getting Started Guide */}
+      <GettingStartedGuide
+        isOpen={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+        onAction={(action) => {
+          switch (action) {
+            case 'new-project':
+              setShowNewProjectModal(true);
+              break;
+            case 'view-nodes':
+              setViewMode('nodes');
+              break;
+            case 'toggle-3d':
+              setIs3DMode(prev => !prev);
+              break;
+            case 'toggle-ai':
+              setShowAIPanel(true);
+              break;
+            case 'export':
+              exportGame();
+              break;
+          }
+        }}
       />
     </div>
   );
