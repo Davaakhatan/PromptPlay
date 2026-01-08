@@ -3,6 +3,7 @@ import { networkManager, type ConnectionState, type NetworkStats } from '../serv
 import { lobbySystem, type Room, type Player, type ChatMessage, type RoomListing } from '../services/LobbySystem';
 import { matchmaking, type MatchState, type MatchCriteria, type MatchResult } from '../services/Matchmaking';
 import { leaderboards, type ScoreEntry, type Leaderboard, type PlayerStats } from '../services/Leaderboards';
+import { TabContent } from './ui/TabContent';
 
 interface MultiplayerPanelProps {
   isOpen: boolean;
@@ -408,7 +409,7 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
         {/* Lobby Tab */}
-        {activeTab === 'lobby' && (
+        <TabContent isActive={activeTab === 'lobby'}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Player Name */}
             <div>
@@ -675,10 +676,10 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
               </>
             )}
           </div>
-        )}
+        </TabContent>
 
         {/* Matchmaking Tab */}
-        {activeTab === 'matchmaking' && (
+        <TabContent isActive={activeTab === 'matchmaking'}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {matchState === 'idle' && (
               <div style={{ padding: 12, backgroundColor: '#252525', borderRadius: 8 }}>
@@ -797,10 +798,10 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
               </div>
             </div>
           </div>
-        )}
+        </TabContent>
 
         {/* Leaderboards Tab */}
-        {activeTab === 'leaderboards' && (
+        <TabContent isActive={activeTab === 'leaderboards'}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Leaderboard Select */}
             <div>
@@ -924,10 +925,10 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
               )}
             </div>
           </div>
-        )}
+        </TabContent>
 
         {/* Network Tab */}
-        {activeTab === 'network' && networkStats && (
+        <TabContent isActive={activeTab === 'network' && !!networkStats}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Connection Info */}
             <div style={{ padding: 12, backgroundColor: '#252525', borderRadius: 8 }}>
@@ -1022,7 +1023,7 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
               )}
             </div>
           </div>
-        )}
+        </TabContent>
       </div>
     </div>
   );

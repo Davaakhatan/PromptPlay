@@ -102,13 +102,20 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
   const [localPlayer, setLocalPlayer] = useState<Player | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [latency, setLatency] = useState(0);
-  const [packetLoss] = useState(0); // TODO: Implement packet loss tracking
+  const [packetLoss, setPacketLoss] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastPingTimeRef = useRef(0);
+
+  // Packet loss tracking - uses a sliding window of recent pings
+  const pingSequenceRef = useRef(0);
+  const pendingPingsRef = useRef<Map<number, number>>(new Map()); // seq -> timestamp
+  const packetLossWindowRef = useRef<boolean[]>([]); // true = received, false = lost
+  const PACKET_LOSS_WINDOW_SIZE = 20; // Track last 20 pings
+  const PING_TIMEOUT_MS = 5000; // Consider ping lost after 5 seconds
 
   // Message handlers
   const entitySyncCallbacksRef = useRef<Set<(data: EntitySyncData) => void>>(new Set());
@@ -144,8 +151,31 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
           break;
 
         case 'pong':
-          const pongLatency = Date.now() - lastPingTimeRef.current;
-          setLatency(pongLatency);
+          const pongData = message.data as { seq?: number } | undefined;
+          const pongSeq = pongData?.seq;
+          const pongTimestamp = pongSeq !== undefined ? pendingPingsRef.current.get(pongSeq) : lastPingTimeRef.current;
+
+          if (pongTimestamp) {
+            const pongLatency = Date.now() - pongTimestamp;
+            setLatency(pongLatency);
+
+            // Mark this ping as received
+            if (pongSeq !== undefined) {
+              pendingPingsRef.current.delete(pongSeq);
+
+              // Add to sliding window (true = received)
+              packetLossWindowRef.current.push(true);
+              if (packetLossWindowRef.current.length > PACKET_LOSS_WINDOW_SIZE) {
+                packetLossWindowRef.current.shift();
+              }
+
+              // Calculate packet loss percentage
+              const received = packetLossWindowRef.current.filter(Boolean).length;
+              const total = packetLossWindowRef.current.length;
+              const lossPercentage = total > 0 ? ((total - received) / total) * 100 : 0;
+              setPacketLoss(Math.round(lossPercentage));
+            }
+          }
           break;
 
         case 'lobby_created':
@@ -247,10 +277,34 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
         wsRef.current = new WebSocket(url);
 
         wsRef.current.onopen = () => {
-          // Start ping interval
+          // Start ping interval with sequence tracking for packet loss
           pingIntervalRef.current = setInterval(() => {
-            lastPingTimeRef.current = Date.now();
-            sendMessage({ type: 'ping', timestamp: Date.now() });
+            const now = Date.now();
+            const seq = pingSequenceRef.current++;
+
+            // Check for timed out pings (lost packets)
+            for (const [pendingSeq, timestamp] of pendingPingsRef.current.entries()) {
+              if (now - timestamp > PING_TIMEOUT_MS) {
+                pendingPingsRef.current.delete(pendingSeq);
+
+                // Mark as lost in sliding window
+                packetLossWindowRef.current.push(false);
+                if (packetLossWindowRef.current.length > PACKET_LOSS_WINDOW_SIZE) {
+                  packetLossWindowRef.current.shift();
+                }
+
+                // Recalculate packet loss
+                const received = packetLossWindowRef.current.filter(Boolean).length;
+                const total = packetLossWindowRef.current.length;
+                const lossPercentage = total > 0 ? ((total - received) / total) * 100 : 0;
+                setPacketLoss(Math.round(lossPercentage));
+              }
+            }
+
+            // Send new ping with sequence number
+            lastPingTimeRef.current = now;
+            pendingPingsRef.current.set(seq, now);
+            sendMessage({ type: 'ping', data: { seq }, timestamp: now });
           }, 5000);
 
           resolve();
@@ -300,6 +354,13 @@ export function useMultiplayer(options: UseMultiplayerOptions = {}): UseMultipla
     setCurrentLobby(null);
     setLocalPlayer(null);
     setPlayers([]);
+    setLatency(0);
+    setPacketLoss(0);
+
+    // Reset packet loss tracking
+    pendingPingsRef.current.clear();
+    packetLossWindowRef.current = [];
+    pingSequenceRef.current = 0;
   }, []);
 
   // Create lobby

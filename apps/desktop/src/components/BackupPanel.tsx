@@ -6,15 +6,17 @@
 import { useState, useEffect } from 'react';
 import { backupService, BackupEntry, BackupSettings } from '../services/BackupService';
 import type { GameSpec } from '@promptplay/shared-types';
+import { TabContent } from './ui/TabContent';
 
 interface BackupPanelProps {
   projectPath: string | null;
   gameSpec: GameSpec | null;
   onRestore: (spec: GameSpec) => void;
   onClose: () => void;
+  onNotification?: (msg: string) => void;
 }
 
-export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: BackupPanelProps) {
+export function BackupPanel({ projectPath, gameSpec, onRestore, onClose, onNotification }: BackupPanelProps) {
   const [backups, setBackups] = useState<BackupEntry[]>([]);
   const [settings, setSettings] = useState<BackupSettings>(backupService.getSettings());
   const [activeTab, setActiveTab] = useState<'backups' | 'settings'>('backups');
@@ -35,6 +37,7 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
   const handleCreateBackup = () => {
     if (gameSpec && projectPath) {
       backupService.createBackup(gameSpec, projectPath, 'manual', 'Manual backup');
+      onNotification?.('Backup created successfully');
     }
   };
 
@@ -42,6 +45,7 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
     const spec = backupService.restoreBackup(backupId);
     if (spec) {
       onRestore(spec);
+      onNotification?.('Project restored from backup');
       onClose();
     }
   };
@@ -49,10 +53,12 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
   const handleDelete = (backupId: string) => {
     backupService.deleteBackup(backupId);
     setConfirmDelete(null);
+    onNotification?.('Backup deleted');
   };
 
   const handleDeleteAll = () => {
     backupService.deleteAllBackups(projectPath || undefined);
+    onNotification?.('All backups deleted');
   };
 
   const handleSettingChange = <K extends keyof BackupSettings>(key: K, value: BackupSettings[K]) => {
@@ -97,11 +103,10 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4">
-          {activeTab === 'backups' ? (
-            <>
-              {/* Actions */}
-              <div className="flex items-center justify-between mb-4">
+        <div className="flex-1 overflow-auto p-4 relative">
+          <TabContent isActive={activeTab === 'backups'}>
+            {/* Actions */}
+            <div className="flex items-center justify-between mb-4">
                 <div className="flex gap-2">
                   <button
                     onClick={handleCreateBackup}
@@ -189,9 +194,10 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
                   ))}
                 </div>
               )}
-            </>
-          ) : (
-            /* Settings Tab */
+          </TabContent>
+
+          <TabContent isActive={activeTab === 'settings'}>
+            {/* Settings Tab */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -281,7 +287,7 @@ export function BackupPanel({ projectPath, gameSpec, onRestore, onClose }: Backu
                 </button>
               </div>
             </div>
-          )}
+          </TabContent>
         </div>
 
         {/* Footer */}

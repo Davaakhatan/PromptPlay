@@ -4,6 +4,7 @@ import { lodSystem, type LODStats, type LODGroup } from '../services/LODSystem';
 import { occlusionCulling, type CullingStats, type CullingConfig } from '../services/OcclusionCulling';
 import { assetStreaming, type StreamingStats, type StreamingConfig } from '../services/AssetStreaming';
 import { memoryOptimizer, type MemoryStats, type MemoryBudget, type MemoryPressure } from '../services/MemoryOptimizer';
+import { TabContent } from './ui/TabContent';
 
 interface PerformancePanelProps {
   isOpen: boolean;
@@ -130,61 +131,30 @@ export const PerformancePanel: React.FC<PerformancePanelProps> = ({
   };
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 40,
-      right: 0,
-      width: 420,
-      height: 'calc(100vh - 40px)',
-      backgroundColor: '#1e1e1e',
-      borderLeft: '1px solid #333',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 100,
-    }}>
+    <div className="absolute top-10 right-0 w-[420px] h-[calc(100vh-40px)] bg-gray-900 border-l border-gray-700 flex flex-col z-[100]">
       {/* Header */}
-      <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid #333',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <span style={{ fontWeight: 'bold', color: '#fff' }}>Performance Tools</span>
+      <div className="px-4 py-3 border-b border-gray-700 flex justify-between items-center">
+        <span className="font-bold text-white">Performance Tools</span>
         <button
           onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#888',
-            cursor: 'pointer',
-            fontSize: 18,
-          }}
+          className="bg-transparent border-none text-gray-400 hover:text-white cursor-pointer text-lg"
+          aria-label="Close performance panel"
         >
           ×
         </button>
       </div>
 
       {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid #333',
-        overflowX: 'auto',
-      }}>
+      <div className="flex border-b border-gray-700 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 12px',
-              background: activeTab === tab.id ? '#333' : 'transparent',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === tab.id ? '#fff' : '#888',
-              cursor: 'pointer',
-              fontSize: 12,
-              whiteSpace: 'nowrap',
-            }}
+            className={`px-3 py-2 border-none text-xs whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === tab.id
+                ? 'bg-gray-700 text-white border-b-2 border-blue-500'
+                : 'bg-transparent text-gray-400 border-b-2 border-transparent hover:text-white'
+            }`}
           >
             {tab.label}
           </button>
@@ -192,7 +162,7 @@ export const PerformancePanel: React.FC<PerformancePanelProps> = ({
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+      <div className="flex-1 overflow-auto p-4">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

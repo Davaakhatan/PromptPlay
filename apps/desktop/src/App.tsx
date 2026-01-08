@@ -41,6 +41,7 @@ import { useEntityOperations } from './hooks/useEntityOperations';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { addRecentProject } from './services/RecentProjectsService';
 import { screenCapture } from './services/ScreenCaptureService';
+import { publishService } from './services/PublishService';
 import { CodeIcon, CheckIcon, FolderIcon, SceneIcon, EntityIcon, LayersIcon, ImageIcon, PhysicsIcon, GridIcon } from './components/Icons';
 import TilemapEditor, { Tilemap, TilemapTool } from './components/TilemapEditor';
 import MobileExportDialog from './components/MobileExportDialog';
@@ -1706,6 +1707,46 @@ function App() {
     }
   }, [gameSpec]);
 
+  const exportAsZip = useCallback(async () => {
+    if (!gameSpec) return;
+
+    try {
+      setIsExporting(true);
+      setNotification('Creating ZIP file...');
+
+      const result = await publishService.publish({
+        platform: 'zip',
+        gameSpec,
+        options: {
+          title: gameSpec.metadata?.title,
+          description: gameSpec.metadata?.description,
+        },
+      });
+
+      if (result.success && result.output instanceof Blob) {
+        // Create download link
+        const url = URL.createObjectURL(result.output);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = result.filename || 'game.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setNotification('ZIP exported successfully!');
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        throw new Error(result.error || 'Failed to create ZIP');
+      }
+    } catch (err) {
+      logError('Failed to export ZIP', err);
+      setError('Failed to export ZIP: ' + getErrorMessage(err));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [gameSpec]);
+
   const handleFileSave = async (filePath: string, content: string) => {
     // If game.json was saved, reload the game spec
     if (filePath.endsWith('/game.json')) {
@@ -1820,9 +1861,9 @@ function App() {
           }
           break;
         case 'export_zip':
-          // TODO: Implement ZIP export
-          setNotification('Export ZIP - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          if (gameSpec) {
+            exportAsZip();
+          }
           break;
         case 'publish':
           // TODO: Implement publish to gallery
@@ -1895,9 +1936,21 @@ function App() {
           setLeftPanelMode('assets');
           break;
         case 'show_animation':
-          // TODO: Show animation editor
-          setNotification('Animation Editor - Coming soon');
-          setTimeout(() => setNotification(null), 2000);
+          // Open inspector panel - animation editor is accessible from entity animation component
+          setRightPanelMode('inspector');
+          if (selectedEntityIds.length === 1) {
+            const entity = gameSpec?.entities.find((e) => e.id === selectedEntityIds[0]);
+            if (entity?.components?.animation) {
+              setNotification('Click "Edit Animation" in the Animation section of the Inspector');
+              setTimeout(() => setNotification(null), 3000);
+            } else {
+              setNotification('Select an entity with an Animation component to edit animations');
+              setTimeout(() => setNotification(null), 3000);
+            }
+          } else {
+            setNotification('Select a single entity with an Animation component');
+            setTimeout(() => setNotification(null), 3000);
+          }
           break;
         case 'show_code':
           setViewMode('code');

@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { themeService, Theme, ThemeMode } from '../services/ThemeService';
+import { ThemeEditor } from './ThemeEditor';
 
 interface ThemeSelectorProps {
   onClose?: () => void;
@@ -14,7 +15,8 @@ export function ThemeSelector({ onClose }: ThemeSelectorProps) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(themeService.getTheme());
   const [themeMode, setThemeMode] = useState<ThemeMode>(themeService.getThemeMode());
   const [presetThemes] = useState(themeService.getPresetThemes());
-  const [customThemes] = useState(themeService.getCustomThemes());
+  const [customThemes, setCustomThemes] = useState(themeService.getCustomThemes());
+  const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
     const unsubscribe = themeService.subscribe((theme) => {
@@ -142,10 +144,7 @@ export function ThemeSelector({ onClose }: ThemeSelectorProps) {
       {/* Actions */}
       <div className="flex justify-between pt-4 border-t border-gray-700">
         <button
-          onClick={() => {
-            // TODO: Open theme editor
-            alert('Theme editor coming soon!');
-          }}
+          onClick={() => setShowEditor(true)}
           className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300"
         >
           Create Custom Theme
@@ -159,6 +158,22 @@ export function ThemeSelector({ onClose }: ThemeSelectorProps) {
           </button>
         )}
       </div>
+
+      {/* Theme Editor Modal */}
+      {showEditor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-[900px] h-[600px] overflow-hidden">
+            <ThemeEditor
+              onSave={(theme) => {
+                setCustomThemes(themeService.getCustomThemes());
+                setCurrentTheme(theme);
+                setShowEditor(false);
+              }}
+              onCancel={() => setShowEditor(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,9 +12,10 @@ interface CollaboratorsPanelProps {
   isOpen?: boolean;
   onClose?: () => void;
   onRemoteEdit?: (operation: CollabEvent & { type: 'remote_edit' }) => void;
+  onNotification?: (msg: string) => void;
 }
 
-export function CollaboratorsPanel({ projectId = 'default', isOpen = true, onClose, onRemoteEdit }: CollaboratorsPanelProps) {
+export function CollaboratorsPanel({ projectId = 'default', isOpen = true, onClose, onRemoteEdit, onNotification }: CollaboratorsPanelProps) {
   const { isAuthenticated, user, profile } = useAuth();
   const [session, setSession] = useState<CollaborativeSession | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -66,8 +67,9 @@ export function CollaboratorsPanel({ projectId = 'default', isOpen = true, onClo
       setError(result.error);
     } else {
       setShowInvite(true);
+      onNotification?.('Session created! Share the link to invite collaborators.');
     }
-  }, [projectId, profile]);
+  }, [projectId, profile, onNotification]);
 
   const handleJoinSession = useCallback(async () => {
     if (!joinCode.trim()) return;
@@ -77,20 +79,25 @@ export function CollaboratorsPanel({ projectId = 'default', isOpen = true, onClo
 
     if (!result.success) {
       setError(result.error || 'Failed to join session');
+    } else {
+      onNotification?.('Joined session successfully!');
+      setJoinCode('');
     }
-  }, [joinCode]);
+  }, [joinCode, onNotification]);
 
   const handleLeaveSession = useCallback(async () => {
     await collaborativeService.leaveSession();
-  }, []);
+    onNotification?.('Left the session');
+  }, [onNotification]);
 
   const copyInviteLink = useCallback(() => {
     const link = collaborativeService.getInviteLink();
     if (link) {
       navigator.clipboard.writeText(link);
       setShowInvite(false);
+      onNotification?.('Invite link copied to clipboard!');
     }
-  }, []);
+  }, [onNotification]);
 
   if (!isOpen) {
     return null;
