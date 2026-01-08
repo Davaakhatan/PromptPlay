@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { GameSpec, AnimationComponent } from '@promptplay/shared-types';
-import { ChevronRightIcon, TrashIcon, CopyIcon, PlusIcon, TagIcon, EditIcon } from './Icons';
+import { TrashIcon, CopyIcon, PlusIcon, TagIcon, EditIcon } from './Icons';
 import { componentRegistry } from '../services/ComponentRegistry';
 import AnimationEditor from './AnimationEditor';
 
@@ -26,7 +26,7 @@ const hexToNumber = (hex: string): number => {
   return parseInt(hex.replace('#', ''), 16);
 };
 
-export default function Inspector({
+function Inspector({
   gameSpec,
   selectedEntities,
   onUpdateEntity,
@@ -180,20 +180,34 @@ export default function Inspector({
 
   if (!gameSpec) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm p-4">
-        <p>No game loaded</p>
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-subtle/30 flex items-center justify-center mb-4">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-50">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p className="font-medium text-text-secondary mb-1">No game loaded</p>
+        <p className="text-xs opacity-70">Create or open a project to get started</p>
       </div>
     );
   }
 
   if (!selectedEntity || !entity) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm p-4 text-center">
-        <div className="mb-2">
-          <ChevronRightIcon size={32} className="text-gray-300" />
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary opacity-60">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+          </svg>
         </div>
-        <p>Select an entity from</p>
-        <p>the scene tree to inspect</p>
+        <p className="font-medium text-text-secondary mb-1">No entity selected</p>
+        <p className="text-xs opacity-70 max-w-[180px]">
+          Click an entity in the Scene Tree or Game Canvas to inspect its properties
+        </p>
+        <div className="mt-4 flex items-center gap-2 text-[10px] text-text-tertiary">
+          <kbd className="px-1.5 py-0.5 bg-subtle rounded text-[10px]">Ctrl</kbd>
+          <span>+ click for multi-select</span>
+        </div>
       </div>
     );
   }
@@ -616,3 +630,5 @@ export default function Inspector({
     </div>
   );
 }
+
+export default memo(Inspector);

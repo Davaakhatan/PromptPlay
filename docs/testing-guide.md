@@ -13,11 +13,12 @@ PromptPlay uses **Vitest** for testing with the following goals:
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all tests across all packages
 pnpm test
 
 # Run tests for specific package
 pnpm --filter @promptplay/runtime-2d test
+pnpm --filter promptplay-desktop test
 
 # Run with coverage
 pnpm --filter @promptplay/runtime-2d test --coverage
@@ -27,9 +28,15 @@ pnpm --filter @promptplay/runtime-2d test --watch
 
 # Run single test file
 pnpm --filter @promptplay/runtime-2d test animationSystem
+pnpm --filter promptplay-desktop test BackupService
 
 # Run tests matching pattern
 pnpm --filter @promptplay/runtime-2d test --grep "should advance frame"
+
+# Run desktop app tests
+cd apps/desktop && pnpm test
+cd apps/desktop && pnpm test -- --run tests/services/
+cd apps/desktop && pnpm test -- --run tests/hooks/
 ```
 
 ## Test Structure
@@ -48,6 +55,25 @@ packages/runtime-2d/
     ├── animationSystem.test.ts
     ├── inputSystem.test.ts
     └── physics.test.ts
+
+apps/desktop/
+├── src/
+│   ├── services/
+│   │   ├── BackupService.ts
+│   │   ├── CollaborationService.ts
+│   │   └── ...
+│   └── hooks/
+│       └── useMultiplayer.ts
+└── tests/
+    ├── services/
+    │   ├── BackupService.test.ts
+    │   └── CollaborationService.test.ts
+    ├── hooks/
+    │   └── useMultiplayer.test.ts
+    ├── gameSpec.test.ts
+    ├── projectOperations.test.ts
+    ├── nodeExecutor.test.ts
+    └── e2e.test.ts
 ```
 
 ### Basic Test Structure
@@ -353,6 +379,101 @@ describe('with mocks', () => {
 });
 ```
 
+### Testing Services with Mocked Browser APIs
+
+When testing services that use browser APIs like localStorage or WebSocket, mock them before importing the service:
+
+```typescript
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock localStorage before importing the service
+const localStorageStore: Record<string, string> = {};
+const localStorageMock = {
+  getItem: vi.fn((key: string) => localStorageStore[key] || null),
+  setItem: vi.fn((key: string, value: string) => { localStorageStore[key] = value; }),
+  removeItem: vi.fn((key: string) => { delete localStorageStore[key]; }),
+  clear: vi.fn(() => { Object.keys(localStorageStore).forEach(k => delete localStorageStore[k]); }),
+};
+vi.stubGlobal('localStorage', localStorageMock);
+
+// Mock Blob for size calculations
+vi.stubGlobal('Blob', class MockBlob {
+  size: number;
+  constructor(parts: string[]) {
+    this.size = parts.join('').length;
+  }
+});
+
+// Import AFTER mocking
+import backupService from '../../src/services/BackupService';
+
+describe('BackupService', () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    backupService.deleteAllBackups();
+  });
+
+  it('should persist settings to localStorage', () => {
+    backupService.updateSettings({ enabled: false });
+
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      'promptplay_backup_settings',
+      expect.any(String)
+    );
+  });
+});
+```
+
+### Testing WebSocket-based Services
+
+```typescript
+// Mock WebSocket
+class MockWebSocket {
+  static OPEN = 1;
+  static CLOSED = 3;
+
+  readyState = MockWebSocket.OPEN;
+  url: string;
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: string }) => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+    setTimeout(() => this.onopen?.(), 0);
+  }
+
+  send(data: string): void {
+    // Store sent messages for verification
+  }
+
+  simulateMessage(type: string, payload: unknown): void {
+    const event = { data: JSON.stringify({ type, payload }) };
+    this.onmessage?.(event);
+  }
+
+  close(): void {
+    this.readyState = MockWebSocket.CLOSED;
+  }
+}
+
+vi.stubGlobal('WebSocket', MockWebSocket);
+
+describe('CollaborationService', () => {
+  it('should handle incoming messages', async () => {
+    const service = new CollaborationService();
+    service.initialize('user-123', 'Test User');
+    await service.connect('project-1');
+
+    // Simulate message from server
+    // ...
+  });
+});
+```
+
 ### Testing Canvas Renderer
 
 ```typescript
@@ -470,11 +591,12 @@ open packages/runtime-2d/coverage/index.html
 
 ### Coverage Targets
 
-| Package | Target | Current |
-|---------|--------|---------|
-| runtime-2d | 80% | 80%+ |
-| ecs-core | 70% | TBD |
-| ai-prompt | 60% | TBD |
+| Package    | Target | Tests | Status |
+|------------|--------|-------|--------|
+| runtime-2d | 80%    | 284   | 80%+   |
+| desktop    | 60%    | 160   | Active |
+| ecs-core   | 70%    | 3     | TBD    |
+| runtime-3d | 60%    | 2     | TBD    |
 
 ### What to Cover
 

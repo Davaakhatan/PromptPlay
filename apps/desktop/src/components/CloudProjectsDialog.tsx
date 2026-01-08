@@ -34,6 +34,10 @@ export function CloudProjectsDialog({
   const [saveTags, setSaveTags] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveNameTouched, setSaveNameTouched] = useState(false);
+
+  // Validation
+  const saveNameError = saveNameTouched && !saveName.trim() ? 'Project name is required' : null;
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -138,6 +142,7 @@ export function CloudProjectsDialog({
           setSaveIsPublic(false);
           setSaveTags('');
           setSaveSuccess(false);
+          setSaveNameTouched(false);
           setActiveTab('my-projects');
         }, 1500);
       } else {
@@ -153,7 +158,12 @@ export function CloudProjectsDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cloud-dialog-title"
+    >
       <div className="bg-panel border border-subtle rounded-xl shadow-2xl w-[800px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-subtle">
@@ -164,13 +174,14 @@ export function CloudProjectsDialog({
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Cloud Projects</h2>
+              <h2 id="cloud-dialog-title" className="text-lg font-semibold text-white">Cloud Projects</h2>
               <p className="text-sm text-text-secondary">Save, load, and share projects</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="text-text-secondary hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Close dialog"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -236,19 +247,39 @@ export function CloudProjectsDialog({
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-text-secondary mb-1">Project Name *</label>
+                    <label htmlFor="save-name" className="block text-sm text-text-secondary mb-1">
+                      Project Name <span className="text-red-400">*</span>
+                    </label>
                     <input
+                      id="save-name"
                       type="text"
                       value={saveName}
                       onChange={(e) => setSaveName(e.target.value)}
-                      className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                      onBlur={() => setSaveNameTouched(true)}
+                      className={`w-full bg-surface border rounded-lg px-3 py-2 text-white focus:outline-none transition-colors ${
+                        saveNameError
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-subtle focus:border-cyan-500'
+                      }`}
                       placeholder="My Awesome Game"
+                      aria-required="true"
+                      aria-invalid={!!saveNameError}
+                      aria-describedby={saveNameError ? 'save-name-error' : undefined}
                     />
+                    {saveNameError && (
+                      <p id="save-name-error" className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {saveNameError}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm text-text-secondary mb-1">Description</label>
+                    <label htmlFor="save-description" className="block text-sm text-text-secondary mb-1">Description</label>
                     <textarea
+                      id="save-description"
                       value={saveDescription}
                       onChange={(e) => setSaveDescription(e.target.value)}
                       className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 resize-none"
@@ -258,8 +289,9 @@ export function CloudProjectsDialog({
                   </div>
 
                   <div>
-                    <label className="block text-sm text-text-secondary mb-1">Tags (comma-separated)</label>
+                    <label htmlFor="save-tags" className="block text-sm text-text-secondary mb-1">Tags (comma-separated)</label>
                     <input
+                      id="save-tags"
                       type="text"
                       value={saveTags}
                       onChange={(e) => setSaveTags(e.target.value)}

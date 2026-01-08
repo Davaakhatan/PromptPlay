@@ -113,6 +113,7 @@ export default function Toolbar({
                     : 'text-text-tertiary hover:text-text-secondary'
                 }`}
                 title="Shader Graph Editor (Cmd+7)"
+                aria-label="Shader Graph Editor"
               >
                 <ShaderIcon size={12} />
               </button>
@@ -124,6 +125,7 @@ export default function Toolbar({
                     : 'text-text-tertiary hover:text-text-secondary'
                 }`}
                 title="Behavior Tree Editor (Cmd+8)"
+                aria-label="Behavior Tree Editor"
               >
                 <BehaviorTreeIcon size={12} />
               </button>
@@ -135,6 +137,7 @@ export default function Toolbar({
                     : 'text-text-tertiary hover:text-text-secondary'
                 }`}
                 title="State Machine Editor (Cmd+9)"
+                aria-label="State Machine Editor"
               >
                 <StateMachineIcon size={12} />
               </button>
@@ -176,6 +179,7 @@ export default function Toolbar({
                 : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
             }`}
             title={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? 'Pause game' : 'Play game'}
           >
             {isPlaying ? (
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -192,6 +196,7 @@ export default function Toolbar({
             onClick={onReset}
             className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
             title="Reset"
+            aria-label="Reset game"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -207,6 +212,7 @@ export default function Toolbar({
           onClick={onNewProject}
           className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
           title="New Project (Cmd+N)"
+          aria-label="Create new project"
         >
           <NewProjectIcon size={14} />
         </button>
@@ -215,6 +221,7 @@ export default function Toolbar({
           disabled={loading}
           className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
           title="Open Project (Cmd+O)"
+          aria-label="Open project"
         >
           {loading ? (
             <LoadingSpinner size={14} />
@@ -238,6 +245,7 @@ export default function Toolbar({
                   : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
               }`}
               title={hasUnsavedChanges ? 'Save (Cmd+S) - Unsaved' : 'Save (Cmd+S)'}
+              aria-label={hasUnsavedChanges ? 'Save project (unsaved changes)' : 'Save project'}
             >
               <SaveIcon size={14} />
               {hasUnsavedChanges && (
@@ -251,6 +259,8 @@ export default function Toolbar({
               disabled={!canUndo}
               className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               title={canUndo ? 'Undo (Cmd+Z)' : 'Nothing to undo'}
+              aria-label="Undo"
+              aria-disabled={!canUndo}
             >
               <UndoIcon size={14} />
             </button>
@@ -259,6 +269,8 @@ export default function Toolbar({
               disabled={!canRedo}
               className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               title={canRedo ? 'Redo (Cmd+Shift+Z)' : 'Nothing to redo'}
+              aria-label="Redo"
+              aria-disabled={!canRedo}
             >
               <RedoIcon size={14} />
             </button>
@@ -271,6 +283,7 @@ export default function Toolbar({
                 onClick={onSearch}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
                 title="Search Entities (Cmd+K)"
+                aria-label="Search entities"
               >
                 <SearchIcon size={14} />
               </button>
@@ -282,6 +295,7 @@ export default function Toolbar({
                 onClick={onScreenshot}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 transition-all"
                 title="Take Screenshot"
+                aria-label="Take screenshot"
               >
                 <CameraIcon size={14} />
               </button>
@@ -296,6 +310,8 @@ export default function Toolbar({
                   : 'text-text-tertiary hover:text-text-secondary hover:bg-white/5'
               }`}
               title="AI Assistant"
+              aria-label={showAIPanel ? 'Hide AI assistant' : 'Show AI assistant'}
+              aria-pressed={showAIPanel}
             >
               <AIIcon size={14} />
             </button>
@@ -307,6 +323,7 @@ export default function Toolbar({
                 disabled={isExporting}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-white/5 disabled:opacity-50 transition-all"
                 title="Export as HTML (Cmd+E)"
+                aria-label={isExporting ? 'Exporting...' : 'Export as HTML'}
               >
                 {isExporting ? <LoadingSpinner size={14} /> : <ExportIcon size={14} />}
               </button>
@@ -318,6 +335,7 @@ export default function Toolbar({
                 onClick={onMobileExport}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                 title="Mobile Export (PWA)"
+                aria-label="Export for mobile"
               >
                 <SmartphoneIcon size={14} />
               </button>
@@ -329,6 +347,7 @@ export default function Toolbar({
                 onClick={onPublish}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-orange-400 hover:bg-orange-500/10 transition-all"
                 title="Publish Game"
+                aria-label="Publish game"
               >
                 <RocketIcon size={14} />
               </button>
@@ -340,6 +359,7 @@ export default function Toolbar({
                 onClick={onAIPlaytest}
                 className="w-7 h-7 rounded flex items-center justify-center text-text-tertiary hover:text-purple-400 hover:bg-purple-500/10 transition-all"
                 title="AI Playtest"
+                aria-label="AI playtest"
               >
                 <BrainIcon size={14} />
               </button>

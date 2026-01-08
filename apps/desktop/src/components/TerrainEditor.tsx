@@ -3,7 +3,7 @@
  * Supports heightmap generation, brush sculpting, texture painting, and LOD
  */
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   terrainEditor3D,
@@ -60,7 +60,7 @@ interface TerrainEditorProps {
   initialTerrain?: TerrainInstance;
 }
 
-export default function TerrainEditor({
+function TerrainEditor({
   isOpen,
   onClose,
   onTerrainChange,
@@ -1034,6 +1034,8 @@ export default function TerrainEditor({
     document.body
   );
 }
+
+export default memo(TerrainEditor);
 
 // Export LOD configuration types
 export type { LODLevel };

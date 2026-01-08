@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FolderIcon, FileIcon, ChevronRightIcon, ChevronDownIcon } from './Icons';
+import { FolderIcon, FileIcon, ChevronRightIcon, ChevronDownIcon, LoadingSpinner } from './Icons';
 import { logError } from '../utils/errorUtils';
 
 interface FileInfo {
@@ -116,8 +116,12 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
 
   if (!projectPath) {
     return (
-      <div className="text-sm text-text-tertiary text-center py-4">
-        No project open
+      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+        <FolderIcon size={32} className="text-text-tertiary mb-3 opacity-50" />
+        <p className="text-sm text-text-tertiary mb-1">No project open</p>
+        <p className="text-xs text-text-tertiary opacity-70">
+          Use Cmd+O to open a project
+        </p>
       </div>
     );
   }
@@ -126,7 +130,15 @@ export default function FileTree({ projectPath, onFileSelect, selectedFile }: Fi
     <div className="flex flex-col h-full overflow-y-auto bg-panel">
       <div className="flex-1 py-2 px-2">
         {loading && files.length === 0 ? (
-          <div className="text-sm text-text-tertiary text-center py-4">Loading...</div>
+          <div className="flex flex-col items-center justify-center py-8">
+            <LoadingSpinner size={24} className="text-primary mb-2" />
+            <span className="text-sm text-text-tertiary">Loading files...</span>
+          </div>
+        ) : files.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <FolderIcon size={24} className="text-text-tertiary mb-2 opacity-50" />
+            <p className="text-sm text-text-tertiary">No files found</p>
+          </div>
         ) : (
           renderFileTree(projectPath)
         )}

@@ -1,17 +1,30 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { save } from '@tauri-apps/plugin-dialog';
 import type { GameSpec, SceneSpec, EntitySpec, Game3DSpec } from '@promptplay/shared-types';
 import GameCanvas from './components/GameCanvas';
-import GameCanvas3D from './components/GameCanvas3D';
-import CodeEditor from './components/CodeEditor';
 import FileTree from './components/FileTree';
+
+// Lazy load heavy components (Monaco editor ~2MB, Three.js ~600KB)
+const GameCanvas3D = lazy(() => import('./components/GameCanvas3D'));
+const CodeEditor = lazy(() => import('./components/CodeEditor'));
+const JSONEditorPanel = lazy(() => import('./components/JSONEditorPanel'));
+const ShaderGraphEditor = lazy(() => import('./components/ShaderGraphEditor'));
+
+// Loading fallback for lazy-loaded components
+function LazyLoadFallback({ label = 'Loading...' }: { label?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full bg-panel">
+      <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3" />
+      <span className="text-sm text-text-secondary">{label}</span>
+    </div>
+  );
+}
 import SceneTree from './components/SceneTree';
 import SceneManager from './components/SceneManager';
 import PrefabLibrary from './components/PrefabLibrary';
 import Inspector from './components/Inspector';
-import JSONEditorPanel from './components/JSONEditorPanel';
 import AIPromptPanel from './components/AIPromptPanel';
 import AssetBrowser from './components/AssetBrowser';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -35,7 +48,6 @@ import MobilePreview from './components/MobilePreview';
 import PublishDialog from './components/PublishDialog';
 import AIPlaytestPanel from './components/AIPlaytestPanel';
 import NodeEditor, { createDefaultGraph } from './components/NodeEditor';
-import ShaderGraphEditor from './components/ShaderGraphEditor';
 import BehaviorTreeEditor from './components/BehaviorTreeEditor';
 import StateMachineEditor from './components/StateMachineEditor';
 import type { NodeGraph } from './types/NodeEditor';
@@ -2536,22 +2548,26 @@ function App() {
           )}
 
           {projectPath && viewMode === 'game' && is3DMode && game3DSpec && (
-            <GameCanvas3D
-              gameSpec={game3DSpec}
-              isPlaying={isPlaying}
-              selectedEntities={selectedEntities}
-              onEntitySelect={handleEntitySelect}
-              onEntityTransformChange={handle3DEntityTransformChange}
-              showGrid={showGrid}
-              showAxes={true}
-            />
+            <Suspense fallback={<LazyLoadFallback label="Loading 3D engine..." />}>
+              <GameCanvas3D
+                gameSpec={game3DSpec}
+                isPlaying={isPlaying}
+                selectedEntities={selectedEntities}
+                onEntitySelect={handleEntitySelect}
+                onEntityTransformChange={handle3DEntityTransformChange}
+                showGrid={showGrid}
+                showAxes={true}
+              />
+            </Suspense>
           )}
 
           {projectPath && viewMode === 'code' && (
-            <CodeEditor
-              filePath={selectedFile}
-              onSave={handleFileSave}
-            />
+            <Suspense fallback={<LazyLoadFallback label="Loading code editor..." />}>
+              <CodeEditor
+                filePath={selectedFile}
+                onSave={handleFileSave}
+              />
+            </Suspense>
           )}
 
           {projectPath && viewMode === 'nodes' && (
@@ -2568,15 +2584,17 @@ function App() {
           )}
 
           {projectPath && viewMode === 'shaders' && (
-            <ShaderGraphEditor
-              graph={shaderGraph}
-              onGraphChange={(graph) => {
-                setShaderGraph(graph);
-                setHasUnsavedChanges(true);
-              }}
-              onClose={() => setViewMode('game')}
-              onSave={saveProject}
-            />
+            <Suspense fallback={<LazyLoadFallback label="Loading shader editor..." />}>
+              <ShaderGraphEditor
+                graph={shaderGraph}
+                onGraphChange={(graph) => {
+                  setShaderGraph(graph);
+                  setHasUnsavedChanges(true);
+                }}
+                onClose={() => setViewMode('game')}
+                onSave={saveProject}
+              />
+            </Suspense>
           )}
 
           {projectPath && viewMode === 'behavior' && (
@@ -2728,11 +2746,13 @@ function App() {
               projectPath={projectPath}
             />
           ) : viewMode === 'game' && rightPanelMode === 'json' ? (
-            <JSONEditorPanel
-              gameSpec={gameSpec}
-              onApplyChanges={handleApplyAIChanges}
-              selectedEntity={selectedEntity}
-            />
+            <Suspense fallback={<LazyLoadFallback label="Loading JSON editor..." />}>
+              <JSONEditorPanel
+                gameSpec={gameSpec}
+                onApplyChanges={handleApplyAIChanges}
+                selectedEntity={selectedEntity}
+              />
+            </Suspense>
           ) : viewMode === 'game' && gameSpec && rightPanelMode === 'physics' ? (
             <PhysicsSettings
               gameSpec={gameSpec}

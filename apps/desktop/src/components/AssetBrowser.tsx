@@ -280,9 +280,10 @@ export default function update(entity, dt) {
 
   if (!projectPath) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-4">
-        <ImageIcon size={32} className="text-text-tertiary opacity-50 mb-2" />
-        <p>No project loaded</p>
+      <div className="h-full flex flex-col items-center justify-center text-text-tertiary text-sm p-4 text-center">
+        <ImageIcon size={40} className="text-text-tertiary opacity-40 mb-3" />
+        <p className="font-medium text-text-secondary mb-1">No project loaded</p>
+        <p className="text-xs opacity-70">Open a project to browse assets</p>
       </div>
     );
   }
@@ -435,9 +436,45 @@ export default function update(entity, dt) {
         )}
 
         {!loading && !error && filteredAssets.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-32 text-text-tertiary text-sm">
-            <p>No assets found</p>
-            <p className="text-xs mt-1">Add images or sounds to your project</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-subtle/50 flex items-center justify-center mb-4">
+              {filter === 'images' ? (
+                <ImageIcon size={28} className="text-blue-400 opacity-60" />
+              ) : filter === 'sounds' ? (
+                <SoundIcon size={28} className="text-green-400 opacity-60" />
+              ) : (
+                <FolderIcon size={28} className="text-text-tertiary opacity-60" />
+              )}
+            </div>
+            <p className="text-sm font-medium text-text-secondary mb-1">No assets found</p>
+            <p className="text-xs text-text-tertiary mb-4">
+              {filter === 'images' ? 'Import images to get started' :
+               filter === 'sounds' ? 'Import audio files to get started' :
+               'Add images, sounds, or scripts to your project'}
+            </p>
+            <div className="flex gap-2">
+              {(filter === 'all' || filter === 'images') && (
+                <button
+                  onClick={handleImportImages}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-400 text-xs font-medium rounded-lg hover:bg-blue-500/30 transition-colors"
+                >
+                  <PlusIcon size={12} />
+                  Import Images
+                </button>
+              )}
+              {(filter === 'all' || filter === 'sounds') && (
+                <button
+                  onClick={handleImportSounds}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400 text-xs font-medium rounded-lg hover:bg-green-500/30 transition-colors"
+                >
+                  <PlusIcon size={12} />
+                  Import Sounds
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-text-tertiary mt-4 opacity-70">
+              Or drag and drop files here
+            </p>
           </div>
         )}
 
